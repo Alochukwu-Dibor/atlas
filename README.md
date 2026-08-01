@@ -29,6 +29,10 @@ npm run dev
 
 The default persona is Commercial Manager and the default context is the open weekly cycle.
 
+## Deploy on Vercel
+
+Use the Vite framework preset with `npm run build` and the `dist` output directory. The root `vercel.json` rewrites direct requests such as `/commercial` and `/executive` to `index.html`, allowing React Router to restore the correct page after a browser refresh.
+
 ## Demo personas and scenarios
 
 Use the persona selector to switch among:
