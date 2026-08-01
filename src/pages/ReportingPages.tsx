@@ -1189,6 +1189,17 @@ export function CommercialDashboard() {
     (readiness.reportingReadinessPercent === 100 ||
       Boolean(publication?.controlledExceptionReason));
   const production = getProductionKpis();
+  const portfolioProgress = Math.round(
+    atlas.projects.reduce((total, project) => total + project.progressPercent, 0) /
+      atlas.projects.length,
+  );
+  const portfolioPlan = Math.round(
+    atlas.projects.reduce((total, project) => total + project.planPercent, 0) /
+      atlas.projects.length,
+  );
+  const portfolioAttention = atlas.projects.filter((project) =>
+    ['at_risk', 'delayed'].includes(project.status),
+  ).length;
   const queue = selectSubmissionQueue(workflow, cycleId);
   const returned = queue.filter((report) => report.status === 'needs_clarification');
   const submitted = queue.filter((report) => ['submitted', 'resubmitted'].includes(report.status));
@@ -1216,10 +1227,12 @@ export function CommercialDashboard() {
       />
       <div className="commercial-top">
         <Panel title="Portfolio Health">
-          <Ring value={readiness.reportingReadinessPercent} label="Reporting ready" />
+          <Ring value={portfolioProgress} label="Average progress" tone="warning" />
           <p>
-            {readiness.approvedReports} of {readiness.requiredReports} departmental reports approved
+            Plan {portfolioPlan}% · {portfolioAttention} of {atlas.projects.length} projects need
+            attention
           </p>
+          <StatusBadge status={atlas.executiveSummary.overallStatus} />
         </Panel>
         <Panel title="Overall project status">
           <div className="metric-large">

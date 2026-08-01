@@ -21,6 +21,8 @@ describe('route architecture', () => {
     ).toBeVisible();
     expect(screen.getByRole('navigation', { name: 'Primary navigation' })).toBeVisible();
     expect(screen.getByText('Portfolio Health')).toBeVisible();
+    expect(screen.getByRole('img', { name: 'Average progress: 68%' })).toBeVisible();
+    expect(screen.getByText('Plan 75% · 2 of 4 projects need attention')).toBeVisible();
     expect(screen.getByRole('link', { name: 'Projects' })).toHaveAttribute('href', '/projects');
     expect(screen.getByRole('link', { name: 'Recommendations' })).toHaveAttribute(
       'href',
