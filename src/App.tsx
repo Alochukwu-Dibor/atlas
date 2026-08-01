@@ -12,6 +12,7 @@ import { StateView, ToastProvider } from './components/Ui';
 const executivePage = () => import('./pages/ExecutivePages');
 const reportingPage = () => import('./pages/ReportingPages');
 const modulePage = () => import('./pages/ModulePages');
+const commercialPage = () => import('./pages/CommercialPages');
 const CommercialDashboard = lazy(() =>
   reportingPage().then((module) => ({ default: module.CommercialDashboard })),
 );
@@ -36,6 +37,12 @@ const LegalPage = lazy(() => modulePage().then((module) => ({ default: module.Le
 const ProductionPage = lazy(() =>
   modulePage().then((module) => ({ default: module.ProductionPage })),
 );
+const ProjectsPage = lazy(() =>
+  commercialPage().then((module) => ({ default: module.ProjectsPage })),
+);
+const RecommendationsPage = lazy(() =>
+  commercialPage().then((module) => ({ default: module.RecommendationsPage })),
+);
 
 export function App() {
   return (
@@ -59,6 +66,8 @@ export function App() {
           <Route element={<SidebarShell />}>
             <Route path="commercial" element={<CommercialDashboard />} />
             <Route path="commercial/review/:id" element={<CommercialReviewPage />} />
+            <Route path="projects" element={<ProjectsPage />} />
+            <Route path="recommendations" element={<RecommendationsPage />} />
             <Route path="production" element={<ProductionPage />} />
             <Route path="finance" element={<FinancePage />} />
             <Route path="hse" element={<HsePage />} />

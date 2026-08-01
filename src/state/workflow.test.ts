@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   createInitialWorkflowState,
+  fieldsForDepartment,
   getSubmissionBlockers,
   selectReadiness,
+  selectReportsForDepartment,
   selectReportSources,
   workflowReducer,
   type ManagerCorrection,
@@ -29,6 +31,31 @@ function source(overrides: Partial<WorkflowSource> = {}): WorkflowSource {
 }
 
 describe('Atlas reporting workflow', () => {
+  it('creates an open-cycle report with department-specific fields for every required department', () => {
+    const state = createInitialWorkflowState();
+    const departments = [
+      'dept_operations',
+      'dept_finance',
+      'dept_hse',
+      'dept_legal',
+      'dept_projects',
+      'dept_commercial',
+      'dept_supply_chain',
+      'dept_community',
+    ];
+    for (const departmentId of departments) {
+      expect(
+        selectReportsForDepartment(state, departmentId).some(
+          (report) => report.cycleId === 'cycle_2026_w31',
+        ),
+      ).toBe(true);
+      expect(fieldsForDepartment(departmentId)[0].value).not.toBe('');
+    }
+    expect(fieldsForDepartment('dept_finance')[0].label).toBe('Available liquidity');
+    expect(fieldsForDepartment('dept_hse')[0].label).toBe('Total recordable incident rate');
+    expect(fieldsForDepartment('dept_projects')[0].label).toContain('restoration progress');
+  });
+
   it('preserves the published fixture readiness and controlled-exception snapshot', () => {
     expect(selectReadiness(createInitialWorkflowState(), 'cycle_2026_w30')).toEqual({
       approvedReports: 6,

@@ -14,6 +14,8 @@ The Atlas functional front-end prototype now covers the specified Department →
 - Standardised field review with source references, manager correction, certification, and submission gates.
 - Commercial field-level clarification, Department response, re-certification, resubmission, controlled override, and approval.
 - Shared readiness recalculation across eight required departments.
+- Department selection across all eight required departments, with department-matched structured fields and deterministic extraction fixtures.
+- Commercial Projects portfolio and recommendation authoring, editing, approval, and audit workflows.
 - Ready-to-publish fixture, executive narrative save/preview, controlled exception reason, gated publication, simulated CEO notification, and immutable lock.
 - Separate auditable revision after publication; the original published record remains unchanged.
 - Recommendation-linked CEO decisions and assignments with owner/due-date gates.
@@ -27,6 +29,8 @@ The Atlas functional front-end prototype now covers the specified Department →
 - Department: reporting header without Commercial/CEO navigation or excluded navy banner; `4 / 4 / 4` and submission history.
 - Create Report: two steps, common details, exactly four method cards, repeatable content sources, extraction review, and certification.
 - Commercial Review: queue navigation, source evidence, comments, audit, clarification, override, and approval.
+- Projects: portfolio health, project KPIs, full project table, and evidence drawer.
+- Recommendations: prominent Commercial authoring plus system recommendation edit/approval controls.
 - Production: five KPIs, `8 / 4`, full-width table.
 - Finance: five KPIs, `6 / 3 / 3`, `8 / 4`.
 - HSE: six KPIs, `6 / 3 / 3`, `3 / 3 / 6`.
@@ -50,7 +54,7 @@ All approved charts preserve the required series and expose summaries plus keybo
 | Prettier               | Passed                                                                                                            |
 | ESLint                 | Passed with zero warnings                                                                                         |
 | TypeScript strict mode | Passed                                                                                                            |
-| Tests                  | 7 files, 30 tests passed                                                                                          |
+| Tests                  | 8 files, 37 tests passed                                                                                          |
 | Production build       | Passed                                                                                                            |
 | Critical reducer paths | Submit, clarify, resubmit, approve, override, publish, lock, revise, decide, assign, progress passed              |
 | Desktop browser        | All specified routes and locked ratios passed at 1440 × 1000                                                      |

@@ -20,6 +20,8 @@ Atlas satisfies the approved front-end scope and locked page structures. The fin
 | Department review `/department/reports/:id` | Implemented | `DepartmentReportReview`; evidence/comments/audit, response/resubmit, read-only lock, revision creation                                 |
 | Commercial dashboard `/commercial`          | Implemented | `CommercialDashboard`; `2/3/3/4`, `3/5/4`, queue, narrative preview, gate, publish/lock                                                 |
 | Commercial review `/commercial/review/:id`  | Implemented | `CommercialReviewPage`; queue navigation, fields, lineage, comments, audit, clarification, override, approval                           |
+| Projects `/projects`                        | Implemented | `ProjectsPage`; portfolio health, project KPIs, full portfolio table, row evidence drawer                                               |
+| Recommendations `/recommendations`          | Implemented | `RecommendationsPage`; prominent authoring, system recommendation edit/approval, status and audit                                       |
 | CEO `/executive`                            | Implemented | `ExecutiveDashboard`, `ExecutiveShell`; no sidebar, `3/5/4`, `6/6`, four decisions                                                      |
 | Production `/production`                    | Implemented | `ProductionPage`; five KPIs, `8/4`, field table, planned/actual chart                                                                   |
 | Finance `/finance`                          | Implemented | `FinancePage`; five KPIs, `6/3/3`, `8/4`, mixed cashflow and variance ring                                                              |
@@ -33,12 +35,14 @@ Browser-measured desktop columns matched all ratios at 1440 × 1000. At 1024 × 
 | Workflow                          | Status      | Evidence                                                                                     |
 | --------------------------------- | ----------- | -------------------------------------------------------------------------------------------- |
 | Department happy path             | Implemented | `workflowReducer`; create/add source/correct/certify/submit tests                            |
+| Department selection              | Implemented | all eight departments; department-matched form fields and extraction fixtures; route test    |
 | Multi-source add/replace/remove   | Implemented | `ADD_SOURCE`, `REPLACE_SOURCE`, `REMOVE_SOURCE`; dependency-warning modals and audit         |
 | Missing/failed/unsupported source | Implemented | deterministic source status fixtures; `getSubmissionBlockers`; source controls               |
 | Conflict and manager correction   | Implemented | original extraction retained; separate `ManagerCorrection`; audit test                       |
 | Submit and Commercial queue       | Implemented | `SUBMIT_REPORT`, `selectSubmissionQueue`; route/component tests                              |
 | Clarification/response/resubmit   | Implemented | field question/due date, response, re-certification, `resubmitted`; reducer test             |
 | Approval and readiness            | Implemented | `APPROVE_REPORT`, `selectReadiness`; eight-department gate                                   |
+| Commercial recommendations        | Implemented | author/edit/approve state, persistence, audit events, reducer and route tests                |
 | Controlled value override         | Implemented | original Department value retained, revised value/reason/audit; reducer test                 |
 | Narrative and preview             | Implemented | `SAVE_EXECUTIVE_NARRATIVE`; publication modal preview and disclosure                         |
 | Publication gate                  | Implemented | all mandatory reports approved or reasoned controlled exception; reducer/browser tests       |
@@ -76,6 +80,9 @@ Browser-measured desktop columns matched all ratios at 1440 × 1000. At 1024 × 
 | Page §5            | Department exact header, three cards, history; no navy banner                                        | Implemented | `DepartmentShell`, `DepartmentDashboard`                                           |
 | Page §6            | Create Report exact sequence and four cards                                                          | Implemented | `CreateReportPage`, method card test                                               |
 | Page §7            | Commercial review body/action requirements                                                           | Implemented | `CommercialReviewPage` and lifecycle state                                         |
+| Product owner      | Commercial Projects navigation, portfolio health and project breakdown routing                       | Implemented | `/projects`, sidebar navigation, dashboard link, route tests                       |
+| Product owner      | Commercial recommendation authoring, editing and approval                                            | Implemented | `/recommendations`, `recommendationsReducer`, route/reducer tests                  |
+| Product owner      | Department selection and department-matched structured/extracted data                                | Implemented | `DepartmentControl`, `fieldsForDepartment`, route/reducer tests                    |
 | Page §8            | Production five KPIs, `8/4`, table/controls                                                          | Implemented | `ProductionPage`; desktop browser audit                                            |
 | Page §9            | Finance five KPIs, `6/3/3`, `8/4`                                                                    | Implemented | `FinancePage`; desktop browser audit                                               |
 | Page §10           | HSE six KPIs, `6/3/3`, `3/3/6`                                                                       | Implemented | `HsePage`; desktop browser audit                                                   |
@@ -112,7 +119,7 @@ Status definitions: **Implemented** is executable and evidenced; **Partially imp
 | `npm run format:check` | Passed                                                                                            |
 | `npm run lint`         | Passed, zero warnings                                                                             |
 | `npm run typecheck`    | Passed, strict TypeScript                                                                         |
-| `npm test`             | Passed: 7 files, 30 tests                                                                         |
+| `npm test`             | Passed: 8 files, 37 tests                                                                         |
 | `npm run build`        | Passed: Vite production bundle                                                                    |
 | `npm audit --omit=dev` | Two high findings; accepted as non-exploitable in this client-only architecture (see limitations) |
 

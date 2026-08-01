@@ -392,6 +392,9 @@ a.button {
 .grid--3 {
   grid-template-columns: repeat(3, 1fr);
 }
+.grid--4 {
+  grid-template-columns: repeat(4, 1fr);
+}
 .kpi {
   display: flex;
   flex-direction: column;
@@ -894,6 +897,25 @@ tr.is-clickable:hover {
   display: grid;
   gap: 8px;
   justify-items: start;
+}
+.recommendation-actions {
+  display: flex;
+  gap: 8px;
+}
+.recommendation-compose {
+  margin-top: 16px;
+  border-color: #a4bcfd;
+  background: linear-gradient(135deg, #ffffff 0%, var(--atlas-primary-tint) 100%);
+}
+.progress-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 130px;
+}
+.progress-cell progress {
+  width: 88px;
+  accent-color: var(--atlas-primary);
 }
 .decision-summary {
   margin-top: 10px;
@@ -1412,6 +1434,7 @@ blockquote {
   }
   .commercial-top,
   .executive-top,
+  .grid--4,
   .kpi-strip--5,
   .kpi-strip--6 {
     grid-template-columns: repeat(2, 1fr);
@@ -1463,6 +1486,7 @@ blockquote {
     justify-content: flex-start;
   }
   .grid--3,
+  .grid--4,
   .commercial-top,
   .executive-top,
   .kpi-strip--5,

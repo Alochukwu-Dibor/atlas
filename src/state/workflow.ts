@@ -120,7 +120,7 @@ export interface CyclePublication {
 }
 
 export interface WorkflowState {
-  version: 3;
+  version: 4;
   reports: WorkflowReport[];
   sources: WorkflowSource[];
   comments: WorkflowComment[];
@@ -168,7 +168,8 @@ function normaliseSourceStatus(status: string): SourceStatus {
   return 'extracted';
 }
 
-function fieldsForReport(reportId: string, departmentId: string): StandardField[] {
+export function fieldsForDepartment(departmentId: string): StandardField[] {
+  const sourceId = `src_${departmentId.replace('dept_', '')}_fixture`;
   if (departmentId === 'dept_finance') {
     return [
       {
@@ -177,7 +178,7 @@ function fieldsForReport(reportId: string, departmentId: string): StandardField[
         value: String(atlas.finance.kpis.availableLiquidityUsd),
         unit: 'USD',
         required: true,
-        sourceIds: ['src_fin_xlsx'],
+        sourceIds: [sourceId],
         confidence: 0.99,
       },
       {
@@ -186,7 +187,7 @@ function fieldsForReport(reportId: string, departmentId: string): StandardField[
         value: String(atlas.finance.kpis.unrestrictedCashUsd),
         unit: 'USD',
         required: true,
-        sourceIds: ['src_fin_xlsx', 'src_fin_pdf'],
+        sourceIds: [sourceId],
         confidence: 0.82,
       },
       {
@@ -195,8 +196,186 @@ function fieldsForReport(reportId: string, departmentId: string): StandardField[
         value: String(atlas.finance.kpis.nextRepaymentUsd),
         unit: 'USD',
         required: true,
-        sourceIds: ['src_fin_xlsx'],
+        sourceIds: [sourceId],
         confidence: 0.99,
+      },
+    ];
+  }
+  if (departmentId === 'dept_hse') {
+    return [
+      {
+        key: 'trir',
+        label: 'Total recordable incident rate',
+        value: String(atlas.hse.kpis.trir),
+        required: true,
+        sourceIds: [sourceId],
+        confidence: 1,
+      },
+      {
+        key: 'recordableIncidents',
+        label: 'Recordable incidents',
+        value: String(atlas.hse.kpis.recordableIncidents),
+        required: true,
+        sourceIds: [sourceId],
+        confidence: 0.98,
+      },
+      {
+        key: 'overdueActions',
+        label: 'Overdue corrective actions',
+        value: String(atlas.hse.compliance.overdueFindings),
+        required: true,
+        sourceIds: [sourceId],
+        confidence: 0.96,
+      },
+    ];
+  }
+  if (departmentId === 'dept_legal') {
+    return [
+      {
+        key: 'estimatedExposureUsd',
+        label: 'Estimated legal exposure',
+        value: String(atlas.legalRegulatory.kpis.estimatedExposureUsd),
+        unit: 'USD',
+        required: true,
+        sourceIds: [sourceId],
+        confidence: 0.99,
+      },
+      {
+        key: 'submissionsOutstanding',
+        label: 'Regulatory submissions outstanding',
+        value: String(atlas.legalRegulatory.kpis.submissionsOutstanding),
+        required: true,
+        sourceIds: [sourceId],
+        confidence: 0.98,
+      },
+      {
+        key: 'nearestDeadline',
+        label: 'Nearest material deadline',
+        value: atlas.executiveSummary.legal.nearestDeadline,
+        required: true,
+        sourceIds: [sourceId],
+        confidence: 1,
+      },
+    ];
+  }
+  if (departmentId === 'dept_projects') {
+    const project = atlas.projects[0];
+    return [
+      {
+        key: 'progressPercent',
+        label: 'Compressor restoration progress',
+        value: String(project.progressPercent),
+        unit: '%',
+        required: true,
+        sourceIds: [sourceId],
+        confidence: 0.97,
+      },
+      {
+        key: 'targetDate',
+        label: 'Compressor restoration target date',
+        value: project.targetDate,
+        required: true,
+        sourceIds: [sourceId],
+        confidence: 0.92,
+      },
+      {
+        key: 'projectIssue',
+        label: 'Primary delivery issue',
+        value: project.issue ?? 'No material delivery issue',
+        required: true,
+        sourceIds: [sourceId],
+        confidence: 0.95,
+      },
+    ];
+  }
+  if (departmentId === 'dept_commercial') {
+    return [
+      {
+        key: 'revenueYtdUsd',
+        label: 'Revenue and lifting proceeds YTD',
+        value: String(atlas.finance.kpis.revenueYtdUsd),
+        unit: 'USD',
+        required: true,
+        sourceIds: [sourceId],
+        confidence: 0.99,
+      },
+      {
+        key: 'availableLiquidityUsd',
+        label: 'Available liquidity',
+        value: String(atlas.finance.kpis.availableLiquidityUsd),
+        unit: 'USD',
+        required: true,
+        sourceIds: [sourceId],
+        confidence: 0.99,
+      },
+      {
+        key: 'overdueReceivables',
+        label: 'Overdue receivables',
+        value: String(atlas.finance.receivables.filter((item) => item.status === 'overdue').length),
+        required: true,
+        sourceIds: [sourceId],
+        confidence: 0.98,
+      },
+    ];
+  }
+  if (departmentId === 'dept_supply_chain') {
+    const commitment = atlas.finance.commitments.find((item) => item.id === 'com_integrity')!;
+    return [
+      {
+        key: 'remainingCommitmentUsd',
+        label: 'Facilities and integrity commitment remaining',
+        value: String(commitment.remainingUsd),
+        unit: 'USD',
+        required: true,
+        sourceIds: [sourceId],
+        confidence: 0.97,
+      },
+      {
+        key: 'due30DaysUsd',
+        label: 'Commitment due within 30 days',
+        value: String(commitment.due30DaysUsd),
+        unit: 'USD',
+        required: true,
+        sourceIds: [sourceId],
+        confidence: 0.97,
+      },
+      {
+        key: 'supplyStatus',
+        label: 'Critical materials status',
+        value: commitment.status,
+        required: true,
+        sourceIds: [sourceId],
+        confidence: 0.94,
+      },
+    ];
+  }
+  if (departmentId === 'dept_community') {
+    const communityRisk = atlas.legalRegulatory.risks[0];
+    return [
+      {
+        key: 'communityExposureUsd',
+        label: 'Community claim exposure',
+        value: String(communityRisk.estimatedExposureUsd),
+        unit: 'USD',
+        required: true,
+        sourceIds: [sourceId],
+        confidence: 0.96,
+      },
+      {
+        key: 'accessResponseDeadline',
+        label: 'Community access response deadline',
+        value: communityRisk.dueDate,
+        required: true,
+        sourceIds: [sourceId],
+        confidence: 1,
+      },
+      {
+        key: 'engagementStatus',
+        label: 'Community engagement status',
+        value: communityRisk.status,
+        required: true,
+        sourceIds: [sourceId],
+        confidence: 0.94,
       },
     ];
   }
@@ -207,7 +386,7 @@ function fieldsForReport(reportId: string, departmentId: string): StandardField[
       value: String(atlas.production.kpis.grossOilActualBopd),
       unit: 'bopd',
       required: true,
-      sourceIds: reportId.includes('w31') ? ['src_ops_w31_form'] : ['src_ops_xlsx'],
+      sourceIds: [sourceId],
       confidence: 0.99,
     },
     {
@@ -216,7 +395,7 @@ function fieldsForReport(reportId: string, departmentId: string): StandardField[
       value: String(atlas.production.kpis.grossOilPlanBopd),
       unit: 'bopd',
       required: true,
-      sourceIds: reportId.includes('w31') ? ['src_ops_w31_form'] : ['src_ops_form'],
+      sourceIds: [sourceId],
       confidence: 1,
     },
     {
@@ -224,7 +403,7 @@ function fieldsForReport(reportId: string, departmentId: string): StandardField[
       label: 'Primary constraint',
       value: atlas.production.kpis.primaryConstraint,
       required: true,
-      sourceIds: reportId.includes('w31') ? ['src_ops_w31_form'] : ['src_ops_email'],
+      sourceIds: [sourceId],
       confidence: 0.96,
     },
   ];
@@ -247,11 +426,38 @@ export function createInitialWorkflowState(): WorkflowState {
     submittedAt: report.submittedAt,
     approvedAt: report.approvedAt,
     sourceIds: [...report.sourceIds],
-    fields: fieldsForReport(report.id, report.departmentId),
+    fields: fieldsForDepartment(report.departmentId),
     certification: report.status !== 'draft',
     revision: report.status === 'needs_clarification' ? 1 : 0,
     clarificationAnswered: false,
   }));
+
+  for (const department of atlas.departments.filter((item) => item.required)) {
+    const hasOpenReport = reports.some(
+      (report) =>
+        report.departmentId === department.id &&
+        report.cycleId === atlas.demoStates.defaultOpenCycleId,
+    );
+    if (!hasOpenReport) {
+      reports.push({
+        id: `rpt_${department.id.replace('dept_', '')}_w31`,
+        cycleId: atlas.demoStates.defaultOpenCycleId,
+        departmentId: department.id,
+        managerId: department.managerId,
+        projectId: atlas.organisation.defaultAssetId,
+        title: `${department.name} Weekly Report · 27 Jul–2 Aug 2026`,
+        methods: ['structured_form'],
+        status: 'draft',
+        submittedAt: null,
+        approvedAt: null,
+        sourceIds: [],
+        fields: fieldsForDepartment(department.id),
+        certification: false,
+        revision: 0,
+        clarificationAnswered: false,
+      });
+    }
+  }
 
   const sources: WorkflowSource[] = atlas.sources.map((source) => ({
     id: source.id,
@@ -294,7 +500,7 @@ export function createInitialWorkflowState(): WorkflowState {
   }));
 
   return {
-    version: 3,
+    version: 4,
     reports,
     sources,
     comments,
@@ -540,7 +746,7 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
           submittedAt: action.now,
           approvedAt: action.now,
           sourceIds: [],
-          fields: fieldsForReport(id, department.id),
+          fields: fieldsForDepartment(department.id),
           certification: true,
           revision: 0,
           clarificationAnswered: true,
@@ -600,6 +806,11 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
       reports: updateReport(state.reports, action.source.reportId, (report) => ({
         ...report,
         sourceIds: [...report.sourceIds, action.source.id],
+        fields: report.fields.map((field) =>
+          field.key in action.source.extractedValues
+            ? { ...field, sourceIds: [...new Set([...field.sourceIds, action.source.id])] }
+            : field,
+        ),
         methods: report.methods.includes(action.source.method)
           ? report.methods
           : [...report.methods, action.source.method],
@@ -842,7 +1053,7 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
   return state;
 }
 
-export const workflowStorageKey = 'atlas.prototype.workflow.v3';
+export const workflowStorageKey = 'atlas.prototype.workflow.v4';
 
 export function loadWorkflowState(): WorkflowState {
   if (typeof window === 'undefined') return createInitialWorkflowState();
@@ -850,7 +1061,7 @@ export function loadWorkflowState(): WorkflowState {
     const stored = window.localStorage.getItem(workflowStorageKey);
     if (!stored) return createInitialWorkflowState();
     const parsed = JSON.parse(stored) as WorkflowState;
-    return parsed.version === 3 ? parsed : createInitialWorkflowState();
+    return parsed.version === 4 ? parsed : createInitialWorkflowState();
   } catch {
     return createInitialWorkflowState();
   }
@@ -858,6 +1069,10 @@ export function loadWorkflowState(): WorkflowState {
 
 export function selectReportsForUser(state: WorkflowState, userId: string) {
   return state.reports.filter((report) => report.managerId === userId);
+}
+
+export function selectReportsForDepartment(state: WorkflowState, departmentId: string) {
+  return state.reports.filter((report) => report.departmentId === departmentId);
 }
 
 export function selectReportSources(state: WorkflowState, reportId: string) {
@@ -918,10 +1133,7 @@ export function getSubmissionBlockers(
     ),
   );
   const hasConflict = sources.some((source) => source.status === 'conflict');
-  const conflictResolved = corrections.some(
-    (correction) =>
-      correction.reportId === report.id && correction.fieldKey === 'grossOilActualBopd',
-  );
+  const conflictResolved = corrections.some((correction) => correction.reportId === report.id);
   return [
     !hasUsableSource ? 'Add and process at least one valid source.' : '',
     hasInvalidSource ? 'Replace or remove incomplete and failed sources.' : '',

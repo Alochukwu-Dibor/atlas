@@ -1,10 +1,12 @@
 import {
   Activity,
   BarChart3,
+  BriefcaseBusiness,
   ClipboardCheck,
   FileText,
   Gavel,
   LayoutDashboard,
+  Lightbulb,
   RefreshCw,
   ShieldCheck,
 } from 'lucide-react';
@@ -16,10 +18,12 @@ import { Button, Drawer, Field, Select, StateView, StatusBadge, useToast } from 
 
 const navItems = [
   { to: '/commercial', label: 'Overview', icon: LayoutDashboard },
+  { to: '/projects', label: 'Projects', icon: BriefcaseBusiness },
   { to: '/production', label: 'Production', icon: Activity },
   { to: '/finance', label: 'Finance', icon: BarChart3 },
   { to: '/hse', label: 'HSE', icon: ShieldCheck },
   { to: '/legal', label: 'Legal & Regulatory', icon: Gavel },
+  { to: '/recommendations', label: 'Recommendations', icon: Lightbulb },
   { to: '/commercial/review/rpt_fin_w30', label: 'Reports / Review Queue', icon: ClipboardCheck },
 ];
 
@@ -36,14 +40,14 @@ export function Brand() {
 }
 
 function PersonaControl() {
-  const { activeUserId, setActiveUserId, setCycleId } = useAtlas();
+  const { activeUserId, setActiveUserId, setCycleId, setDepartmentId } = useAtlas();
   const navigate = useNavigate();
-  const roles = atlas.users.filter((user) =>
-    ['usr_ceo', 'usr_commercial', 'usr_operations'].includes(user.id),
-  );
+  const roles = atlas.users;
   const onChange = (id: string) => {
     setActiveUserId(id);
     const role = getUser(id)?.role;
+    const selectedUser = getUser(id);
+    if (selectedUser?.departmentId) setDepartmentId(selectedUser.departmentId);
     setCycleId(
       role === 'ceo'
         ? atlas.demoStates.defaultPublishedCycleId
@@ -63,12 +67,35 @@ function PersonaControl() {
   );
 }
 
-function AssignedActionInbox({ responsibleOnly = false }: { responsibleOnly?: boolean }) {
+function DepartmentControl() {
+  const { departmentId, setDepartmentId } = useAtlas();
+  return (
+    <Select
+      label="Department workspace"
+      value={departmentId}
+      onChange={setDepartmentId}
+      options={atlas.departments.map((department) => ({
+        value: department.id,
+        label: department.name,
+      }))}
+    />
+  );
+}
+
+function AssignedActionInbox({
+  responsibleOnly = false,
+  responsibleUserId,
+}: {
+  responsibleOnly?: boolean;
+  responsibleUserId?: string | null;
+}) {
   const { activeUserId, executive, executiveDispatch } = useAtlas();
   const [open, setOpen] = useState(false);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const assigned = executive.decisions.filter(
-    (decision) => decision.ownerId && (!responsibleOnly || decision.ownerId === activeUserId),
+    (decision) =>
+      decision.ownerId &&
+      (!responsibleOnly || decision.ownerId === (responsibleUserId ?? activeUserId)),
   );
   return (
     <>
@@ -303,9 +330,9 @@ export function SidebarShell() {
 }
 
 export function DepartmentShell() {
-  const { role, activeUserId } = useAtlas();
-  const user = getUser(activeUserId)!;
-  const department = getDepartment(user.departmentId);
+  const { role, departmentId } = useAtlas();
+  const department = getDepartment(departmentId)!;
+  const manager = getUser(department.managerId ?? '');
   if (role !== 'department_manager') {
     return (
       <StateView
@@ -322,16 +349,29 @@ export function DepartmentShell() {
         <Brand />
         <span className="module-label">
           <FileText aria-hidden="true" />
-          Reporting · {department?.name}
+          Reporting · {department.name}
         </span>
         <span className="last-updated">Last updated 1 Aug 2026 · 09:00 WAT</span>
         <div className="department-header__actions">
           <PersonaControl />
-          <AssignedActionInbox responsibleOnly />
+          <DepartmentControl />
+          <AssignedActionInbox responsibleOnly responsibleUserId={department.managerId} />
           <NavLink to="/department/reports/new" className="button button--primary">
             New Report
           </NavLink>
-          <Profile />
+          <div className="profile">
+            <span className="avatar">
+              {(manager?.name ?? department.name)
+                .split(' ')
+                .map((name) => name[0])
+                .join('')
+                .slice(0, 2)}
+            </span>
+            <div>
+              <strong>{manager?.name ?? 'Acting Department Manager'}</strong>
+              <small>{manager?.title ?? `${department.name} Manager`}</small>
+            </div>
+          </div>
         </div>
       </header>
       <main className="department-workspace">

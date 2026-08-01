@@ -37,7 +37,7 @@ import {
   getSubmissionBlockers,
   selectReadiness,
   selectReportSources,
-  selectReportsForUser,
+  selectReportsForDepartment,
   selectSubmissionQueue,
   type ManagerCorrection,
   type SourceMethod,
@@ -110,8 +110,8 @@ export function SourceMethodCards({
 
 export function DepartmentDashboard() {
   const navigate = useNavigate();
-  const { activeUserId, cycleId, workflow } = useAtlas();
-  const reports = selectReportsForUser(workflow, activeUserId);
+  const { departmentId, cycleId, workflow } = useAtlas();
+  const reports = selectReportsForDepartment(workflow, departmentId);
   const activeCycle = getCycle(cycleId);
   const pending = reports.filter((report) => ['submitted', 'resubmitted'].includes(report.status));
   const returned = reports.filter((report) => report.status === 'needs_clarification');
@@ -178,13 +178,20 @@ interface MethodInputsProps {
 
 function MethodInputs({ report, method, onAdd }: MethodInputsProps) {
   const { workflow } = useAtlas();
-  const [actual, setActual] = useState(String(atlas.production.kpis.grossOilActualBopd));
-  const [explanation, setExplanation] = useState('');
+  const department = getDepartment(report.departmentId)!;
+  const fixtureValues = Object.fromEntries(report.fields.map((field) => [field.key, field.value]));
+  const fixtureExcerpt = report.fields
+    .map((field) => `${field.label}: ${field.value}${field.unit ? ` ${field.unit}` : ''}`)
+    .join('; ');
+  const [structuredValues, setStructuredValues] = useState<Record<string, string>>(fixtureValues);
+  const [narrative, setNarrative] = useState(
+    `${department.name} position reconciled to the synthetic weekly fixture.`,
+  );
   const [file, setFile] = useState<File | null>(null);
   const [workbookScenario, setWorkbookScenario] = useState('valid');
   const [subtype, setSubtype] = useState<'email' | 'call_transcript'>('email');
-  const [subject, setSubject] = useState('Compressor B operating update');
-  const [content, setContent] = useState('');
+  const [subject, setSubject] = useState(`${department.name} weekly update`);
+  const [content, setContent] = useState(fixtureExcerpt);
   const [error, setError] = useState('');
   const [processing, setProcessing] = useState(false);
 
@@ -216,14 +223,24 @@ function MethodInputs({ report, method, onAdd }: MethodInputsProps) {
     return (
       <Panel title="Atlas Structured Form" className="method-input">
         <div className="form-grid">
-          <Field label="Gross oil production (bopd)" error={error && !actual ? error : undefined}>
-            <input
-              aria-label="Gross oil production (bopd)"
-              type="number"
-              value={actual}
-              onChange={(event) => setActual(event.target.value)}
-            />
-          </Field>
+          {report.fields.map((field) => (
+            <Field
+              key={field.key}
+              label={`${field.label}${field.unit ? ` (${field.unit})` : ''}`}
+              error={error && !structuredValues[field.key]?.trim() ? error : undefined}
+            >
+              <input
+                aria-label={field.label}
+                value={structuredValues[field.key] ?? ''}
+                onChange={(event) =>
+                  setStructuredValues((current) => ({
+                    ...current,
+                    [field.key]: event.target.value,
+                  }))
+                }
+              />
+            </Field>
+          ))}
           <Field label="Reporting period">
             <input
               aria-label="Structured form reporting period"
@@ -233,31 +250,34 @@ function MethodInputs({ report, method, onAdd }: MethodInputsProps) {
           </Field>
         </div>
         <Field
-          label="Required variance explanation"
-          error={error && !explanation ? error : undefined}
+          label={`${department.name} weekly narrative`}
+          error={error && !narrative ? error : undefined}
         >
           <textarea
-            aria-label="Required variance explanation"
+            aria-label={`${department.name} weekly narrative`}
             rows={3}
-            value={explanation}
-            onChange={(event) => setExplanation(event.target.value)}
-            placeholder="Explain the material variance against the locked 120,000 bopd baseline."
+            value={narrative}
+            onChange={(event) => setNarrative(event.target.value)}
+            placeholder={`Explain the material ${department.name} position for this cycle.`}
           />
         </Field>
         <div className="form-actions">
           <Button
             onClick={() => {
-              if (!actual || !explanation.trim()) {
-                setError('Production and a material-variance explanation are required.');
+              if (
+                report.fields.some((field) => !structuredValues[field.key]?.trim()) ||
+                !narrative.trim()
+              ) {
+                setError(`Every ${department.name} field and the weekly narrative are required.`);
                 return;
               }
               setError('');
               addSource(
-                'Operations structured return · Phase 2',
+                `${department.name} structured return`,
                 'extracted',
-                'Structured Form > Production Performance',
-                `Gross production ${format.number(Number(actual))} bopd. ${explanation}`,
-                { grossOilActualBopd: actual, varianceExplanation: explanation },
+                `Structured Form > ${department.name} Weekly Position`,
+                `${fixtureExcerpt}. ${narrative}`,
+                { ...structuredValues, weeklyNarrative: narrative },
               );
             }}
           >
@@ -317,16 +337,9 @@ function MethodInputs({ report, method, onAdd }: MethodInputsProps) {
                 addSource(
                   file.name,
                   failed ? 'failed_extraction' : 'extracted',
-                  failed ? 'Extraction unavailable' : 'Page 2 · Production Summary',
-                  failed
-                    ? ''
-                    : 'Average gross production: 96,800 bopd; Compressor B capacity remains constrained.',
-                  failed
-                    ? {}
-                    : {
-                        grossOilActualBopd: '96800',
-                        primaryConstraint: atlas.production.kpis.primaryConstraint,
-                      },
+                  failed ? 'Extraction unavailable' : `Page 2 · ${department.name} Summary`,
+                  failed ? '' : fixtureExcerpt,
+                  failed ? {} : fixtureValues,
                   failed
                     ? 'Fixture extraction failed. Replace the source or review manually.'
                     : undefined,
@@ -384,16 +397,21 @@ function MethodInputs({ report, method, onAdd }: MethodInputsProps) {
                 workbookScenario === 'valid' ? 'extracted' : workbookScenario
               ) as SourceStatus;
               const conflict = workbookScenario === 'conflict';
+              const primaryField = report.fields[0];
+              const numericValue = Number(primaryField.value);
+              const conflictValue = Number.isFinite(numericValue)
+                ? String(Math.round(numericValue * 1.05))
+                : `${primaryField.value} (conflict)`;
               addSource(
                 file.name,
                 status,
-                'Daily Production!H20:H26',
+                `${department.name} Weekly Return!A2:D8`,
                 conflict
-                  ? 'Workbook average gross production: 102,400 bopd.'
-                  : 'Workbook average gross production: 96,800 bopd.',
-                { grossOilActualBopd: conflict ? '102400' : '96800' },
+                  ? `${primaryField.label}: ${conflictValue}; conflicts with ${primaryField.value}.`
+                  : fixtureExcerpt,
+                conflict ? { ...fixtureValues, [primaryField.key]: conflictValue } : fixtureValues,
                 status === 'invalid'
-                  ? 'Required Date, Actual Production and Unit columns are missing.'
+                  ? `Required ${department.name} columns are missing.`
                   : status === 'partial'
                     ? 'Two rows are unmapped; valid rows were retained.'
                     : undefined,
@@ -450,7 +468,7 @@ function MethodInputs({ report, method, onAdd }: MethodInputsProps) {
               'extracted',
               subtype === 'email' ? 'Email body · paragraph 2' : 'Transcript · 00:12:14–00:13:02',
               content,
-              { primaryConstraint: atlas.production.kpis.primaryConstraint },
+              fixtureValues,
             );
           }}
         >
@@ -464,14 +482,14 @@ function MethodInputs({ report, method, onAdd }: MethodInputsProps) {
 export function CreateReportPage() {
   const navigate = useNavigate();
   const showToast = useToast();
-  const { activeUserId, cycleId, setCycleId, workflow, workflowDispatch } = useAtlas();
-  const user = getUser(activeUserId)!;
-  const department = getDepartment(user.departmentId)!;
+  const { activeUserId, departmentId, cycleId, setCycleId, workflow, workflowDispatch } =
+    useAtlas();
+  const department = getDepartment(departmentId)!;
   const report =
     workflow.reports.find(
       (item) =>
-        item.managerId === activeUserId && item.cycleId === atlas.demoStates.defaultOpenCycleId,
-    ) ?? workflow.reports.find((item) => item.managerId === activeUserId)!;
+        item.departmentId === departmentId && item.cycleId === atlas.demoStates.defaultOpenCycleId,
+    ) ?? workflow.reports.find((item) => item.departmentId === departmentId)!;
   const [selected, setSelected] = useState<SourceMethod[]>(report.methods);
   const [step, setStep] = useState<1 | 2>(1);
   const [title, setTitle] = useState(report.title);
@@ -479,7 +497,8 @@ export function CreateReportPage() {
   const [viewSource, setViewSource] = useState<WorkflowSource | null>(null);
   const [removeSource, setRemoveSource] = useState<WorkflowSource | null>(null);
   const [replaceSource, setReplaceSource] = useState<WorkflowSource | null>(null);
-  const [correctionValue, setCorrectionValue] = useState('96800');
+  const primaryField = report.fields[0];
+  const [correctionValue, setCorrectionValue] = useState(primaryField.value);
   const [correctionReason, setCorrectionReason] = useState('');
   const [certified, setCertified] = useState(false);
 
@@ -495,7 +514,7 @@ export function CreateReportPage() {
   );
   const hasConflict = sources.some((source) => source.status === 'conflict');
   const conflictResolved = corrections.some(
-    (correction) => correction.fieldKey === 'grossOilActualBopd',
+    (correction) => correction.fieldKey === primaryField.key,
   );
   const missingWarnings = sources.filter((source) => source.status === 'partial');
   const blockedReasons = getSubmissionBlockers(report, sources, corrections, certified);
@@ -558,8 +577,8 @@ export function CreateReportPage() {
             <div className="info-panel">
               <strong>Locked baseline</strong>
               <span>
-                Gross oil production plan: {format.number(atlas.production.kpis.grossOilPlanBopd)}{' '}
-                bopd. Baseline changes require a Commercial Manager request.
+                {primaryField.label}: {primaryField.value} {primaryField.unit}. Baseline changes
+                require a Commercial Manager request.
               </span>
             </div>
           </Panel>
@@ -689,18 +708,25 @@ export function CreateReportPage() {
                 <div className="conflict-card" data-testid="source-conflict">
                   <header>
                     <AlertTriangle />
-                    <strong>Conflicting gross production values</strong>
+                    <strong>Conflicting {primaryField.label.toLowerCase()} values</strong>
                   </header>
                   <div className="conflict-values">
                     <div>
                       <small>Document / structured sources</small>
-                      <strong>96,800 bopd</strong>
-                      <span>Daily Production!H20:H26</span>
+                      <strong>
+                        {primaryField.value} {primaryField.unit}
+                      </strong>
+                      <span>{department.name} structured return</span>
                     </div>
                     <div>
                       <small>Conflicting XLSX source</small>
-                      <strong>102,400 bopd</strong>
-                      <span>Workbook Daily Production!H20:H26</span>
+                      <strong>
+                        {sources.find((source) => source.status === 'conflict')?.extractedValues[
+                          primaryField.key
+                        ] ?? 'Conflicting value'}{' '}
+                        {primaryField.unit}
+                      </strong>
+                      <span>{department.name} Weekly Return!A2:D8</span>
                     </div>
                   </div>
                   <Field label="Authoritative or corrected value">
@@ -727,11 +753,11 @@ export function CreateReportPage() {
                       const correction: ManagerCorrection = {
                         id: `correction_${workflow.corrections.length + 1}`,
                         reportId: report.id,
-                        fieldKey: 'grossOilActualBopd',
-                        fieldLabel: 'Gross oil production',
+                        fieldKey: primaryField.key,
+                        fieldLabel: primaryField.label,
                         sourceId: conflictSource.id,
                         originalValue:
-                          conflictSource.extractedValues.grossOilActualBopd ?? '102400',
+                          conflictSource.extractedValues[primaryField.key] ?? primaryField.value,
                         correctedValue: correctionValue,
                         reason: correctionReason,
                         actorId: activeUserId,
@@ -1189,7 +1215,7 @@ export function CommercialDashboard() {
         }
       />
       <div className="commercial-top">
-        <Panel title="Reporting readiness">
+        <Panel title="Portfolio Health">
           <Ring value={readiness.reportingReadinessPercent} label="Reporting ready" />
           <p>
             {readiness.approvedReports} of {readiness.requiredReports} departmental reports approved
@@ -1201,7 +1227,7 @@ export function CommercialDashboard() {
             <strong>2 on track</strong>
             <span>1 at risk · 1 delayed</span>
           </div>
-          <DetailLink onClick={() => setDetail('Project status')}>Project breakdown</DetailLink>
+          <DetailLink onClick={() => navigate('/projects')}>Project breakdown</DetailLink>
         </Panel>
         <Panel title="Production performance">
           <div className="metric-large">
