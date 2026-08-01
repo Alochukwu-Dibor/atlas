@@ -4,19 +4,22 @@ Atlas is a functional front-end prototype for synthetic OML 30 executive reporti
 
 > All operational, financial, HSE, and legal figures in this repository are synthetic and do not represent Shoreline Natural Resources’ actual performance.
 
-## Phase 1 scope
+## Phase 2 scope
 
-This phase establishes:
+The current prototype includes:
 
 - React, Vite, and strict TypeScript foundations
 - role-aware Department, Commercial/module, and CEO shells
 - route-level structures for every specified workspace
 - shared design tokens, components, charts, tables, drawers, modals, toasts, and non-happy states
 - typed access to `ATLAS_MOCK_DATA.json`, shared selectors, context, and deterministic scenario reset
-- first-pass interactions for report setup, Commercial review, evidence drawers, exports, and CEO decisions
-- Vitest and Testing Library coverage for selectors, accessibility primitives, and route permissions
+- a complete deterministic Department Manager → Commercial Manager reporting workflow
+- repeatable multi-source entry, fixture-driven extraction states, conflicts, source lineage, corrections, and certification gates
+- field-level clarification and response, resubmission, controlled Commercial overrides, approval, readiness, and audit history
+- device-local workflow persistence with canonical reset
+- Vitest and Testing Library coverage for selectors, permissions, state transitions, audit preservation, and the four approved input methods
 
-Detailed end-to-end workflow completion is intentionally deferred to Phase 2. See `BUILD_AUDIT.md` for the precise boundary.
+The build intentionally stops after Phase 2 Commercial approval. See `BUILD_AUDIT.md` for the verified boundary and remaining simulated scope.
 
 ## Run locally
 
@@ -69,7 +72,8 @@ npm run build
 ## Architecture
 
 - `src/data/atlas.ts` — typed fixture access, selectors, status semantics, and formatters
-- `src/state/AtlasContext.tsx` — shared persona, asset, period, reporting-cycle scenario, and reset state
+- `src/state/AtlasContext.tsx` — shared persona, asset, period, scenario, persisted workflow, and reset state
+- `src/state/workflow.ts` — typed report state machine, audit behavior, validation gates, persistence, and workflow selectors
 - `src/components/` — reusable shells, UI primitives, and accessible chart wrappers
 - `src/pages/` — route-level structures grouped by reporting dashboards and performance modules
 - `src/styles.css` — Atlas Design System v3 tokens and structural desktop/responsive layouts

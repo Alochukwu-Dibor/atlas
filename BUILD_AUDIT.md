@@ -2,99 +2,66 @@
 
 ## Phase
 
-**Phase 1 — Application foundation and shared architecture**
+**Phase 2 — Department reporting and Commercial review workflow**
+
 **Date:** 1 August 2026
 
-This audit records only verified Phase 1 work. Route structures are not described as complete end-to-end workflows where their detailed Phase 2 behavior remains outstanding.
+Phase 2 completes the functional Department Manager → Commercial Manager prototype workflow on the Phase 1 application foundation. All behavior remains deterministic and uses synthetic fixture data.
 
 ## What was built
 
-- React 19, Vite 8, strict TypeScript, React Router, Recharts, Vitest, Testing Library, ESLint, and Prettier foundation.
-- A typed data module loading `ATLAS_MOCK_DATA.json` as the sole displayed-data fixture.
-- Shared asset, reporting-period, persona, deterministic scenario, and reset state.
-- Three role-aware shells: CEO full width, Commercial/performance fixed sidebar, and Department reporting header.
-- Route-level page structures for all Phase 1 routes.
-- Token-driven Atlas styling, responsive stacking, print disclosure, visible focus, tabular numerals, status labels, and reduced-motion support.
-- Data-driven production, cash, HSE, finance, compliance, and legal timeline visualizations with text summaries and table equivalents.
-- First-pass deterministic interactions: persona routing, method selection and Continue validation, certification gate, report review actions, contextual drawers, CEO decision assignment, scenario states, and print export.
+- A typed workflow reducer and device-local persistence layer for reports, sources, corrections, comments, controlled overrides, certification, and audit events.
+- Department dashboard status summaries and submission history derived from workflow state.
+- Two-step report creation with common details, a locked baseline, and exactly four top-level input methods.
+- Repeatable multi-source entry for structured forms, PDF/DOCX, XLSX, and the combined Email or Call Transcript method.
+- Deterministic upload/extraction states: processing, extracted, partial, failed, unsupported, invalid, and conflicting.
+- Source view, replacement, confirmed removal, source lineage, confidence, conflict comparison, correction reasons, and preserved extracted values.
+- Submission gates for usable sources, unresolved conflicts, required fields, and manager certification.
+- Submitted/read-only Department state, Commercial field-level clarification, Department response and re-certification, and resubmission.
+- Commercial review queue, source evidence, previous/next navigation, controlled override with mandatory reason and preserved department value, approval, and recalculated readiness.
+- Audit history for source changes, corrections, submissions, clarification, responses, overrides, and approval.
 
-## Routes added
+## State transitions completed
 
-- `/department`
-- `/department/reports/new`
-- `/department/reports/:id`
-- `/commercial`
-- `/commercial/review/:id`
-- `/executive`
-- `/production`
-- `/finance`
-- `/hse`
-- `/legal`
-- no-access and not-found handling
+`Draft → Submitted → Needs clarification → Resubmitted → Approved`
 
-## Shared components added
-
-- Brand, Page Header, Sidebar, Context Controls, and three application shells
-- Panel, KPI Card, Data Table, Status Badge, Button, and Icon Button
-- Field, Select, and Segmented Control
-- Drawer, Modal, Toast, and Detail Link
-- Chart Wrapper with accessible summary/table mode and circular Ring visual
-- Loading, empty, error, locked, and no-access State View
-
-## Data selectors and state added
-
-- User, department, asset, reporting-cycle, and department-report selectors
-- Reporting-readiness and production-KPI selectors
-- Source-reference lookup
-- Shared currency, number, date, percentage, status-label, and status-tone utilities
-- Persona, role, asset, reporting period, scenario, and canonical reset context
+Invalid transitions are rejected by the reducer. Commercial comments remain attached to their field, manager corrections retain their extracted values, and controlled overrides remain separate from approved department values.
 
 ## Requirements completed
 
-- Shell separation and permission boundaries — `ATLAS_PAGE_STRUCTURES.md` §§2–5 and `ATLAS_DESIGN_SYSTEM (1).md` §6.
-- CEO `3 / 5 / 4`, `6 / 6`, and recommendation hierarchy — `ATLAS_PAGE_STRUCTURES.md` §3.
-- Commercial `2 / 3 / 3 / 4` and `3 / 5 / 4` hierarchy — `ATLAS_PAGE_STRUCTURES.md` §4.
-- Department three-card history hierarchy and excluded navy banner — `ATLAS_PAGE_STRUCTURES.md` §5.
-- Create Report details and exactly four top-level methods, including the combined paste method — `ATLAS_PAGE_STRUCTURES.md` §6 and `ATLAS_USER_FLOWS.md` §§4, 8.
-- Production, Finance, HSE, and Legal route hierarchies and specified chart relationships — `ATLAS_PAGE_STRUCTURES.md` §§8–11.
-- Fixture-driven shared figures and traceability foundations — `ATLAS_MOCK_DATA.json`, `AGENTS.md` §§5, 7.
-- Design tokens, table conventions, status labels, accessibility and reduced motion — `ATLAS_DESIGN_SYSTEM (1).md` §§3–17.
-- Deterministic personas, scenarios, reset, and simulated-only wording — `ATLAS_USER_FLOWS.md` §§18–20.
+- Department dashboard, create-report, and review structures — `ATLAS_PAGE_STRUCTURES.md` §§5–7.
+- Exactly four input method cards and combined Email/Call Transcript source type — `ATLAS_USER_FLOWS.md` §§4, 8.
+- Multi-source add/replace/remove and deterministic extraction outcomes — `ATLAS_USER_FLOWS.md` §§5–9.
+- Conflict handling, correction audit, certification, submission, and report locking — `ATLAS_USER_FLOWS.md` §§10–12.
+- Commercial queue, clarification/response, controlled override, approval, and readiness — `ATLAS_USER_FLOWS.md` §§13–16.
+- Device-local deterministic persistence and canonical reset — `AGENTS.md` §§6–7.
+- Department reporting header and Commercial fixed-sidebar shell separation — `AGENTS.md` §3 and `ATLAS_PAGE_STRUCTURES.md` §§4–5.
 
 ## Verification results
 
-| Check                       | Result                                                                                         |
-| --------------------------- | ---------------------------------------------------------------------------------------------- |
-| Formatting check            | Passed                                                                                         |
-| ESLint                      | Passed with zero warnings                                                                      |
-| TypeScript strict typecheck | Passed                                                                                         |
-| Unit/component tests        | 3 files, 10 tests passed                                                                       |
-| Production build            | Passed                                                                                         |
-| Desktop structural check    | Passed at 1440 × 1000 in the in-app browser                                                    |
-| Browser console             | No warnings or errors on checked routes/interactions                                           |
-| Commercial shell            | 232px sidebar; top and lower grid ratios verified; drawer opened and closed                    |
-| CEO shell                   | No sidebar; `3 / 5 / 4` top and equal performance columns verified                             |
-| Department shell            | No Commercial/CEO links; three equal summary cards verified                                    |
-| Create Report               | Exactly four equal method cards; Continue gate and Content transition verified                 |
-| Module routes               | 5 Production KPIs, 5 Finance KPIs, 6 HSE KPIs, and 6 Legal KPIs with required regions verified |
+| Check                       | Result                                                                                                                                   |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Prettier formatting check   | Passed                                                                                                                                   |
+| ESLint                      | Passed with zero warnings                                                                                                                |
+| TypeScript strict typecheck | Passed                                                                                                                                   |
+| Unit/component tests        | 5 files, 18 tests passed                                                                                                                 |
+| Production build            | Passed                                                                                                                                   |
+| Browser workflow            | Draft creation, two-source submission, clarification, response, re-certification, resubmission, controlled override, and approval passed |
+| Input methods               | Exactly four top-level cards; Email and Call Transcript remain one combined method                                                       |
+| State and audit             | Extracted values and department values remained preserved; audit events appeared at every checked transition                             |
+| Permission/shell behavior   | Department header exposed no Commercial/CEO navigation; Commercial review used the fixed sidebar                                         |
+| Browser console             | No warnings or errors during the checked workflow                                                                                        |
 
-No page-structure or visual-reference images were present under `references/`, `upload/`, or an equivalent workspace folder, so image comparison was not possible. Browser checks used the available in-app desktop browser; standalone Safari and Edge were not available in this environment.
+Browser verification used the available in-app desktop browser. Standalone Safari and Edge were not available in this environment. No page-structure or visual-reference images were present under a workspace reference folder, so image-by-image comparison was not possible.
 
-## Known issues
+## Known limitations
 
-- `npm audit --omit=dev` reports one high-severity React Router advisory through two package records. It concerns React Router’s RSC/server-action mode; Atlas is a client-only `BrowserRouter` prototype and does not use RSC or server actions. The currently installed release is the latest available package version in this environment; downgrading exposed a broader set of fixed advisories.
-- Authentication, persistence, uploads, extraction, notifications, and publishing remain deterministic front-end simulations by design.
-- The supplied specification filenames retain their original `(1)` suffixes for the Design System and PRD.
+- Authentication, storage, file extraction, notifications, publishing, and external integrations are simulations, as required. Workflow persistence is scoped to the current browser/device via `localStorage`.
+- Selected PDF/DOCX/XLSX files are represented by deterministic fixture outcomes; file contents are not parsed by live OCR or spreadsheet intelligence.
+- Phase 2 approval updates reporting readiness, but publishing/cycle locking and the downstream CEO decision loop remain for a later explicitly authorized phase.
+- Existing Phase 1 module dashboards and CEO interactions were not expanded in this phase.
+- `npm audit --omit=dev` previously reported a React Router advisory tied to RSC/server-action behavior. Atlas is a client-only `BrowserRouter` prototype and does not use those features.
 
-## Incomplete requirements and next phase
+## Phase boundary
 
-- Complete structured-form validation and all document/XLSX/email/transcript fixture flows.
-- Complete source add/replace/remove, extraction timing, failed extraction, missing-data, confidence, and conflict-resolution behavior.
-- Complete manager correction audit events, certification persistence, submit/read-only, return/resubmit, and revision behavior.
-- Complete Commercial field comments, controlled overrides with before/after audit values, consolidation, publish gate, and cycle lock.
-- Complete CEO decision variants, action inbox, progress updates, and closed-loop verification.
-- Complete all critical end-to-end acceptance paths (happy, conflict, return, override, and gate).
-- Add detailed source/evidence drill-through and generated export artifacts beyond print-ready views.
-- Perform final cross-browser Safari/Edge QA and per-page visual comparison when the target browsers and reference images are available.
-
-Phase 2 has not been started.
+Phase 2 stops after Commercial approval and readiness recalculation. CEO action handling, publishing/cycle immutability, revision workflows, generated export artifacts, and production integrations are intentionally not implemented without further product-owner instruction.

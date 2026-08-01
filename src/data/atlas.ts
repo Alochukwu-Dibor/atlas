@@ -33,6 +33,12 @@ export const statusLabels: Record<string, string> = {
   low: 'Low',
   medium: 'Medium',
   missing_confirmation: 'Missing confirmation',
+  partial: 'Partial extraction',
+  invalid: 'Invalid',
+  failed_extraction: 'Failed extraction',
+  unsupported: 'Unsupported',
+  uploading: 'Uploading',
+  processing: 'Processing',
   needs_clarification: 'Needs clarification',
   not_started: 'Not started',
   on_track: 'On track',
@@ -43,6 +49,7 @@ export const statusLabels: Record<string, string> = {
   published_locked: 'Published · Locked',
   ready: 'Ready',
   resubmitted: 'Resubmitted',
+  resolved: 'Resolved',
   resolved_for_publication: 'Resolved for publication',
   scheduled: 'Scheduled',
   stalled: 'Stalled',
@@ -66,7 +73,18 @@ export function toneForStatus(status: string): StatusTone {
   ) {
     return status === 'submitted' ? 'information' : 'success';
   }
-  if (['critical', 'delayed', 'offline', 'overdue'].includes(status)) return 'critical';
+  if (
+    [
+      'critical',
+      'delayed',
+      'failed_extraction',
+      'invalid',
+      'offline',
+      'overdue',
+      'unsupported',
+    ].includes(status)
+  )
+    return 'critical';
   if (
     [
       'active',
@@ -77,10 +95,12 @@ export function toneForStatus(status: string): StatusTone {
       'high',
       'missing_confirmation',
       'needs_clarification',
+      'partial',
     ].includes(status)
   )
     return 'warning';
-  if (['in_progress', 'resubmitted', 'under_review'].includes(status)) return 'information';
+  if (['in_progress', 'processing', 'resubmitted', 'under_review', 'uploading'].includes(status))
+    return 'information';
   return 'neutral';
 }
 

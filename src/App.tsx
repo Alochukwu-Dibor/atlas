@@ -10,21 +10,22 @@ import {
 import { StateView, ToastProvider } from './components/Ui';
 
 const dashboardPage = () => import('./pages/DashboardPages');
+const reportingPage = () => import('./pages/ReportingPages');
 const modulePage = () => import('./pages/ModulePages');
 const CommercialDashboard = lazy(() =>
-  dashboardPage().then((module) => ({ default: module.CommercialDashboard })),
+  reportingPage().then((module) => ({ default: module.CommercialDashboard })),
 );
 const CommercialReviewPage = lazy(() =>
-  dashboardPage().then((module) => ({ default: module.CommercialReviewPage })),
+  reportingPage().then((module) => ({ default: module.CommercialReviewPage })),
 );
 const CreateReportPage = lazy(() =>
-  dashboardPage().then((module) => ({ default: module.CreateReportPage })),
+  reportingPage().then((module) => ({ default: module.CreateReportPage })),
 );
 const DepartmentDashboard = lazy(() =>
-  dashboardPage().then((module) => ({ default: module.DepartmentDashboard })),
+  reportingPage().then((module) => ({ default: module.DepartmentDashboard })),
 );
 const DepartmentReportReview = lazy(() =>
-  dashboardPage().then((module) => ({ default: module.DepartmentReportReview })),
+  reportingPage().then((module) => ({ default: module.DepartmentReportReview })),
 );
 const ExecutiveDashboard = lazy(() =>
   dashboardPage().then((module) => ({ default: module.ExecutiveDashboard })),

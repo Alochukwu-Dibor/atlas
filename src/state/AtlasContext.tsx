@@ -1,5 +1,21 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  useState,
+  type Dispatch,
+  type ReactNode,
+} from 'react';
 import { atlas, type PersonaRole, type ScenarioId } from '../data/atlas';
+import {
+  loadWorkflowState,
+  workflowReducer,
+  workflowStorageKey,
+  type WorkflowAction,
+  type WorkflowState,
+} from './workflow';
 
 interface AtlasState {
   activeUserId: string;
@@ -7,6 +23,8 @@ interface AtlasState {
   assetId: string;
   cycleId: string;
   scenarioId: ScenarioId;
+  workflow: WorkflowState;
+  workflowDispatch: Dispatch<WorkflowAction>;
   setActiveUserId: (id: string) => void;
   setAssetId: (id: string) => void;
   setCycleId: (id: string) => void;
@@ -22,7 +40,12 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
   const [assetId, setAssetId] = useState(atlas.organisation.defaultAssetId);
   const [cycleId, setCycleId] = useState(defaults.defaultPublishedCycleId);
   const [scenarioId, setScenarioId] = useState<ScenarioId>('canonical');
+  const [workflow, workflowDispatch] = useReducer(workflowReducer, undefined, loadWorkflowState);
   const role = atlas.users.find((user) => user.id === activeUserId)?.role ?? 'commercial_manager';
+
+  useEffect(() => {
+    window.localStorage.setItem(workflowStorageKey, JSON.stringify(workflow));
+  }, [workflow]);
 
   const value = useMemo<AtlasState>(
     () => ({
@@ -31,6 +54,8 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
       assetId,
       cycleId,
       scenarioId,
+      workflow,
+      workflowDispatch,
       setActiveUserId,
       setAssetId,
       setCycleId,
@@ -40,6 +65,8 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
         setAssetId(atlas.organisation.defaultAssetId);
         setCycleId(defaults.defaultPublishedCycleId);
         setScenarioId('canonical');
+        window.localStorage.removeItem(workflowStorageKey);
+        workflowDispatch({ type: 'RESET' });
       },
     }),
     [
@@ -50,6 +77,7 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
       defaults.defaultPublishedCycleId,
       role,
       scenarioId,
+      workflow,
     ],
   );
 
