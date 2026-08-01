@@ -31,4 +31,20 @@ describe('executive decision state', () => {
     expect(audit.recommendationId).toBe('rec_cash');
     expect(audit.decisionId).toBe(decision.id);
   });
+
+  it('returns assigned actions to the responsible workspace with auditable progress', () => {
+    const initial = createInitialExecutiveState();
+    const next = executiveReducer(initial, {
+      type: 'UPDATE_ACTION_PROGRESS',
+      decisionId: 'dec_001',
+      status: 'awaiting_verification',
+      progressNote: 'Rotor logistics confirmed; evidence attached for Commercial verification.',
+      actorId: 'usr_operations',
+    });
+    expect(next.decisions.find((decision) => decision.id === 'dec_001')).toMatchObject({
+      status: 'awaiting_verification',
+      progressNote: expect.stringContaining('Rotor logistics'),
+    });
+    expect(next.auditEvents.at(-1)?.decisionId).toBe('dec_001');
+  });
 });

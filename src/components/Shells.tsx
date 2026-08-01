@@ -8,10 +8,11 @@ import {
   RefreshCw,
   ShieldCheck,
 } from 'lucide-react';
+import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { atlas, getAsset, getCycle, getDepartment, getUser } from '../data/atlas';
 import { useAtlas } from '../state/AtlasContext';
-import { Button, Select, StateView, useToast } from './Ui';
+import { Button, Drawer, Field, Select, StateView, StatusBadge, useToast } from './Ui';
 
 const navItems = [
   { to: '/commercial', label: 'Overview', icon: LayoutDashboard },
@@ -35,7 +36,7 @@ export function Brand() {
 }
 
 function PersonaControl() {
-  const { activeUserId, setActiveUserId } = useAtlas();
+  const { activeUserId, setActiveUserId, setCycleId } = useAtlas();
   const navigate = useNavigate();
   const roles = atlas.users.filter((user) =>
     ['usr_ceo', 'usr_commercial', 'usr_operations'].includes(user.id),
@@ -43,6 +44,11 @@ function PersonaControl() {
   const onChange = (id: string) => {
     setActiveUserId(id);
     const role = getUser(id)?.role;
+    setCycleId(
+      role === 'ceo'
+        ? atlas.demoStates.defaultPublishedCycleId
+        : atlas.demoStates.defaultOpenCycleId,
+    );
     navigate(
       role === 'ceo' ? '/executive' : role === 'department_manager' ? '/department' : '/commercial',
     );
@@ -54,6 +60,88 @@ function PersonaControl() {
       onChange={onChange}
       options={roles.map((user) => ({ value: user.id, label: user.title }))}
     />
+  );
+}
+
+function AssignedActionInbox({ responsibleOnly = false }: { responsibleOnly?: boolean }) {
+  const { activeUserId, executive, executiveDispatch } = useAtlas();
+  const [open, setOpen] = useState(false);
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const assigned = executive.decisions.filter(
+    (decision) => decision.ownerId && (!responsibleOnly || decision.ownerId === activeUserId),
+  );
+  return (
+    <>
+      <Button variant="secondary" onClick={() => setOpen(true)}>
+        Assigned actions ({assigned.length})
+      </Button>
+      <Drawer title="Executive assigned actions" open={open} onClose={() => setOpen(false)}>
+        {assigned.length === 0 ? (
+          <p>No CEO actions are assigned to this workspace.</p>
+        ) : (
+          assigned.map((decision) => {
+            const recommendation = atlas.recommendations.find(
+              (item) => item.id === decision.recommendationId,
+            );
+            return (
+              <article className="comment-card" key={decision.id}>
+                <StatusBadge status={decision.status} />
+                <strong>{recommendation?.title}</strong>
+                <p>{decision.rationale}</p>
+                <small>
+                  Owner: {getUser(decision.ownerId ?? '')?.name} · Due {decision.dueDate}
+                </small>
+                {decision.progressNote && <p>Latest progress: {decision.progressNote}</p>}
+                <Field label="Action status">
+                  <select
+                    value={decision.status}
+                    onChange={(event) =>
+                      executiveDispatch({
+                        type: 'UPDATE_ACTION_PROGRESS',
+                        decisionId: decision.id,
+                        status: event.target.value as typeof decision.status,
+                        progressNote:
+                          notes[decision.id] ?? 'Status reviewed in the responsible workspace.',
+                        actorId: activeUserId,
+                      })
+                    }
+                  >
+                    <option value="not_started">Not started</option>
+                    <option value="in_progress">In progress</option>
+                    <option value="awaiting_verification">Awaiting verification</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </Field>
+                <Field label="Progress note">
+                  <textarea
+                    rows={3}
+                    value={notes[decision.id] ?? ''}
+                    onChange={(event) =>
+                      setNotes((current) => ({ ...current, [decision.id]: event.target.value }))
+                    }
+                  />
+                </Field>
+                <Button
+                  disabled={!notes[decision.id]?.trim()}
+                  onClick={() => {
+                    executiveDispatch({
+                      type: 'UPDATE_ACTION_PROGRESS',
+                      decisionId: decision.id,
+                      status: decision.status,
+                      progressNote: notes[decision.id],
+                      actorId: activeUserId,
+                    });
+                    setNotes((current) => ({ ...current, [decision.id]: '' }));
+                  }}
+                >
+                  Save progress
+                </Button>
+              </article>
+            );
+          })
+        )}
+      </Drawer>
+    </>
   );
 }
 
@@ -113,12 +201,27 @@ function Profile() {
 }
 
 export function ContextControls({ allowOpenCycle = true }: { allowOpenCycle?: boolean }) {
-  const { assetId, setAssetId, cycleId, setCycleId, scenarioId, setScenarioId, resetDemo } =
-    useAtlas();
+  const {
+    assetId,
+    setAssetId,
+    cycleId,
+    setCycleId,
+    scenarioId,
+    setScenarioId,
+    resetDemo,
+    workflow,
+  } = useAtlas();
   const showToast = useToast();
   const cycles = allowOpenCycle
     ? atlas.reportingCycles
-    : atlas.reportingCycles.filter((cycle) => cycle.status === 'published_locked');
+    : atlas.reportingCycles.filter(
+        (cycle) =>
+          cycle.status === 'published_locked' ||
+          workflow.publications.some(
+            (publication) =>
+              publication.cycleId === cycle.id && publication.status === 'published_locked',
+          ),
+      );
   return (
     <>
       <Select
@@ -145,6 +248,7 @@ export function ContextControls({ allowOpenCycle = true }: { allowOpenCycle?: bo
       <Button
         variant="secondary"
         onClick={() => {
+          if (!window.confirm('Reset all device-local Atlas demo changes?')) return;
           resetDemo();
           showToast('Canonical demo scenario restored');
         }}
@@ -185,6 +289,7 @@ export function SidebarShell() {
           ))}
         </nav>
         <div className="sidebar__footer">
+          <AssignedActionInbox />
           <PersonaControl />
           <Profile />
           <span className="synthetic-note">Synthetic prototype data</span>
@@ -222,6 +327,7 @@ export function DepartmentShell() {
         <span className="last-updated">Last updated 1 Aug 2026 · 09:00 WAT</span>
         <div className="department-header__actions">
           <PersonaControl />
+          <AssignedActionInbox responsibleOnly />
           <NavLink to="/department/reports/new" className="button button--primary">
             New Report
           </NavLink>

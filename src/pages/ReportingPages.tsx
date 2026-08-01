@@ -962,13 +962,38 @@ export function DepartmentReportReview() {
       <PageHeader
         title={report.title}
         description={`${reportDepartmentName(report)} · ${getCycle(report.cycleId).label}`}
-        controls={<StatusBadge status={report.status} />}
+        controls={
+          <>
+            <StatusBadge status={report.status} />
+            {report.status === 'published_locked' && (
+              <Button
+                onClick={() => {
+                  const revisionNumber =
+                    workflow.reports.filter((item) => item.supersedesReportId === report.id)
+                      .length + 1;
+                  workflowDispatch({
+                    type: 'CREATE_REVISION',
+                    reportId: report.id,
+                    actorId: activeUserId,
+                    now: prototypeTime(workflow.auditEvents.length + 1),
+                  });
+                  navigate(`/department/reports/${report.id}_revision_${revisionNumber}`);
+                  showToast('Auditable revision created; the published report remains unchanged');
+                }}
+              >
+                Create revision
+              </Button>
+            )}
+          </>
+        }
       />
       {readOnly && (
         <div className="info-panel page-notice">
           <strong>Read-only</strong>
           <span>
-            This report is locked for the Department Manager while Commercial review is in progress.
+            {report.status === 'published_locked'
+              ? 'This published snapshot is immutable. Create a revision for any later correction.'
+              : 'This report is locked for the Department Manager while Commercial review is in progress.'}
           </span>
         </div>
       )}
@@ -1125,8 +1150,18 @@ export function DepartmentReportReview() {
 export function CommercialDashboard() {
   const navigate = useNavigate();
   const [detail, setDetail] = useState<string | null>(null);
-  const { cycleId, workflow } = useAtlas();
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [narrative, setNarrative] = useState('');
+  const [exceptionReason, setExceptionReason] = useState('');
+  const { activeUserId, cycleId, workflow, workflowDispatch } = useAtlas();
+  const showToast = useToast();
   const readiness = selectReadiness(workflow, cycleId);
+  const publication = workflow.publications.find((item) => item.cycleId === cycleId);
+  const isPublished = publication?.status === 'published_locked';
+  const canPublish =
+    !isPublished &&
+    (readiness.reportingReadinessPercent === 100 ||
+      Boolean(publication?.controlledExceptionReason));
   const production = getProductionKpis();
   const queue = selectSubmissionQueue(workflow, cycleId);
   const returned = queue.filter((report) => report.status === 'needs_clarification');
@@ -1140,14 +1175,15 @@ export function CommercialDashboard() {
           <>
             <ContextControls />
             <Button
-              disabled={readiness.reportingReadinessPercent < 100}
-              title={
-                readiness.reportingReadinessPercent < 100
-                  ? 'Every mandatory report must be approved or covered by a controlled exception.'
-                  : undefined
-              }
+              disabled={isPublished}
+              onClick={() => {
+                setNarrative(publication?.executiveNarrative ?? '');
+                setExceptionReason(publication?.controlledExceptionReason ?? '');
+                setPublishOpen(true);
+              }}
+              title={isPublished ? 'This cycle is published and immutable.' : undefined}
             >
-              Publish update
+              {isPublished ? 'Published · locked' : 'Prepare publication'}
             </Button>
           </>
         }
@@ -1238,17 +1274,19 @@ export function CommercialDashboard() {
                 <small>{getCycle(report.cycleId).label}</small>
               </button>
             ))}
-            <button disabled={readiness.reportingReadinessPercent < 100}>
+            <button disabled={isPublished} onClick={() => setPublishOpen(true)}>
               <span>
                 <StatusBadge
-                  status={readiness.reportingReadinessPercent === 100 ? 'ready' : 'pending'}
+                  status={isPublished ? 'published_locked' : canPublish ? 'ready' : 'pending'}
                 />
                 <strong>Publish weekly executive update</strong>
               </span>
               <small>
-                {readiness.reportingReadinessPercent < 100
-                  ? 'Blocked by unapproved reports'
-                  : 'Ready to publish'}
+                {isPublished
+                  ? 'Cycle is immutable'
+                  : canPublish
+                    ? 'Ready to publish'
+                    : 'Approval or controlled exception required'}
               </small>
             </button>
           </div>
@@ -1280,6 +1318,106 @@ export function CommercialDashboard() {
           </span>
         </div>
       </Drawer>
+      <Modal
+        title="Consolidate and publish executive update"
+        open={publishOpen}
+        onClose={() => setPublishOpen(false)}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setPublishOpen(false)}>
+              Close
+            </Button>
+            <Button
+              disabled={!canPublish}
+              onClick={() => {
+                workflowDispatch({
+                  type: 'PUBLISH_CYCLE',
+                  cycleId,
+                  actorId: activeUserId,
+                  now: prototypeTime(workflow.auditEvents.length + 1),
+                });
+                setPublishOpen(false);
+                showToast(
+                  'Executive update published; cycle locked and CEO notification simulated',
+                );
+              }}
+            >
+              Publish and lock cycle
+            </Button>
+          </>
+        }
+      >
+        <p>
+          {readiness.approvedReports} of {readiness.requiredReports} mandatory departmental reports
+          are approved. Publishing creates an immutable cycle snapshot.
+        </p>
+        <Field label="Executive narrative">
+          <textarea
+            rows={5}
+            value={narrative}
+            onChange={(event) => setNarrative(event.target.value)}
+          />
+        </Field>
+        <Button
+          variant="secondary"
+          disabled={!narrative.trim()}
+          onClick={() => {
+            workflowDispatch({
+              type: 'SAVE_EXECUTIVE_NARRATIVE',
+              cycleId,
+              narrative,
+              actorId: activeUserId,
+              now: prototypeTime(workflow.auditEvents.length + 1),
+            });
+            showToast('Executive narrative saved with an audit event');
+          }}
+        >
+          Save narrative
+        </Button>
+        <Panel title="Publication preview">
+          <p>{narrative || 'Add an executive narrative to complete the preview.'}</p>
+          <small>
+            {readiness.approvedReports}/{readiness.requiredReports} mandatory reports approved ·{' '}
+            {atlas.meta.disclosure}
+          </small>
+        </Panel>
+        {readiness.reportingReadinessPercent < 100 && (
+          <div className="info-panel">
+            <strong>Controlled exception</strong>
+            <span>
+              Record why the incomplete mandatory reports do not prevent a decision-ready update.
+            </span>
+          </div>
+        )}
+        {readiness.reportingReadinessPercent < 100 && (
+          <>
+            <Field label="Mandatory exception reason">
+              <textarea
+                rows={4}
+                value={exceptionReason}
+                onChange={(event) => setExceptionReason(event.target.value)}
+              />
+            </Field>
+            <Button
+              variant="secondary"
+              disabled={!exceptionReason.trim()}
+              onClick={() => {
+                workflowDispatch({
+                  type: 'RECORD_CYCLE_EXCEPTION',
+                  cycleId,
+                  reason: exceptionReason,
+                  actorId: activeUserId,
+                  now: prototypeTime(workflow.auditEvents.length + 1),
+                });
+                showToast('Controlled publication exception recorded', 'warning');
+              }}
+            >
+              Record controlled exception
+            </Button>
+          </>
+        )}
+        {workflow.lastError && <p className="field__error">{workflow.lastError}</p>}
+      </Modal>
     </>
   );
 }

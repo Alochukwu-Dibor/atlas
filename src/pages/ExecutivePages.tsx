@@ -47,7 +47,7 @@ const decisionLabels: Record<ExecutiveDecisionAction, string> = {
 };
 
 export function ExecutiveDashboard() {
-  const { executive, executiveDispatch } = useAtlas();
+  const { cycleId, executive, executiveDispatch, workflow } = useAtlas();
   const [scopeId, setScopeId] = useState('asset_oml30');
   const [interest, setInterest] = useState<ProductionInterest>('gross');
   const [detail, setDetail] = useState<string | null>(null);
@@ -58,6 +58,7 @@ export function ExecutiveDashboard() {
   const [dueDate, setDueDate] = useState('');
   const showToast = useToast();
   const metrics = getExecutiveMetrics();
+  const selectedPublication = workflow.publications.find((item) => item.cycleId === cycleId);
   const scopedProduction = getProductionScope(scopeId, interest);
   const selectedField = atlas.production.fields.find((field) => field.fieldId === scopeId);
   const interestFactor =
@@ -95,7 +96,7 @@ export function ExecutiveDashboard() {
     <>
       <PageHeader
         title="Executive Overview"
-        description={atlas.executiveSummary.headline}
+        description={selectedPublication?.executiveNarrative || atlas.executiveSummary.headline}
         controls={
           <>
             <ContextControls allowOpenCycle={false} />
@@ -348,7 +349,7 @@ export function ExecutiveDashboard() {
         <dl className="summary-list">
           <div>
             <dt>Source cycle</dt>
-            <dd>Weekly Executive Update · 20–26 Jul 2026</dd>
+            <dd>{atlas.reportingCycles.find((cycle) => cycle.id === cycleId)?.label}</dd>
           </div>
           <div>
             <dt>Production evidence</dt>

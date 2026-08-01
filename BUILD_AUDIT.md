@@ -1,120 +1,72 @@
 # Atlas build audit
 
-## Phase
+## Final status
 
-**Phase 3 — Executive and performance dashboards**
+**Release acceptance pass complete — 1 August 2026**
 
-**Date:** 1 August 2026
+The Atlas functional front-end prototype now covers the specified Department → Commercial → CEO lifecycle, including publication lock, post-publication revision, and closed-loop CEO assignments. All data and integrations remain deterministic simulations using `ATLAS_MOCK_DATA.json`.
 
-Phase 3 completes the CEO dashboard and the Production, Finance, HSE, and Legal & Regulatory performance modules on the verified Phase 2 reporting workflow. All figures remain synthetic, fixture-driven, and internally reconciled.
+## Completed lifecycle
 
-## Completed CEO features
+- Department report details and exactly four selectable input-method cards.
+- Several sources per report; add, replace, and dependency-confirmed removal with retained audit history.
+- Deterministic processing, partial, invalid, unsupported, failed, low-confidence, and conflict states.
+- Standardised field review with source references, manager correction, certification, and submission gates.
+- Commercial field-level clarification, Department response, re-certification, resubmission, controlled override, and approval.
+- Shared readiness recalculation across eight required departments.
+- Ready-to-publish fixture, executive narrative save/preview, controlled exception reason, gated publication, simulated CEO notification, and immutable lock.
+- Separate auditable revision after publication; the original published record remains unchanged.
+- Recommendation-linked CEO decisions and assignments with owner/due-date gates.
+- Responsible-workspace action inbox, progress statuses/notes, and audit event.
+- Confirmation-protected canonical reset.
 
-- Full-width CEO shell with no persistent sidebar or routine departmental reporting queue.
-- Locked `3 / 5 / 4` executive summary for project status, HSE, and legal exposure.
-- Locked `6 / 6` performance row for production and cash/financing.
-- Total OML 30, individual-field, gross-production, and SNRL working-interest controls.
-- Actual, plan, and historical production series with exact tooltips, axes, units, legend, and accessible table.
-- Actual cash, base forecast, downside forecast, actual/forecast boundary, repayment marker, liquidity, runway, and next-repayment context.
-- Four horizontal recommendation blocks supporting Approve, Defer, Request More Information, Assign Action, and Record Decision.
-- Assignment owner/due-date gates, recommendation-linked decisions, visible assignees/dates, device-local persistence, and audit events.
-- Meaningful detail/evidence drawer and synthetic-data export disclosure.
+## Structural result
 
-## Completed module features
+- CEO: no sidebar; `3 / 5 / 4`, `6 / 6`, four recommendation blocks.
+- Commercial: fixed sidebar; `2 / 3 / 3 / 4`, `3 / 5 / 4`, review queue and gated publication modal.
+- Department: reporting header without Commercial/CEO navigation or excluded navy banner; `4 / 4 / 4` and submission history.
+- Create Report: two steps, common details, exactly four method cards, repeatable content sources, extraction review, and certification.
+- Commercial Review: queue navigation, source evidence, comments, audit, clarification, override, and approval.
+- Production: five KPIs, `8 / 4`, full-width table.
+- Finance: five KPIs, `6 / 3 / 3`, `8 / 4`.
+- HSE: six KPIs, `6 / 3 / 3`, `3 / 3 / 6`.
+- Legal: six KPIs, `5 / 4 / 3`, `4 / 4 / 4`.
 
-### Production
+All approved charts preserve the required series and expose summaries plus keyboard-accessible table equivalents.
 
-- Five equal KPI cards, `8 / 4` analysis row, and full-width Field Performance table.
-- Functional Daily, Weekly, and Monthly trend views using fixture values or exact derived aggregation.
-- Planned versus actual lines, correct `bopd` units, tooltips, legend, and accessible table.
-- Total/field filtering with recalculated gross and 45% working-interest values.
-- Fields, Flowstations, and Facilities views without inventing unavailable facility allocations.
-- KPI and record detail drawers with source and constraint context.
+## Data reconciliation
 
-### Finance
-
-- Five equal KPI cards, `6 / 3 / 3` analysis row, and `8 / 4` lower row.
-- Mixed inflow/outflow lines and semantic positive/negative net-cashflow bars.
-- Cash Position Summary, Budget Variance ring and breakdown, Commitments and Obligations, Invoices and Receivables, and financing-repayment detail.
-- Row and metric drill-throughs plus simulated export disclosure.
-
-### HSE
-
-- Six equal KPI cards, `6 / 3 / 3` incident row, and `3 / 3 / 6` lower row.
-- Actual TRIR solid line, target dashed line, incident bars, dual labelled axes, legend, tooltips, and accessible table.
-- Complete Incident Summary, Top Incidents, Environmental Performance, HSE Compliance ring, and HSE Actions table.
-- Incident/action drill-through with investigation, evidence, ownership, due dates, and linked corrective actions.
-
-### Legal & Regulatory
-
-- Six equal KPI cards, `5 / 4 / 3` overview row, and `4 / 4 / 4` lower row.
-- Risk Register, horizontal regulatory timeline, reporting-month transition, Compliance ring, Government & Regulator Engagement, Contracts & Approvals, and Executive Alerts.
-- Selectable risk/calendar/table records with issue history, exposure, evidence, owner, deadline, and action context.
-
-## Charts implemented
-
-- CEO monthly actual/plan/historical production line chart.
-- CEO actual cash/base forecast/downside forecast chart with boundary and repayment markers.
-- Production planned-versus-actual line chart with functional grain control.
-- Finance mixed inflow/outflow line and net-cashflow bar chart.
-- Finance budget-variance circular chart.
-- HSE actual/target TRIR and incident-count mixed dual-axis chart.
-- HSE and Legal compliance circular charts.
-- Legal horizontal regulatory timeline.
-
-Every chart has a keyboard-accessible table equivalent, explicit summary, visible units, differentiated line styles, legend, labelled axes, and exact-value tooltips.
-
-## Cross-page reconciliation
-
-- CEO and Production gross actual: `96,800 bopd`; plan: `120,000 bopd`; variance: `−19.3%`.
-- SNRL working-interest production: `43,560 bopd`, derived as 45% of gross actual.
-- CEO and Finance liquidity: `$42.5m`, derived from `$18.5m` unrestricted + `$4m` restricted + `$20m` undrawn facilities.
-- CEO and HSE TRIR: `0.17`; target: `0.12`.
-- CEO and Legal estimated exposure: `$18.4m`; critical risks: `2`.
-- Published dashboard facts retain the fixture reporting cycle and approved Department source references.
-- Production field filters recalculate every relevant production KPI, chart summary, and table without changing unrelated gas/HSE facts.
-- CEO decisions retain the triggering recommendation ID, owner/due date when assigned, and a corresponding audit event.
+- Gross production: `96,800 bopd`; plan `120,000 bopd`; variance `−19.3%`.
+- SNRL working-interest production: `43,560 bopd`, exactly 45% of gross actual.
+- Liquidity: `$42.5m` = `$18.5m` unrestricted + `$4m` restricted + `$20m` undrawn.
+- TRIR: `0.17` against `0.12` target.
+- Legal exposure: `$18.4m`; critical risks: `2`.
+- Repeated CEO/module/Commercial figures and source references reconcile through shared selectors.
 
 ## Verification results
 
-| Check                       | Result                                                                                                              |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Prettier formatting check   | Passed                                                                                                              |
-| ESLint                      | Passed with zero warnings                                                                                           |
-| TypeScript strict typecheck | Passed                                                                                                              |
-| Unit/component tests        | 7 files, 25 tests passed                                                                                            |
-| Production build            | Passed                                                                                                              |
-| Selector tests              | Repeated KPI consistency, production totals, 45% working interest, and liquidity calculation passed                 |
-| Interaction tests           | Production field/grain filters, export invocation/disclosure, drawer behavior, and decision assignment gates passed |
-| Role permissions            | Existing Commercial/Department/CEO route boundaries remained enforced                                               |
-| Browser workflow            | CEO filters/decision/audit and all four module structures/drill-throughs passed at 1440 × 1000                      |
-| Browser console             | No warnings or errors during checked Phase 3 routes and interactions                                                |
+| Check                  | Result                                                                                                            |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Prettier               | Passed                                                                                                            |
+| ESLint                 | Passed with zero warnings                                                                                         |
+| TypeScript strict mode | Passed                                                                                                            |
+| Tests                  | 7 files, 30 tests passed                                                                                          |
+| Production build       | Passed                                                                                                            |
+| Critical reducer paths | Submit, clarify, resubmit, approve, override, publish, lock, revise, decide, assign, progress passed              |
+| Desktop browser        | All specified routes and locked ratios passed at 1440 × 1000                                                      |
+| Narrow browser         | 1024 × 900 stacks correctly; no horizontal overflow                                                               |
+| Browser console        | No warnings or errors                                                                                             |
+| Accessibility          | Labelled controls, visible statuses/focus, keyboard rows/charts, dialog focus trap/Escape/restore, reduced motion |
 
-## Visual and accessibility checks
+## Environmental and risk disposition
 
-- Computed desktop grids matched all locked ratios at 1440 × 1000.
-- CEO shell contained no sidebar; all modules retained the 232px shared sidebar.
-- The four recommendation blocks and all required page regions appeared in approved reading order.
-- Statuses retained labels in addition to colour, focus styles remained visible, tables were keyboard-selectable, and drawers/dialogs exposed semantic names.
-- Every chart exposed a textual summary and data-table switch.
-- Print/export output includes the synthetic prototype disclosure.
-- No supplied structural or visual-reference image files were present in the workspace, so image-by-image comparison was not possible; the approved Markdown structures and design tokens were used for visual QA.
-- Standalone Safari and Edge were not available in this environment; the available in-app desktop browser was used.
+- The only available browser was the Codex in-app Chromium browser. Standalone Safari and Edge were unavailable, so engine-specific checks are not claimed.
+- No supplied image files were present for image-by-image comparison; the locked Markdown structures and design tokens were used.
+- `npm audit --omit=dev` reports two high-severity findings from a React Router RSC/server-action CSRF advisory. Atlas is a client-only `BrowserRouter` prototype with no RSC or server actions, so the affected execution path is absent. The offered `--force` fix is a breaking downgrade and was not applied.
+- PDF/DOCX/XLSX extraction, notifications, export, authentication, persistence, and publication are explicitly labelled deterministic prototype simulations.
 
-## Known issues
+## Intentionally out of scope
 
-- Authentication, persistence, exports, notifications, and external integrations remain deterministic front-end simulations by design.
-- Finance and HSE source trends are monthly in `ATLAS_MOCK_DATA.json`; their Daily/Weekly/Monthly controls preserve the exact monthly fixture and explicitly disclose its source granularity rather than inventing interpolated values.
-- Facility-level production allocation is absent from the fixture. The Facilities view therefore displays the approved facility records and known system constraint without fabricated production splits.
-- `npm audit --omit=dev` reports a high-severity React Router advisory affecting RSC/server-action behavior. Atlas is a client-only `BrowserRouter` prototype and does not use RSC or server actions; the offered forced remediation is a breaking package change.
+Production backend/database, real authentication, live AI/OCR, live email/bank/ERP/historian/regulator integrations, automated regulatory submission, mobile/offline application, downloadable production-grade export generation, deployment, and any dashboard or metric not present in the approved sources.
 
-## Remaining before final acceptance
-
-- Complete publish/cycle-lock and post-publication revision behavior if authorized for a later phase.
-- Complete closed-loop CEO action progress updates and verification if authorized.
-- Generate downloadable PDF/XLSX artifacts beyond the current functional print simulation if authorized.
-- Perform image-by-image reference comparison when reference images are supplied.
-- Perform standalone Safari and Edge QA when those browsers are available.
-- Reassess the React Router advisory when a non-breaking patched client release is available.
-
-Phase 3 stops after the verified executive and performance dashboards. No backend, live integration, deployment, or additional product scope was added.
+No known in-scope functional or structural blocker remains. See `FINAL_ACCEPTANCE.md` for the complete traceability matrix.

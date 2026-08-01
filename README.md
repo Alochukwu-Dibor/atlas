@@ -1,68 +1,60 @@
-# Atlas prototype
+# Atlas functional front-end prototype
 
-Atlas is a functional front-end prototype for synthetic OML 30 executive reporting. It connects Department Manager reporting, Commercial review, performance modules, and the CEO’s published executive view through one typed fixture-driven data layer.
+Atlas is the completed front-end prototype for synthetic OML 30 executive reporting. It connects Department Manager reporting, Commercial review and publication, performance modules, and CEO decisions through one typed, fixture-driven state model.
 
 > All operational, financial, HSE, and legal figures in this repository are synthetic and do not represent Shoreline Natural Resources’ actual performance.
 
-## Phase 3 scope
+## Completed scope
 
-The current prototype includes:
+- Strict TypeScript React/Vite application with role-aware Department, Commercial/module, and CEO shells.
+- All ten specified routes and their locked desktop/responsive structures.
+- Exactly four Department input methods, repeatable multi-source entry, deterministic extraction states, conflicts, source lineage, corrections, certification, clarification, resubmission, override, and approval.
+- Commercial readiness, executive-narrative preview, controlled publication exceptions, publication gate, CEO notification simulation, immutable published cycles, and separate post-publication revisions.
+- CEO production, cash, HSE, legal, recommendation, decision, and assignment experiences.
+- Closed-loop assigned-action inboxes with owner, due date, progress status, note, and audit event.
+- Production, Finance, HSE, and Legal & Regulatory charts, accessible data tables, filters, evidence drawers, and synthetic export disclosures.
+- Loading, empty, recoverable error, no-access, processing, conflict, read-only, and locked states through deterministic scenarios and route permissions.
+- Device-local persistence and a confirmation-protected canonical reset.
 
-- React, Vite, and strict TypeScript foundations
-- role-aware Department, Commercial/module, and CEO shells
-- route-level structures for every specified workspace
-- shared design tokens, components, charts, tables, drawers, modals, toasts, and non-happy states
-- typed access to `ATLAS_MOCK_DATA.json`, shared selectors, context, and deterministic scenario reset
-- a complete deterministic Department Manager → Commercial Manager reporting workflow
-- repeatable multi-source entry, fixture-driven extraction states, conflicts, source lineage, corrections, and certification gates
-- field-level clarification and response, resubmission, controlled Commercial overrides, approval, readiness, and audit history
-- device-local workflow persistence with canonical reset
-- Vitest and Testing Library coverage for selectors, permissions, state transitions, audit preservation, and the four approved input methods
-- a complete full-width CEO dashboard with reconciled production, cash, HSE, and legal performance
-- recommendation decisions, assignment requirements, visible owners and due dates, persistence, and audit events
-- functional Production, Finance, HSE, and Legal & Regulatory charts, filters, tables, accessible equivalents, exports, and detail drawers
-
-The build intentionally stops after the verified Phase 3 dashboards. See `BUILD_AUDIT.md` for the precise boundary and remaining simulated scope.
+See [FINAL_ACCEPTANCE.md](./FINAL_ACCEPTANCE.md) for the final traceability and acceptance record and [BUILD_AUDIT.md](./BUILD_AUDIT.md) for the concise engineering audit.
 
 ## Run locally
 
-Requirements: Node.js 24 and npm 11 (or compatible current LTS versions).
+Requirements: Node.js 24 and npm 11, or compatible current LTS versions.
 
 ```bash
 npm install
 npm run dev
 ```
 
-The development server prints its local URL. The default persona is Commercial Manager.
+The default persona is Commercial Manager and the default context is the open weekly cycle.
 
-## Demo personas
+## Demo personas and scenarios
 
 Use the persona selector to switch among:
 
-- Commercial Manager — shared sidebar workspace
-- CEO — full-width executive workspace with published cycles only
-- Operations Manager — reporting-focused Department workspace
+- Commercial Manager — overview, review, publication, modules, and action verification.
+- CEO — full-width published executive workspace with no sidebar.
+- Operations Manager — Department reporting, returned actions, locked reports, and revisions.
 
-The demo-scenario selector exposes canonical, empty, processing, conflict, and ready-to-publish fixtures. **Reset demo** returns shared state to the canonical synthetic scenario.
+Scenarios include canonical, empty, processing, conflict, and ready-to-publish states. The ready-to-publish scenario deterministically supplies approved mandatory reports. Reset demo asks for confirmation before clearing all device-local changes.
 
 ## Routes
 
-| Route                     | Workspace                      |
-| ------------------------- | ------------------------------ |
-| `/department`             | Department Manager dashboard   |
-| `/department/reports/new` | Create Weekly Report           |
-| `/department/reports/:id` | Department report review       |
-| `/commercial`             | Commercial Manager dashboard   |
-| `/commercial/review/:id`  | Commercial submission review   |
-| `/executive`              | CEO Executive Overview         |
-| `/production`             | Production performance         |
-| `/finance`                | Finance performance            |
-| `/hse`                    | HSE performance                |
-| `/legal`                  | Legal & Regulatory performance |
+| Route                     | Workspace                                    |
+| ------------------------- | -------------------------------------------- |
+| `/department`             | Department Manager dashboard                 |
+| `/department/reports/new` | Create Weekly Report                         |
+| `/department/reports/:id` | Department report review/revision            |
+| `/commercial`             | Commercial Manager dashboard and publication |
+| `/commercial/review/:id`  | Commercial submission review                 |
+| `/executive`              | CEO Executive Overview                       |
+| `/production`             | Production performance                       |
+| `/finance`                | Finance performance                          |
+| `/hse`                    | HSE performance                              |
+| `/legal`                  | Legal & Regulatory performance               |
 
-Persona permissions are applied to these routes. Unknown routes and restricted workspaces show explicit state screens.
-
-## Quality checks
+## Verification
 
 ```bash
 npm run format:check
@@ -70,17 +62,19 @@ npm run lint
 npm run typecheck
 npm test
 npm run build
+npm audit --omit=dev
 ```
+
+The final suite passes formatting, lint, strict typecheck, 30 tests, and production build. The audit reports a React Router RSC/server-action advisory; Atlas is a client-only `BrowserRouter` application and implements neither affected feature, while the proposed forced remediation is a breaking downgrade. See the acceptance record for the risk disposition.
 
 ## Architecture
 
-- `src/data/atlas.ts` — typed fixture access, selectors, status semantics, and formatters
-- `src/state/AtlasContext.tsx` — shared persona, asset, period, scenario, persisted workflow, and reset state
-- `src/state/workflow.ts` — typed report state machine, audit behavior, validation gates, persistence, and workflow selectors
-- `src/components/` — reusable shells, UI primitives, and accessible chart wrappers
-- `src/pages/` — route-level structures grouped by reporting dashboards and performance modules
-- `src/pages/ExecutivePages.tsx` — CEO performance, recommendations, decisions, and audit interaction
-- `src/state/executive.ts` — deterministic decision state, assignment gates, persistence, and audit events
-- `src/styles.css` — Atlas Design System v3 tokens and structural desktop/responsive layouts
+- `src/data/atlas.ts` — typed fixture access, selectors, status semantics, and formatters.
+- `src/state/AtlasContext.tsx` — shared persona, context, scenarios, persistence, and reset.
+- `src/state/workflow.ts` — reporting, publication, lock, revision, and audit state machine.
+- `src/state/executive.ts` — decisions, assignments, progress, persistence, and audit state.
+- `src/components/` — shells, design-system primitives, accessible charts, drawers, and dialogs.
+- `src/pages/` — reporting, executive, and performance route implementations.
+- `src/styles.css` — Atlas design tokens and locked desktop/responsive layout rules.
 
-Charts expose a textual summary and a switchable data-table equivalent. Print exports include a synthetic-data disclosure.
+No backend, live authentication, live AI/OCR, regulator submission, external-system integration, or deployment is included.

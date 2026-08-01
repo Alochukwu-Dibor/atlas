@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createInitialWorkflowState,
   getSubmissionBlockers,
+  selectReadiness,
   selectReportSources,
   workflowReducer,
   type ManagerCorrection,
@@ -28,6 +29,14 @@ function source(overrides: Partial<WorkflowSource> = {}): WorkflowSource {
 }
 
 describe('Atlas reporting workflow', () => {
+  it('preserves the published fixture readiness and controlled-exception snapshot', () => {
+    expect(selectReadiness(createInitialWorkflowState(), 'cycle_2026_w30')).toEqual({
+      approvedReports: 6,
+      requiredReports: 8,
+      reportingReadinessPercent: 82,
+    });
+  });
+
   it('adds several sources and removes only the confirmed source', () => {
     const initial = createInitialWorkflowState();
     const first = workflowReducer(initial, {
@@ -199,5 +208,66 @@ describe('Atlas reporting workflow', () => {
       departmentValue: '96800',
       revisedValue: '97400',
     });
+  });
+
+  it('enforces the publication gate, records an exception, and locks the cycle', () => {
+    const initial = createInitialWorkflowState();
+    const blocked = workflowReducer(initial, {
+      type: 'PUBLISH_CYCLE',
+      cycleId: 'cycle_2026_w31',
+      actorId: 'usr_commercial',
+      now,
+    });
+    expect(blocked.lastError).toMatch(/approve every mandatory report/i);
+    const excepted = workflowReducer(initial, {
+      type: 'RECORD_CYCLE_EXCEPTION',
+      cycleId: 'cycle_2026_w31',
+      reason: 'Six missing departments have confirmed no material change before cut-off.',
+      actorId: 'usr_commercial',
+      now,
+    });
+    const published = workflowReducer(excepted, {
+      type: 'PUBLISH_CYCLE',
+      cycleId: 'cycle_2026_w31',
+      actorId: 'usr_commercial',
+      now,
+    });
+    expect(published.publications.find((item) => item.cycleId === 'cycle_2026_w31')?.status).toBe(
+      'published_locked',
+    );
+    expect(
+      published.reports
+        .filter((report) => report.cycleId === 'cycle_2026_w31')
+        .every((report) => report.status === 'published_locked'),
+    ).toBe(true);
+    expect(published.auditEvents.at(-1)?.action).toBe('executive_update_published');
+  });
+
+  it('keeps published reports immutable and creates a separate auditable revision', () => {
+    const initial = createInitialWorkflowState();
+    const original = initial.reports.find((report) => report.id === 'rpt_ops_w30')!;
+    expect(original.status).toBe('published_locked');
+    const rejected = workflowReducer(initial, {
+      type: 'UPDATE_REPORT_DETAILS',
+      reportId: original.id,
+      title: 'Mutated title',
+      methods: original.methods,
+    });
+    expect(rejected.reports.find((report) => report.id === original.id)?.title).toBe(
+      original.title,
+    );
+    const revised = workflowReducer(initial, {
+      type: 'CREATE_REVISION',
+      reportId: original.id,
+      actorId,
+      now,
+    });
+    const revision = revised.reports.at(-1)!;
+    expect(revision).toMatchObject({
+      status: 'draft',
+      supersedesReportId: original.id,
+    });
+    expect(revised.reports.find((report) => report.id === original.id)).toEqual(original);
+    expect(revised.auditEvents.at(-1)?.action).toBe('post_publication_revision_created');
   });
 });

@@ -1,13 +1,17 @@
 import { AlertCircle, CheckCircle2, ChevronRight, Info, LockKeyhole, X } from 'lucide-react';
 import {
+  cloneElement,
   createContext,
+  isValidElement,
   useContext,
   useEffect,
   useId,
+  useRef,
   useState,
   type ButtonHTMLAttributes,
   type HTMLAttributes,
   type ReactNode,
+  type ReactElement,
 } from 'react';
 import { statusLabels, toneForStatus, type StatusTone } from '../data/atlas';
 
@@ -129,11 +133,22 @@ export function Field({
   children: ReactNode;
 }) {
   const id = useId();
+  const errorId = `${id}-error`;
+  const control = isValidElement(children)
+    ? cloneElement(children as ReactElement<{ id?: string; 'aria-describedby'?: string }>, {
+        id,
+        'aria-describedby': error ? errorId : undefined,
+      })
+    : children;
   return (
     <label className="field" htmlFor={id}>
       <span>{label}</span>
-      <div id={id}>{children}</div>
-      {error && <small className="field__error">{error}</small>}
+      <div>{control}</div>
+      {error && (
+        <small className="field__error" id={errorId}>
+          {error}
+        </small>
+      )}
     </label>
   );
 }
@@ -219,7 +234,12 @@ export function DataTable({
               className={onRowClick ? 'is-clickable' : ''}
               onClick={() => onRowClick?.(index)}
               tabIndex={onRowClick ? 0 : undefined}
-              onKeyDown={(event) => event.key === 'Enter' && onRowClick?.(index)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onRowClick?.(index);
+                }
+              }}
             >
               {row.map((cell, cellIndex) => (
                 <td key={cellIndex}>{cell}</td>
@@ -243,16 +263,51 @@ export function Drawer({
   onClose: () => void;
   children: ReactNode;
 }) {
+  const dialogRef = useRef<HTMLElement>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
   useEffect(() => {
     if (!open) return;
-    const close = (event: KeyboardEvent) => event.key === 'Escape' && onClose();
-    window.addEventListener('keydown', close);
-    return () => window.removeEventListener('keydown', close);
-  }, [onClose, open]);
+    previousFocus.current = document.activeElement as HTMLElement | null;
+    const dialog = dialogRef.current;
+    const focusable = dialog?.querySelector<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+    );
+    (focusable ?? dialog)?.focus();
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onCloseRef.current();
+      if (event.key !== 'Tab' || !dialog) return;
+      const items = [
+        ...dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+        ),
+      ];
+      if (!items.length) return;
+      const first = items[0];
+      const last = items.at(-1)!;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      window.removeEventListener('keydown', handleKey);
+      previousFocus.current?.focus();
+    };
+  }, [open]);
   if (!open) return null;
   return (
     <div className="overlay" role="presentation" onMouseDown={onClose}>
       <aside
+        ref={dialogRef}
+        tabIndex={-1}
         className="drawer"
         role="dialog"
         aria-modal="true"
@@ -284,10 +339,51 @@ export function Modal({
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  const dialogRef = useRef<HTMLElement>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+  useEffect(() => {
+    if (!open) return;
+    previousFocus.current = document.activeElement as HTMLElement | null;
+    const dialog = dialogRef.current;
+    const focusable = dialog?.querySelector<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+    );
+    (focusable ?? dialog)?.focus();
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onCloseRef.current();
+      if (event.key !== 'Tab' || !dialog) return;
+      const items = [
+        ...dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+        ),
+      ];
+      if (!items.length) return;
+      const first = items[0];
+      const last = items.at(-1)!;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      window.removeEventListener('keydown', handleKey);
+      previousFocus.current?.focus();
+    };
+  }, [open]);
   if (!open) return null;
   return (
     <div className="overlay" role="presentation" onMouseDown={onClose}>
       <section
+        ref={dialogRef}
+        tabIndex={-1}
         className="modal"
         role="dialog"
         aria-modal="true"

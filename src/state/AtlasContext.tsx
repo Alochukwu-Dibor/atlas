@@ -47,8 +47,8 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
   const defaults = atlas.demoStates;
   const [activeUserId, setActiveUserId] = useState(defaults.defaultPersonaId);
   const [assetId, setAssetId] = useState(atlas.organisation.defaultAssetId);
-  const [cycleId, setCycleId] = useState(defaults.defaultPublishedCycleId);
-  const [scenarioId, setScenarioId] = useState<ScenarioId>('canonical');
+  const [cycleId, setCycleId] = useState(defaults.defaultOpenCycleId);
+  const [scenarioId, setScenarioState] = useState<ScenarioId>('canonical');
   const [workflow, workflowDispatch] = useReducer(workflowReducer, undefined, loadWorkflowState);
   const [executive, executiveDispatch] = useReducer(
     executiveReducer,
@@ -79,12 +79,23 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
       setActiveUserId,
       setAssetId,
       setCycleId,
-      setScenarioId,
+      setScenarioId: (id) => {
+        setScenarioState(id);
+        if (id === 'ready_to_publish') {
+          setCycleId(defaults.defaultOpenCycleId);
+          workflowDispatch({
+            type: 'APPLY_READY_SCENARIO',
+            cycleId: defaults.defaultOpenCycleId,
+            actorId: activeUserId,
+            now: '2026-08-01T10:45:00+01:00',
+          });
+        }
+      },
       resetDemo: () => {
         setActiveUserId(defaults.defaultPersonaId);
         setAssetId(atlas.organisation.defaultAssetId);
-        setCycleId(defaults.defaultPublishedCycleId);
-        setScenarioId('canonical');
+        setCycleId(defaults.defaultOpenCycleId);
+        setScenarioState('canonical');
         window.localStorage.removeItem(workflowStorageKey);
         window.localStorage.removeItem(executiveStorageKey);
         workflowDispatch({ type: 'RESET' });
@@ -96,7 +107,7 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
       assetId,
       cycleId,
       defaults.defaultPersonaId,
-      defaults.defaultPublishedCycleId,
+      defaults.defaultOpenCycleId,
       role,
       scenarioId,
       workflow,

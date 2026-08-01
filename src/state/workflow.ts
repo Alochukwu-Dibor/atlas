@@ -107,16 +107,27 @@ export interface WorkflowReport {
   certification: boolean;
   revision: number;
   clarificationAnswered: boolean;
+  supersedesReportId?: string;
+}
+
+export interface CyclePublication {
+  cycleId: string;
+  status: 'open' | 'published_locked';
+  executiveNarrative: string;
+  controlledExceptionReason?: string;
+  publishedAt?: string;
+  publishedBy?: string;
 }
 
 export interface WorkflowState {
-  version: 2;
+  version: 3;
   reports: WorkflowReport[];
   sources: WorkflowSource[];
   comments: WorkflowComment[];
   corrections: ManagerCorrection[];
   overrides: ControlledOverride[];
   auditEvents: WorkflowAuditEvent[];
+  publications: CyclePublication[];
   lastError: string | null;
 }
 
@@ -228,7 +239,11 @@ export function createInitialWorkflowState(): WorkflowState {
     projectId: report.projectId,
     title: report.title,
     methods: report.methods as SourceMethod[],
-    status: normaliseStatus(report.status),
+    status:
+      atlas.reportingCycles.find((cycle) => cycle.id === report.cycleId)?.status ===
+      'published_locked'
+        ? 'published_locked'
+        : normaliseStatus(report.status),
     submittedAt: report.submittedAt,
     approvedAt: report.approvedAt,
     sourceIds: [...report.sourceIds],
@@ -279,13 +294,25 @@ export function createInitialWorkflowState(): WorkflowState {
   }));
 
   return {
-    version: 2,
+    version: 3,
     reports,
     sources,
     comments,
     corrections: [],
     overrides: [],
     auditEvents,
+    publications: atlas.reportingCycles.map((cycle) => ({
+      cycleId: cycle.id,
+      status: cycle.status as CyclePublication['status'],
+      executiveNarrative:
+        cycle.status === 'published_locked' ? atlas.executiveSummary.headline : '',
+      publishedAt: cycle.publishedAt ?? undefined,
+      publishedBy: cycle.publishedBy ?? undefined,
+      controlledExceptionReason:
+        cycle.status === 'published_locked'
+          ? 'Published fixture retained six approved reports and two controlled exceptions.'
+          : undefined,
+    })),
     lastError: null,
   };
 }
@@ -329,7 +356,24 @@ export type WorkflowAction =
       now: string;
     }
   | { type: 'APPROVE_REPORT'; reportId: string; actorId: string; now: string }
-  | { type: 'APPLY_OVERRIDE'; override: ControlledOverride };
+  | { type: 'APPLY_OVERRIDE'; override: ControlledOverride }
+  | {
+      type: 'SAVE_EXECUTIVE_NARRATIVE';
+      cycleId: string;
+      narrative: string;
+      actorId: string;
+      now: string;
+    }
+  | {
+      type: 'RECORD_CYCLE_EXCEPTION';
+      cycleId: string;
+      reason: string;
+      actorId: string;
+      now: string;
+    }
+  | { type: 'PUBLISH_CYCLE'; cycleId: string; actorId: string; now: string }
+  | { type: 'CREATE_REVISION'; reportId: string; actorId: string; now: string }
+  | { type: 'APPLY_READY_SCENARIO'; cycleId: string; actorId: string; now: string };
 
 function updateReport(
   reports: WorkflowReport[],
@@ -342,6 +386,200 @@ function updateReport(
 export function workflowReducer(state: WorkflowState, action: WorkflowAction): WorkflowState {
   if (action.type === 'RESET') return createInitialWorkflowState();
   if (action.type === 'CLEAR_ERROR') return { ...state, lastError: null };
+
+  if (action.type === 'SAVE_EXECUTIVE_NARRATIVE') {
+    const publication = state.publications.find((item) => item.cycleId === action.cycleId);
+    if (!publication || publication.status === 'published_locked') {
+      return { ...state, lastError: 'Published executive updates are immutable.' };
+    }
+    return {
+      ...state,
+      publications: state.publications.map((item) =>
+        item.cycleId === action.cycleId
+          ? { ...item, executiveNarrative: action.narrative.trim() }
+          : item,
+      ),
+      auditEvents: audit(state, {
+        actorId: action.actorId,
+        action: 'executive_narrative_saved',
+        entityType: 'reporting_cycle',
+        entityId: action.cycleId,
+        timestamp: action.now,
+        summary: 'Commercial Manager saved the executive narrative for consolidation.',
+      }),
+      lastError: null,
+    };
+  }
+
+  if (action.type === 'RECORD_CYCLE_EXCEPTION') {
+    const reason = action.reason.trim();
+    const publication = state.publications.find((item) => item.cycleId === action.cycleId);
+    if (!reason) return { ...state, lastError: 'A controlled-exception reason is required.' };
+    if (!publication || publication.status === 'published_locked') {
+      return { ...state, lastError: 'Published executive updates are immutable.' };
+    }
+    return {
+      ...state,
+      publications: state.publications.map((item) =>
+        item.cycleId === action.cycleId ? { ...item, controlledExceptionReason: reason } : item,
+      ),
+      auditEvents: audit(state, {
+        actorId: action.actorId,
+        action: 'controlled_publication_exception_recorded',
+        entityType: 'reporting_cycle',
+        entityId: action.cycleId,
+        timestamp: action.now,
+        summary: `Controlled publication exception recorded: ${reason}`,
+      }),
+      lastError: null,
+    };
+  }
+
+  if (action.type === 'PUBLISH_CYCLE') {
+    const publication = state.publications.find((item) => item.cycleId === action.cycleId);
+    const readiness = selectReadiness(state, action.cycleId);
+    if (!publication || publication.status === 'published_locked') {
+      return { ...state, lastError: 'This reporting cycle is already published and locked.' };
+    }
+    if (readiness.reportingReadinessPercent < 100 && !publication.controlledExceptionReason) {
+      return {
+        ...state,
+        lastError:
+          'Approve every mandatory report or record a controlled exception before publishing.',
+      };
+    }
+    return {
+      ...state,
+      reports: state.reports.map((report) =>
+        report.cycleId === action.cycleId ? { ...report, status: 'published_locked' } : report,
+      ),
+      publications: state.publications.map((item) =>
+        item.cycleId === action.cycleId
+          ? {
+              ...item,
+              status: 'published_locked',
+              publishedAt: action.now,
+              publishedBy: action.actorId,
+            }
+          : item,
+      ),
+      auditEvents: audit(state, {
+        actorId: action.actorId,
+        action: 'executive_update_published',
+        entityType: 'reporting_cycle',
+        entityId: action.cycleId,
+        timestamp: action.now,
+        summary: `Executive update published and cycle locked${publication.controlledExceptionReason ? ' with a controlled exception' : ''}. CEO notification simulated.`,
+        before: 'open',
+        after: 'published_locked',
+      }),
+      lastError: null,
+    };
+  }
+
+  if (action.type === 'CREATE_REVISION') {
+    const original = state.reports.find((report) => report.id === action.reportId);
+    if (!original || original.status !== 'published_locked') {
+      return { ...state, lastError: 'Only a published, locked report can start a revision.' };
+    }
+    const revisionNumber =
+      state.reports.filter((report) => report.supersedesReportId === original.id).length + 1;
+    const revision: WorkflowReport = {
+      ...original,
+      id: `${original.id}_revision_${revisionNumber}`,
+      title: `${original.title} · Revision ${revisionNumber}`,
+      status: 'draft',
+      submittedAt: null,
+      approvedAt: null,
+      certification: false,
+      clarificationAnswered: false,
+      revision: original.revision + revisionNumber,
+      supersedesReportId: original.id,
+    };
+    return {
+      ...state,
+      reports: [...state.reports, revision],
+      auditEvents: audit(state, {
+        actorId: action.actorId,
+        action: 'post_publication_revision_created',
+        entityType: 'department_report',
+        entityId: revision.id,
+        timestamp: action.now,
+        summary: `Revision ${revisionNumber} created without modifying published report ${original.id}.`,
+        before: original.id,
+        after: revision.id,
+      }),
+      lastError: null,
+    };
+  }
+
+  if (action.type === 'APPLY_READY_SCENARIO') {
+    const cycleReports = state.reports.filter((report) => report.cycleId === action.cycleId);
+    const reports = [...state.reports];
+    for (const department of atlas.departments.filter((item) => item.required)) {
+      const existing = cycleReports.find((report) => report.departmentId === department.id);
+      if (existing) {
+        const index = reports.findIndex((report) => report.id === existing.id);
+        reports[index] = {
+          ...existing,
+          status: 'approved',
+          approvedAt: action.now,
+          certification: true,
+        };
+      } else {
+        const id = `scenario_${department.id}_${action.cycleId}`;
+        reports.push({
+          id,
+          cycleId: action.cycleId,
+          departmentId: department.id,
+          managerId: department.managerId,
+          projectId: atlas.organisation.defaultAssetId,
+          title: `${department.name} ready-to-publish scenario report`,
+          methods: ['structured_form'],
+          status: 'approved',
+          submittedAt: action.now,
+          approvedAt: action.now,
+          sourceIds: [],
+          fields: fieldsForReport(id, department.id),
+          certification: true,
+          revision: 0,
+          clarificationAnswered: true,
+        });
+      }
+    }
+    return {
+      ...state,
+      reports,
+      auditEvents: audit(state, {
+        actorId: action.actorId,
+        action: 'ready_to_publish_scenario_applied',
+        entityType: 'reporting_cycle',
+        entityId: action.cycleId,
+        timestamp: action.now,
+        summary: 'Deterministic ready-to-publish fixture applied to all mandatory departments.',
+      }),
+      lastError: null,
+    };
+  }
+
+  const reportId =
+    'reportId' in action
+      ? action.reportId
+      : action.type === 'ADD_SOURCE'
+        ? action.source.reportId
+        : action.type === 'CORRECT_FIELD'
+          ? action.correction.reportId
+          : action.type === 'REQUEST_CLARIFICATION'
+            ? action.comment.reportId
+            : action.type === 'APPLY_OVERRIDE'
+              ? action.override.reportId
+              : undefined;
+  if (
+    reportId &&
+    state.reports.find((report) => report.id === reportId)?.status === 'published_locked'
+  ) {
+    return { ...state, lastError: 'Published reports are immutable; create a revision instead.' };
+  }
 
   if (action.type === 'UPDATE_REPORT_DETAILS') {
     return {
@@ -604,7 +842,7 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
   return state;
 }
 
-export const workflowStorageKey = 'atlas.prototype.workflow.v2';
+export const workflowStorageKey = 'atlas.prototype.workflow.v3';
 
 export function loadWorkflowState(): WorkflowState {
   if (typeof window === 'undefined') return createInitialWorkflowState();
@@ -612,7 +850,7 @@ export function loadWorkflowState(): WorkflowState {
     const stored = window.localStorage.getItem(workflowStorageKey);
     if (!stored) return createInitialWorkflowState();
     const parsed = JSON.parse(stored) as WorkflowState;
-    return parsed.version === 2 ? parsed : createInitialWorkflowState();
+    return parsed.version === 3 ? parsed : createInitialWorkflowState();
   } catch {
     return createInitialWorkflowState();
   }
@@ -631,10 +869,21 @@ export function selectReportSources(state: WorkflowState, reportId: string) {
 }
 
 export function selectReadiness(state: WorkflowState, cycleId: string) {
+  const fixtureCycle = atlas.reportingCycles.find((cycle) => cycle.id === cycleId);
+  if (fixtureCycle?.status === 'published_locked') {
+    return {
+      approvedReports: fixtureCycle.approvedDepartmentCount,
+      requiredReports: fixtureCycle.requiredDepartmentCount,
+      reportingReadinessPercent: fixtureCycle.readinessPercent,
+    };
+  }
   const requiredDepartments = atlas.departments.filter((department) => department.required);
   const approved = new Set(
     state.reports
-      .filter((report) => report.cycleId === cycleId && report.status === 'approved')
+      .filter(
+        (report) =>
+          report.cycleId === cycleId && ['approved', 'published_locked'].includes(report.status),
+      )
       .map((report) => report.departmentId),
   );
   const requiredReports = requiredDepartments.length;
