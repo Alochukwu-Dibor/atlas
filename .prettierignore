@@ -1,0 +1,10 @@
+dist
+node_modules
+coverage
+package-lock.json
+ATLAS_MOCK_DATA.json
+AGENTS.md
+ATLAS_DESIGN_SYSTEM (1).md
+ATLAS_PAGE_STRUCTURES.md
+ATLAS_USER_FLOWS.md
+Atlas_PRD (1).md

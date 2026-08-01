@@ -1,0 +1,473 @@
+{
+  "meta": {
+    "schemaVersion": "1.0.0",
+    "generatedFor": "Atlas Executive Reporting Prototype",
+    "asOf": "2026-08-01T09:00:00+01:00",
+    "timezone": "Africa/Lagos",
+    "currency": "USD",
+    "synthetic": true,
+    "disclosure": "All operational, financial, HSE and legal data in this prototype is synthetic and does not represent Shoreline Natural Resources' actual performance."
+  },
+  "organisation": {
+    "id": "org_shoreline_demo",
+    "name": "Shoreline Natural Resources",
+    "productName": "Atlas",
+    "defaultAssetId": "asset_oml30",
+    "workingInterestPercent": 45
+  },
+  "users": [
+    {
+      "id": "usr_ceo",
+      "name": "Adaeze Okafor",
+      "title": "Chief Executive Officer",
+      "role": "ceo",
+      "departmentId": null
+    },
+    {
+      "id": "usr_commercial",
+      "name": "Tunde Adebayo",
+      "title": "Commercial Manager",
+      "role": "commercial_manager",
+      "departmentId": "dept_commercial"
+    },
+    {
+      "id": "usr_operations",
+      "name": "Ifeanyi Eze",
+      "title": "Operations Manager",
+      "role": "department_manager",
+      "departmentId": "dept_operations"
+    },
+    {
+      "id": "usr_finance",
+      "name": "Zainab Musa",
+      "title": "Finance Manager",
+      "role": "department_manager",
+      "departmentId": "dept_finance"
+    },
+    {
+      "id": "usr_hse",
+      "name": "Boma Briggs",
+      "title": "HSE Manager",
+      "role": "department_manager",
+      "departmentId": "dept_hse"
+    },
+    {
+      "id": "usr_legal",
+      "name": "Temitope Cole",
+      "title": "Legal & Regulatory Manager",
+      "role": "department_manager",
+      "departmentId": "dept_legal"
+    },
+    {
+      "id": "usr_projects",
+      "name": "Chinedu Nwosu",
+      "title": "Projects Manager",
+      "role": "department_manager",
+      "departmentId": "dept_projects"
+    }
+  ],
+  "departments": [
+    { "id": "dept_operations", "name": "Operations", "required": true, "managerId": "usr_operations" },
+    { "id": "dept_finance", "name": "Finance", "required": true, "managerId": "usr_finance" },
+    { "id": "dept_hse", "name": "HSE", "required": true, "managerId": "usr_hse" },
+    { "id": "dept_legal", "name": "Legal & Regulatory", "required": true, "managerId": "usr_legal" },
+    { "id": "dept_projects", "name": "Projects", "required": true, "managerId": "usr_projects" },
+    { "id": "dept_commercial", "name": "Commercial", "required": true, "managerId": "usr_commercial" },
+    { "id": "dept_supply_chain", "name": "Supply Chain", "required": true, "managerId": null },
+    { "id": "dept_community", "name": "Community Relations", "required": true, "managerId": null }
+  ],
+  "reportingCycles": [
+    {
+      "id": "cycle_2026_w30",
+      "label": "Weekly Executive Update · 20–26 Jul 2026",
+      "type": "weekly",
+      "startDate": "2026-07-20",
+      "endDate": "2026-07-26",
+      "dueDate": "2026-07-28T12:00:00+01:00",
+      "status": "published_locked",
+      "publishedAt": "2026-07-30T16:15:00+01:00",
+      "publishedBy": "usr_commercial",
+      "readinessPercent": 82,
+      "approvedDepartmentCount": 6,
+      "requiredDepartmentCount": 8,
+      "previousCycleId": "cycle_2026_w29"
+    },
+    {
+      "id": "cycle_2026_w31",
+      "label": "Weekly Reporting · 27 Jul–2 Aug 2026",
+      "type": "weekly",
+      "startDate": "2026-07-27",
+      "endDate": "2026-08-02",
+      "dueDate": "2026-08-04T12:00:00+01:00",
+      "status": "open",
+      "publishedAt": null,
+      "publishedBy": null,
+      "readinessPercent": 38,
+      "approvedDepartmentCount": 2,
+      "requiredDepartmentCount": 8,
+      "previousCycleId": "cycle_2026_w30"
+    }
+  ],
+  "assets": [
+    {
+      "id": "asset_oml30",
+      "name": "OML 30",
+      "label": "OML 30 — All Fields and Projects",
+      "type": "licence",
+      "fields": [
+        { "id": "field_afiesere", "name": "Afiesere", "flowstation": "Afiesere Flowstation" },
+        { "id": "field_eriemu", "name": "Eriemu", "flowstation": "Eriemu Flowstation" },
+        { "id": "field_evwreni", "name": "Evwreni", "flowstation": "Evwreni Flowstation" },
+        { "id": "field_oweh", "name": "Oweh", "flowstation": "Oweh Flowstation" },
+        { "id": "field_olomoro_oleh", "name": "Olomoro–Oleh", "flowstation": "Olomoro Flowstation" },
+        { "id": "field_kokori", "name": "Kokori", "flowstation": "Kokori Flowstation" },
+        { "id": "field_oroni", "name": "Oroni", "flowstation": "Oroni Flowstation" },
+        { "id": "field_uzere", "name": "Uzere", "flowstation": "Uzere Flowstation" }
+      ],
+      "facilities": [
+        { "id": "facility_ughelli", "name": "Ughelli Pump Station", "type": "evacuation" },
+        { "id": "facility_compressor_a", "name": "Gas-Lift Compressor Station A", "type": "compression" },
+        { "id": "facility_compressor_b", "name": "Gas-Lift Compressor Station B", "type": "compression" }
+      ]
+    }
+  ],
+  "executiveSummary": {
+    "cycleId": "cycle_2026_w30",
+    "assetId": "asset_oml30",
+    "overallStatus": "at_risk",
+    "previousStatus": "on_track",
+    "headline": "Production and liquidity require intervention while safety and regulatory exposure remain controlled but closely monitored.",
+    "projectCounts": {
+      "onTrack": 2,
+      "atRisk": 1,
+      "delayed": 1,
+      "stalled": 0
+    },
+    "hse": {
+      "fatalities": 0,
+      "lostTimeInjuries": 0,
+      "trir": 0.17,
+      "highPotentialIncidents": 1,
+      "overdueCorrectiveActions": 2,
+      "movement": "adverse"
+    },
+    "legal": {
+      "highIssues": 2,
+      "mediumIssues": 3,
+      "lowIssues": 2,
+      "estimatedExposureUsd": 18400000,
+      "deliveryAffectingIssues": 1,
+      "nearestDeadline": "2026-08-05"
+    }
+  },
+  "production": {
+    "cycleId": "cycle_2026_w30",
+    "assetId": "asset_oml30",
+    "kpis": {
+      "grossOilActualBopd": 96800,
+      "grossOilPlanBopd": 120000,
+      "grossOilVarianceBopd": -23200,
+      "grossOilVariancePercent": -19.3,
+      "workingInterestActualBopd": 43560,
+      "gasActualMmscfd": 38.4,
+      "gasPlanMmscfd": 44.0,
+      "systemAvailabilityPercent": 82.4,
+      "availableCapacityBopd": 104500,
+      "deferredProductionBopd": 23200,
+      "daysSinceLastLti": 42,
+      "status": "at_risk",
+      "primaryConstraint": "Gas-Lift Compressor Station B operating at reduced capacity"
+    },
+    "weeklyTrend": [
+      { "date": "2026-07-20", "actualBopd": 101200, "planBopd": 120000, "previousPeriodBopd": 115000 },
+      { "date": "2026-07-21", "actualBopd": 100100, "planBopd": 120000, "previousPeriodBopd": 114600 },
+      { "date": "2026-07-22", "actualBopd": 98400, "planBopd": 120000, "previousPeriodBopd": 113900 },
+      { "date": "2026-07-23", "actualBopd": 95600, "planBopd": 120000, "previousPeriodBopd": 114200 },
+      { "date": "2026-07-24", "actualBopd": 94100, "planBopd": 120000, "previousPeriodBopd": 113500 },
+      { "date": "2026-07-25", "actualBopd": 93600, "planBopd": 120000, "previousPeriodBopd": 112900 },
+      { "date": "2026-07-26", "actualBopd": 94600, "planBopd": 120000, "previousPeriodBopd": 113300 }
+    ],
+    "monthlyTrend": [
+      { "month": "2026-01", "actualBopd": 111000, "planBopd": 112000, "previousYearBopd": 106000 },
+      { "month": "2026-02", "actualBopd": 113500, "planBopd": 114000, "previousYearBopd": 107500 },
+      { "month": "2026-03", "actualBopd": 116000, "planBopd": 116000, "previousYearBopd": 109000 },
+      { "month": "2026-04", "actualBopd": 117200, "planBopd": 118000, "previousYearBopd": 110500 },
+      { "month": "2026-05", "actualBopd": 114800, "planBopd": 119000, "previousYearBopd": 111200 },
+      { "month": "2026-06", "actualBopd": 112900, "planBopd": 120000, "previousYearBopd": 112000 },
+      { "month": "2026-07", "actualBopd": 96800, "planBopd": 120000, "previousYearBopd": 110800 }
+    ],
+    "fields": [
+      { "fieldId": "field_afiesere", "planBopd": 17500, "actualBopd": 16800, "varianceBopd": -700, "variancePercent": -4.0, "availabilityPercent": 94.0, "status": "on_track", "sparklineBopd": [17000, 16900, 16850, 16800, 16750, 16820, 16800] },
+      { "fieldId": "field_eriemu", "planBopd": 16000, "actualBopd": 14900, "varianceBopd": -1100, "variancePercent": -6.9, "availabilityPercent": 91.2, "status": "at_risk", "sparklineBopd": [15500, 15300, 15100, 15000, 14800, 14950, 14900] },
+      { "fieldId": "field_evwreni", "planBopd": 14500, "actualBopd": 12200, "varianceBopd": -2300, "variancePercent": -15.9, "availabilityPercent": 83.5, "status": "constrained", "sparklineBopd": [13800, 13400, 13000, 12600, 12100, 12000, 12200] },
+      { "fieldId": "field_oweh", "planBopd": 13500, "actualBopd": 10600, "varianceBopd": -2900, "variancePercent": -21.5, "availabilityPercent": 84.0, "status": "constrained", "sparklineBopd": [11900, 11600, 11200, 10900, 10500, 10400, 10600] },
+      { "fieldId": "field_olomoro_oleh", "planBopd": 19000, "actualBopd": 13300, "varianceBopd": -5700, "variancePercent": -30.0, "availabilityPercent": 78.0, "status": "constrained", "sparklineBopd": [15700, 15000, 14400, 13800, 13100, 13000, 13300] },
+      { "fieldId": "field_kokori", "planBopd": 17000, "actualBopd": 9100, "varianceBopd": -7900, "variancePercent": -46.5, "availabilityPercent": 69.5, "status": "constrained", "sparklineBopd": [12300, 11600, 10800, 9900, 9000, 8800, 9100] },
+      { "fieldId": "field_oroni", "planBopd": 12000, "actualBopd": 9500, "varianceBopd": -2500, "variancePercent": -20.8, "availabilityPercent": 77.4, "status": "at_risk", "sparklineBopd": [10800, 10500, 10100, 9800, 9400, 9300, 9500] },
+      { "fieldId": "field_uzere", "planBopd": 10500, "actualBopd": 10400, "varianceBopd": -100, "variancePercent": -1.0, "availabilityPercent": 96.1, "status": "on_track", "sparklineBopd": [10300, 10400, 10350, 10450, 10400, 10380, 10400] }
+    ]
+  },
+  "finance": {
+    "cycleId": "cycle_2026_w30",
+    "assetId": "asset_oml30",
+    "kpis": {
+      "availableLiquidityUsd": 42500000,
+      "unrestrictedCashUsd": 18500000,
+      "restrictedCashUsd": 4000000,
+      "undrawnFacilitiesUsd": 20000000,
+      "averageMonthlyBurnUsd": 8500000,
+      "runwayMonths": 5.0,
+      "revenueYtdUsd": 312000000,
+      "revenuePlanYtdUsd": 345000000,
+      "opexYtdUsd": 146000000,
+      "opexPlanYtdUsd": 139000000,
+      "capexAndJvCallsYtdUsd": 98000000,
+      "capexPlanYtdUsd": 105000000,
+      "obligationsDue12MonthsUsd": 62000000,
+      "nextRepaymentUsd": 15000000,
+      "nextRepaymentDate": "2026-09-30",
+      "status": "at_risk"
+    },
+    "cashflow": [
+      { "month": "2026-01", "inflowUsd": 51000000, "outflowUsd": 44000000, "netUsd": 7000000 },
+      { "month": "2026-02", "inflowUsd": 48000000, "outflowUsd": 46000000, "netUsd": 2000000 },
+      { "month": "2026-03", "inflowUsd": 56000000, "outflowUsd": 49000000, "netUsd": 7000000 },
+      { "month": "2026-04", "inflowUsd": 53000000, "outflowUsd": 55000000, "netUsd": -2000000 },
+      { "month": "2026-05", "inflowUsd": 50000000, "outflowUsd": 54000000, "netUsd": -4000000 },
+      { "month": "2026-06", "inflowUsd": 46000000, "outflowUsd": 52000000, "netUsd": -6000000 },
+      { "month": "2026-07", "inflowUsd": 41000000, "outflowUsd": 49500000, "netUsd": -8500000 }
+    ],
+    "cashPositionForecast": [
+      { "month": "2026-04", "actualUsd": 61000000, "baseForecastUsd": null, "downsideForecastUsd": null },
+      { "month": "2026-05", "actualUsd": 57000000, "baseForecastUsd": null, "downsideForecastUsd": null },
+      { "month": "2026-06", "actualUsd": 51000000, "baseForecastUsd": null, "downsideForecastUsd": null },
+      { "month": "2026-07", "actualUsd": 42500000, "baseForecastUsd": 42500000, "downsideForecastUsd": 42500000 },
+      { "month": "2026-08", "actualUsd": null, "baseForecastUsd": 39000000, "downsideForecastUsd": 35000000 },
+      { "month": "2026-09", "actualUsd": null, "baseForecastUsd": 27000000, "downsideForecastUsd": 19000000, "repaymentUsd": 15000000 },
+      { "month": "2026-10", "actualUsd": null, "baseForecastUsd": 24500000, "downsideForecastUsd": 13000000 },
+      { "month": "2026-11", "actualUsd": null, "baseForecastUsd": 22000000, "downsideForecastUsd": 7500000 },
+      { "month": "2026-12", "actualUsd": null, "baseForecastUsd": 20500000, "downsideForecastUsd": 2000000 }
+    ],
+    "budgetVariance": {
+      "overallPercent": 4.8,
+      "overBudgetUsd": 9200000,
+      "underBudgetUsd": 3800000,
+      "netAdverseUsd": 5400000,
+      "status": "adverse"
+    },
+    "commitments": [
+      { "id": "com_jv", "category": "OML 30 JV cash calls", "totalCommittedUsd": 48000000, "paidToDateUsd": 31000000, "remainingUsd": 17000000, "due30DaysUsd": 8500000, "status": "at_risk" },
+      { "id": "com_debt", "category": "Debt principal and interest", "totalCommittedUsd": 62000000, "paidToDateUsd": 18000000, "remainingUsd": 44000000, "due30DaysUsd": 0, "status": "on_track" },
+      { "id": "com_royalty", "category": "Royalties and statutory payments", "totalCommittedUsd": 27000000, "paidToDateUsd": 22500000, "remainingUsd": 4500000, "due30DaysUsd": 4500000, "status": "on_track" },
+      { "id": "com_integrity", "category": "Facilities and integrity", "totalCommittedUsd": 16000000, "paidToDateUsd": 7200000, "remainingUsd": 8800000, "due30DaysUsd": 3200000, "status": "at_risk" }
+    ],
+    "receivables": [
+      { "id": "rec_001", "reference": "LIFT-JUL-26-04", "source": "Crude-lifting proceeds", "amountUsd": 12800000, "dueDate": "2026-08-06", "status": "due_soon" },
+      { "id": "rec_002", "reference": "GAS-JUL-26", "source": "Gas-sales proceeds", "amountUsd": 3600000, "dueDate": "2026-08-12", "status": "on_track" },
+      { "id": "rec_003", "reference": "INS-REC-118", "source": "Insurance recovery", "amountUsd": 2100000, "dueDate": "2026-07-29", "status": "overdue" }
+    ]
+  },
+  "projects": [
+    { "id": "prj_compressor", "name": "Compressor Station B Restoration", "status": "at_risk", "progressPercent": 68, "planPercent": 82, "ownerDepartmentId": "dept_projects", "targetDate": "2026-08-09", "issue": "Replacement rotor delivery awaiting final logistics confirmation" },
+    { "id": "prj_integrity", "name": "Ughelli Export Line Integrity Programme", "status": "delayed", "progressPercent": 54, "planPercent": 70, "ownerDepartmentId": "dept_projects", "targetDate": "2026-08-22", "issue": "Inspection window moved by seven days" },
+    { "id": "prj_wellwork", "name": "Kokori Well Restoration Campaign", "status": "on_track", "progressPercent": 61, "planPercent": 60, "ownerDepartmentId": "dept_projects", "targetDate": "2026-09-15", "issue": null },
+    { "id": "prj_metering", "name": "Fiscal Metering Upgrade", "status": "on_track", "progressPercent": 88, "planPercent": 86, "ownerDepartmentId": "dept_projects", "targetDate": "2026-08-12", "issue": null }
+  ],
+  "hse": {
+    "cycleId": "cycle_2026_w30",
+    "assetId": "asset_oml30",
+    "kpis": {
+      "trir": 0.17,
+      "trirTarget": 0.12,
+      "recordableIncidents": 2,
+      "ltifr": 0.0,
+      "processSafetyEvents": 1,
+      "safetyObservations": 184,
+      "daysSinceLastLti": 42,
+      "employeeHours": 940000,
+      "contractorHours": 1460000,
+      "medicalTreatmentCases": 2,
+      "lostTimeInjuries": 0,
+      "restrictedWorkCases": 0,
+      "nearMisses": 6,
+      "highPotentialIncidents": 1
+    },
+    "trend": [
+      { "month": "2026-01", "trir": 0.09, "target": 0.12, "recordableIncidents": 1 },
+      { "month": "2026-02", "trir": 0.08, "target": 0.12, "recordableIncidents": 1 },
+      { "month": "2026-03", "trir": 0.11, "target": 0.12, "recordableIncidents": 1 },
+      { "month": "2026-04", "trir": 0.10, "target": 0.12, "recordableIncidents": 1 },
+      { "month": "2026-05", "trir": 0.13, "target": 0.12, "recordableIncidents": 2 },
+      { "month": "2026-06", "trir": 0.12, "target": 0.12, "recordableIncidents": 1 },
+      { "month": "2026-07", "trir": 0.17, "target": 0.12, "recordableIncidents": 2 }
+    ],
+    "incidents": [
+      { "id": "inc_001", "title": "High-pressure gas release during compressor isolation", "location": "Gas-Lift Compressor Station B", "severity": "high", "date": "2026-07-24", "investigationStatus": "in_progress", "recordable": true },
+      { "id": "inc_002", "title": "Hand laceration during valve maintenance", "location": "Kokori Flowstation", "severity": "medium", "date": "2026-07-22", "investigationStatus": "awaiting_verification", "recordable": true },
+      { "id": "inc_003", "title": "Vehicle near miss on access road", "location": "Eriemu Access Road", "severity": "low", "date": "2026-07-21", "investigationStatus": "closed", "recordable": false }
+    ],
+    "environmental": {
+      "hydrocarbonSpills": 1,
+      "spillVolumeBarrels": 1.8,
+      "producedWaterCompliancePercent": 98.6,
+      "flaringIntensityMscfPerBoe": 8.4,
+      "environmentalIncidents": 1,
+      "regulatoryNotifications": 1,
+      "status": "at_risk"
+    },
+    "compliance": {
+      "scorePercent": 92,
+      "compliantRequirements": 46,
+      "minorGaps": 3,
+      "majorGaps": 1,
+      "overdueFindings": 2
+    },
+    "actions": [
+      { "id": "hse_act_001", "title": "Verify compressor isolation procedure and retrain shift teams", "relatedRecordId": "inc_001", "owner": "Operations Assurance Lead", "dueDate": "2026-08-03", "status": "in_progress" },
+      { "id": "hse_act_002", "title": "Close overdue firewater-pump inspection finding", "relatedRecordId": "audit_firewater", "owner": "Facilities Manager", "dueDate": "2026-07-29", "status": "overdue" },
+      { "id": "hse_act_003", "title": "Complete contractor hand-safety verification", "relatedRecordId": "inc_002", "owner": "Kokori Area Manager", "dueDate": "2026-08-05", "status": "awaiting_verification" },
+      { "id": "hse_act_004", "title": "Submit spill close-out notification", "relatedRecordId": "env_spill_001", "owner": "Environmental Lead", "dueDate": "2026-07-31", "status": "overdue" }
+    ]
+  },
+  "legalRegulatory": {
+    "cycleId": "cycle_2026_w30",
+    "assetId": "asset_oml30",
+    "kpis": {
+      "openLegalMatters": 7,
+      "estimatedExposureUsd": 18400000,
+      "compliancePercent": 91,
+      "submissionsDueThisMonth": 5,
+      "submissionsOutstanding": 2,
+      "governmentApprovalsPending": 4,
+      "contractualObligationsOnTimePercent": 88,
+      "criticalRisks": 2
+    },
+    "risks": [
+      { "id": "risk_legal_001", "issue": "Community access claim affecting inspection corridor", "assetProject": "Ughelli Export Line Integrity Programme", "owner": "Legal & Community Relations", "impact": "high", "status": "active", "dueDate": "2026-08-05", "estimatedExposureUsd": 6200000 },
+      { "id": "risk_legal_002", "issue": "Outstanding NUPRC response on flare-management submission", "assetProject": "OML 30", "owner": "Regulatory Affairs", "impact": "high", "status": "due_soon", "dueDate": "2026-08-08", "estimatedExposureUsd": 4500000 },
+      { "id": "risk_legal_003", "issue": "Contractor variation claim", "assetProject": "Compressor Station B Restoration", "owner": "Legal & Projects", "impact": "medium", "status": "under_review", "dueDate": "2026-08-14", "estimatedExposureUsd": 3100000 },
+      { "id": "risk_legal_004", "issue": "Environmental remediation claim", "assetProject": "Kokori", "owner": "Legal & HSE", "impact": "medium", "status": "active", "dueDate": "2026-09-03", "estimatedExposureUsd": 2800000 }
+    ],
+    "calendar": [
+      { "id": "reg_001", "name": "Monthly production return", "regulator": "NUPRC", "dueDate": "2026-08-02", "status": "submitted" },
+      { "id": "reg_002", "name": "Flare-management response", "regulator": "NUPRC", "dueDate": "2026-08-08", "status": "due_soon" },
+      { "id": "reg_003", "name": "Royalty reconciliation", "regulator": "FIRS / NUPRC", "dueDate": "2026-08-12", "status": "upcoming" },
+      { "id": "reg_004", "name": "Environmental incident close-out", "regulator": "NOSDRA", "dueDate": "2026-07-31", "status": "overdue" },
+      { "id": "reg_005", "name": "Q3 work-programme update", "regulator": "NUIMS", "dueDate": "2026-09-05", "status": "upcoming_next_month" }
+    ],
+    "compliance": {
+      "scorePercent": 91,
+      "compliantRequirements": 51,
+      "minorIssues": 4,
+      "majorIssues": 1
+    },
+    "engagements": [
+      { "id": "eng_001", "organisation": "NUPRC", "owner": "Head, Regulatory Affairs", "status": "scheduled", "nextDate": "2026-08-04" },
+      { "id": "eng_002", "organisation": "NMDPRA", "owner": "Commercial Manager", "status": "ongoing", "nextDate": "2026-08-11" },
+      { "id": "eng_003", "organisation": "NUIMS", "owner": "JV Manager", "status": "awaiting_confirmation", "nextDate": "2026-08-07" },
+      { "id": "eng_004", "organisation": "FIRS", "owner": "Finance Director", "status": "scheduled", "nextDate": "2026-08-13" }
+    ],
+    "contractsApprovals": [
+      { "id": "ca_001", "name": "OML 30 JV budget approval", "assetProject": "OML 30", "status": "awaiting_partner", "owner": "JV Manager", "dueDate": "2026-08-10" },
+      { "id": "ca_002", "name": "Compressor restoration variation", "assetProject": "Compressor Station B Restoration", "status": "under_review", "owner": "Projects Director", "dueDate": "2026-08-06" },
+      { "id": "ca_003", "name": "Operating insurance renewal", "assetProject": "OML 30", "status": "on_track", "owner": "Legal Counsel", "dueDate": "2026-09-01" },
+      { "id": "ca_004", "name": "Ministerial consent package", "assetProject": "OML 30", "status": "awaiting_government", "owner": "General Counsel", "dueDate": "2026-09-18" }
+    ]
+  },
+  "departmentReports": [
+    { "id": "rpt_ops_w30", "cycleId": "cycle_2026_w30", "departmentId": "dept_operations", "managerId": "usr_operations", "projectId": "asset_oml30", "title": "Operations Weekly Report · 20–26 Jul 2026", "methods": ["structured_form", "xlsx_upload", "paste_email_or_transcript"], "status": "approved", "submittedAt": "2026-07-28T09:18:00+01:00", "approvedAt": "2026-07-29T12:10:00+01:00", "sourceIds": ["src_ops_form", "src_ops_xlsx", "src_ops_email"] },
+    { "id": "rpt_fin_w30", "cycleId": "cycle_2026_w30", "departmentId": "dept_finance", "managerId": "usr_finance", "projectId": "asset_oml30", "title": "Finance Weekly Report · 20–26 Jul 2026", "methods": ["xlsx_upload", "document_upload"], "status": "submitted", "submittedAt": "2026-07-28T10:42:00+01:00", "approvedAt": null, "sourceIds": ["src_fin_xlsx", "src_fin_pdf"] },
+    { "id": "rpt_hse_w30", "cycleId": "cycle_2026_w30", "departmentId": "dept_hse", "managerId": "usr_hse", "projectId": "asset_oml30", "title": "HSE Weekly Report · 20–26 Jul 2026", "methods": ["structured_form", "document_upload"], "status": "approved", "submittedAt": "2026-07-28T08:55:00+01:00", "approvedAt": "2026-07-29T11:20:00+01:00", "sourceIds": ["src_hse_form", "src_hse_pdf"] },
+    { "id": "rpt_legal_w30", "cycleId": "cycle_2026_w30", "departmentId": "dept_legal", "managerId": "usr_legal", "projectId": "asset_oml30", "title": "Legal & Regulatory Weekly Report · 20–26 Jul 2026", "methods": ["structured_form", "paste_email_or_transcript"], "status": "approved", "submittedAt": "2026-07-28T09:40:00+01:00", "approvedAt": "2026-07-29T13:30:00+01:00", "sourceIds": ["src_legal_form", "src_legal_transcript"] },
+    { "id": "rpt_projects_w30", "cycleId": "cycle_2026_w30", "departmentId": "dept_projects", "managerId": "usr_projects", "projectId": "asset_oml30", "title": "Projects Weekly Report · 20–26 Jul 2026", "methods": ["xlsx_upload", "document_upload"], "status": "submitted", "submittedAt": "2026-07-28T11:10:00+01:00", "approvedAt": null, "sourceIds": ["src_projects_xlsx", "src_projects_docx"] },
+    { "id": "rpt_commercial_w30", "cycleId": "cycle_2026_w30", "departmentId": "dept_commercial", "managerId": "usr_commercial", "projectId": "asset_oml30", "title": "Commercial Weekly Report · 20–26 Jul 2026", "methods": ["structured_form"], "status": "approved", "submittedAt": "2026-07-28T08:45:00+01:00", "approvedAt": "2026-07-29T09:05:00+01:00", "sourceIds": ["src_commercial_form"] },
+    { "id": "rpt_supply_w30", "cycleId": "cycle_2026_w30", "departmentId": "dept_supply_chain", "managerId": null, "projectId": "asset_oml30", "title": "Supply Chain Weekly Report · 20–26 Jul 2026", "methods": ["xlsx_upload"], "status": "approved", "submittedAt": "2026-07-28T08:30:00+01:00", "approvedAt": "2026-07-29T09:25:00+01:00", "sourceIds": ["src_supply_xlsx"] },
+    { "id": "rpt_community_w30", "cycleId": "cycle_2026_w30", "departmentId": "dept_community", "managerId": null, "projectId": "asset_oml30", "title": "Community Relations Weekly Report · 20–26 Jul 2026", "methods": ["structured_form"], "status": "approved", "submittedAt": "2026-07-28T08:58:00+01:00", "approvedAt": "2026-07-29T10:10:00+01:00", "sourceIds": ["src_community_form"] },
+    { "id": "rpt_ops_w31", "cycleId": "cycle_2026_w31", "departmentId": "dept_operations", "managerId": "usr_operations", "projectId": "asset_oml30", "title": "Operations Weekly Report · 27 Jul–2 Aug 2026", "methods": ["structured_form", "xlsx_upload"], "status": "draft", "submittedAt": null, "approvedAt": null, "sourceIds": ["src_ops_w31_form"] },
+    { "id": "rpt_hse_w31", "cycleId": "cycle_2026_w31", "departmentId": "dept_hse", "managerId": "usr_hse", "projectId": "asset_oml30", "title": "HSE Weekly Report · 27 Jul–2 Aug 2026", "methods": ["structured_form"], "status": "needs_clarification", "submittedAt": "2026-07-31T14:22:00+01:00", "approvedAt": null, "sourceIds": ["src_hse_w31_form"] }
+  ],
+  "sources": [
+    { "id": "src_ops_form", "reportId": "rpt_ops_w30", "type": "structured_form", "name": "Operations structured return", "addedAt": "2026-07-27T15:10:00+01:00", "status": "extracted" },
+    { "id": "src_ops_xlsx", "reportId": "rpt_ops_w30", "type": "xlsx_upload", "name": "OML30_Daily_Production_W30.xlsx", "addedAt": "2026-07-27T15:16:00+01:00", "status": "extracted" },
+    { "id": "src_ops_email", "reportId": "rpt_ops_w30", "type": "paste_email_or_transcript", "sourceSubtype": "email", "name": "Compressor B operating update", "addedAt": "2026-07-27T15:25:00+01:00", "status": "extracted" },
+    { "id": "src_fin_xlsx", "reportId": "rpt_fin_w30", "type": "xlsx_upload", "name": "Treasury_Cash_Position_W30.xlsx", "addedAt": "2026-07-28T09:50:00+01:00", "status": "extracted" },
+    { "id": "src_fin_pdf", "reportId": "rpt_fin_w30", "type": "document_upload", "name": "Bank_Confirmation_26Jul2026.pdf", "addedAt": "2026-07-28T10:05:00+01:00", "status": "missing_confirmation" },
+    { "id": "src_hse_form", "reportId": "rpt_hse_w30", "type": "structured_form", "name": "HSE structured return", "addedAt": "2026-07-27T16:20:00+01:00", "status": "extracted" },
+    { "id": "src_hse_pdf", "reportId": "rpt_hse_w30", "type": "document_upload", "name": "Compressor_B_Initial_Incident_Report.pdf", "addedAt": "2026-07-27T16:35:00+01:00", "status": "extracted" },
+    { "id": "src_legal_form", "reportId": "rpt_legal_w30", "type": "structured_form", "name": "Legal and regulatory return", "addedAt": "2026-07-28T08:50:00+01:00", "status": "extracted" },
+    { "id": "src_legal_transcript", "reportId": "rpt_legal_w30", "type": "paste_email_or_transcript", "sourceSubtype": "call_transcript", "name": "NUPRC engagement call notes", "addedAt": "2026-07-28T09:02:00+01:00", "status": "extracted" },
+    { "id": "src_projects_xlsx", "reportId": "rpt_projects_w30", "type": "xlsx_upload", "name": "Project_Milestones_W30.xlsx", "addedAt": "2026-07-28T10:15:00+01:00", "status": "conflict" },
+    { "id": "src_projects_docx", "reportId": "rpt_projects_w30", "type": "document_upload", "name": "Project_Delivery_Narrative_W30.docx", "addedAt": "2026-07-28T10:28:00+01:00", "status": "conflict" },
+    { "id": "src_commercial_form", "reportId": "rpt_commercial_w30", "type": "structured_form", "name": "Commercial structured return", "addedAt": "2026-07-28T08:10:00+01:00", "status": "extracted" },
+    { "id": "src_supply_xlsx", "reportId": "rpt_supply_w30", "type": "xlsx_upload", "name": "Critical_Materials_W30.xlsx", "addedAt": "2026-07-28T08:12:00+01:00", "status": "extracted" },
+    { "id": "src_community_form", "reportId": "rpt_community_w30", "type": "structured_form", "name": "Community relations return", "addedAt": "2026-07-28T08:22:00+01:00", "status": "extracted" },
+    { "id": "src_ops_w31_form", "reportId": "rpt_ops_w31", "type": "structured_form", "name": "Operations structured return", "addedAt": "2026-07-31T12:00:00+01:00", "status": "in_progress" },
+    { "id": "src_hse_w31_form", "reportId": "rpt_hse_w31", "type": "structured_form", "name": "HSE structured return", "addedAt": "2026-07-31T13:05:00+01:00", "status": "extracted" }
+  ],
+  "sourceReferences": [
+    { "id": "ref_prod_actual", "entityPath": "production.kpis.grossOilActualBopd", "sourceId": "src_ops_xlsx", "locator": "Daily Production!H20:H26", "excerpt": "Average gross production: 96,800 bopd", "confidence": 0.99 },
+    { "id": "ref_prod_plan", "entityPath": "production.kpis.grossOilPlanBopd", "sourceId": "src_ops_form", "locator": "Production Performance > Weekly Plan", "excerpt": "Approved weekly baseline: 120,000 bopd", "confidence": 1.0 },
+    { "id": "ref_prod_cause", "entityPath": "production.kpis.primaryConstraint", "sourceId": "src_ops_email", "locator": "Email body, paragraph 2", "excerpt": "Compressor Station B remains at reduced capacity pending rotor delivery.", "confidence": 0.96 },
+    { "id": "ref_liquidity", "entityPath": "finance.kpis.availableLiquidityUsd", "sourceId": "src_fin_xlsx", "locator": "Liquidity Summary!B14", "excerpt": "Total available liquidity: USD 42.5m", "confidence": 0.99 },
+    { "id": "ref_repayment", "entityPath": "finance.kpis.nextRepaymentUsd", "sourceId": "src_fin_xlsx", "locator": "Debt Schedule!F9:G9", "excerpt": "USD 15.0m due 30 September 2026", "confidence": 0.99 },
+    { "id": "ref_trir", "entityPath": "hse.kpis.trir", "sourceId": "src_hse_form", "locator": "Safety Performance > TRIR", "excerpt": "Current TRIR 0.17 against target 0.12", "confidence": 1.0 },
+    { "id": "ref_hse_incident", "entityPath": "hse.incidents[0]", "sourceId": "src_hse_pdf", "locator": "Page 2, Incident Summary", "excerpt": "High-pressure gas release occurred during compressor isolation; no lost-time injury.", "confidence": 0.97 },
+    { "id": "ref_legal_deadline", "entityPath": "legalRegulatory.risks[0].dueDate", "sourceId": "src_legal_form", "locator": "Material Matters > Community Access Claim", "excerpt": "Next response deadline: 5 August 2026", "confidence": 1.0 },
+    { "id": "ref_regulatory", "entityPath": "legalRegulatory.calendar[1]", "sourceId": "src_legal_transcript", "locator": "Transcript, 00:12:14–00:13:02", "excerpt": "NUPRC requested the flare-management response by 8 August.", "confidence": 0.91 }
+  ],
+  "reviewComments": [
+    { "id": "cmt_fin_001", "reportId": "rpt_fin_w30", "field": "Available liquidity", "authorId": "usr_commercial", "question": "Please attach the final bank confirmation supporting unrestricted cash.", "status": "open", "createdAt": "2026-07-29T10:20:00+01:00", "dueDate": "2026-08-01" },
+    { "id": "cmt_projects_001", "reportId": "rpt_projects_w30", "field": "Compressor restoration milestone", "authorId": "usr_commercial", "question": "The workbook shows 9 August while the narrative states 6 August. Confirm the authoritative target date.", "status": "open", "createdAt": "2026-07-29T10:42:00+01:00", "dueDate": "2026-08-01" },
+    { "id": "cmt_hse_w31", "reportId": "rpt_hse_w31", "field": "Corrective actions", "authorId": "usr_commercial", "question": "Provide evidence that the firewater-pump inspection was completed or confirm the revised date.", "status": "open", "createdAt": "2026-07-31T15:05:00+01:00", "dueDate": "2026-08-03" }
+  ],
+  "commercialDashboard": {
+    "cycleId": "cycle_2026_w30",
+    "reportingReadinessPercent": 82,
+    "approvedReports": 6,
+    "requiredReports": 8,
+    "attentionItems": [
+      { "id": "attn_001", "type": "production_variance", "title": "Production variance awaiting Operations explanation", "severity": "high", "relatedId": "rpt_ops_w30", "status": "resolved_for_publication" },
+      { "id": "attn_002", "type": "missing_evidence", "title": "Finance submission missing bank confirmation", "severity": "high", "relatedId": "rpt_fin_w30", "status": "open" },
+      { "id": "attn_003", "type": "source_conflict", "title": "Project milestone inconsistency", "severity": "medium", "relatedId": "rpt_projects_w30", "status": "open" },
+      { "id": "attn_004", "type": "hse_incident", "title": "HSE incident requires corrective-action clarification", "severity": "high", "relatedId": "inc_001", "status": "open" },
+      { "id": "attn_005", "type": "legal_deadline", "title": "Community access response due 5 August", "severity": "high", "relatedId": "risk_legal_001", "status": "open" }
+    ],
+    "priorities": [
+      { "id": "pri_001", "title": "Review Operations weekly report", "relatedId": "rpt_ops_w30", "status": "completed", "dueDate": "2026-07-29" },
+      { "id": "pri_002", "title": "Resolve Finance and bank-payment discrepancy", "relatedId": "rpt_fin_w30", "status": "in_progress", "dueDate": "2026-08-01" },
+      { "id": "pri_003", "title": "Approve HSE submission", "relatedId": "rpt_hse_w30", "status": "completed", "dueDate": "2026-07-29" },
+      { "id": "pri_004", "title": "Review delayed project milestone", "relatedId": "rpt_projects_w30", "status": "in_progress", "dueDate": "2026-08-01" },
+      { "id": "pri_005", "title": "Publish weekly executive update", "relatedId": "cycle_2026_w30", "status": "completed", "dueDate": "2026-07-30" }
+    ]
+  },
+  "recommendations": [
+    { "id": "rec_prod", "cycleId": "cycle_2026_w30", "category": "production", "priority": "critical", "title": "Accelerate Compressor Station B restoration", "explanation": "Gross production averaged 96,800 bopd, 19.3% below the 120,000 bopd plan, primarily because Compressor Station B operated at reduced capacity.", "impact": "Approximately 23,200 bopd of deferred production while the constraint persists.", "status": "decision_recorded", "relatedIds": ["prj_compressor", "rpt_ops_w30", "inc_001"] },
+    { "id": "rec_integrity", "cycleId": "cycle_2026_w30", "category": "integrity", "priority": "high", "title": "Approve urgent export-line integrity expenditure", "explanation": "The Ughelli inspection programme is seven days behind plan and has an immediate USD 3.2m commitment.", "impact": "Reduces the risk of a longer evacuation constraint and unplanned outage.", "status": "pending", "relatedIds": ["prj_integrity", "com_integrity"] },
+    { "id": "rec_legal", "cycleId": "cycle_2026_w30", "category": "legal", "priority": "high", "title": "Resolve community access claim before 5 August", "explanation": "The claim may restrict inspection access for the export-line programme.", "impact": "Potential USD 6.2m exposure and further schedule delay.", "status": "assigned", "relatedIds": ["risk_legal_001"] },
+    { "id": "rec_cash", "cycleId": "cycle_2026_w30", "category": "finance", "priority": "high", "title": "Protect liquidity ahead of September repayment", "explanation": "Available liquidity is USD 42.5m with a USD 15m repayment due on 30 September; the downside case approaches minimum operating liquidity in Q4.", "impact": "Preserves operating runway and reduces refinancing pressure.", "status": "pending", "relatedIds": ["rpt_fin_w30", "com_debt"] }
+  ],
+  "decisions": [
+    { "id": "dec_001", "recommendationId": "rec_prod", "cycleId": "cycle_2026_w30", "decisionType": "approve", "rationale": "Proceed with expedited rotor logistics and daily restoration tracking.", "ownerId": "usr_operations", "dueDate": "2026-08-04", "status": "in_progress", "createdBy": "usr_ceo", "createdAt": "2026-07-31T09:20:00+01:00" },
+    { "id": "dec_002", "recommendationId": "rec_legal", "cycleId": "cycle_2026_w30", "decisionType": "assign_action", "rationale": "Conclude access protocol with community representatives before the response deadline.", "ownerId": "usr_legal", "dueDate": "2026-08-04", "status": "not_started", "createdBy": "usr_ceo", "createdAt": "2026-07-31T09:28:00+01:00" }
+  ],
+  "auditEvents": [
+    { "id": "audit_001", "actorId": "usr_operations", "action": "report_submitted", "entityType": "department_report", "entityId": "rpt_ops_w30", "timestamp": "2026-07-28T09:18:00+01:00", "summary": "Operations report certified and submitted." },
+    { "id": "audit_002", "actorId": "usr_commercial", "action": "report_approved", "entityType": "department_report", "entityId": "rpt_ops_w30", "timestamp": "2026-07-29T12:10:00+01:00", "summary": "Operations report approved for consolidation." },
+    { "id": "audit_003", "actorId": "usr_commercial", "action": "clarification_requested", "entityType": "department_report", "entityId": "rpt_fin_w30", "timestamp": "2026-07-29T10:20:00+01:00", "summary": "Bank confirmation requested for unrestricted cash." },
+    { "id": "audit_004", "actorId": "usr_commercial", "action": "executive_update_published", "entityType": "reporting_cycle", "entityId": "cycle_2026_w30", "timestamp": "2026-07-30T16:15:00+01:00", "summary": "Weekly executive update published with controlled exceptions." },
+    { "id": "audit_005", "actorId": "usr_ceo", "action": "decision_recorded", "entityType": "recommendation", "entityId": "rec_prod", "timestamp": "2026-07-31T09:20:00+01:00", "summary": "Compressor restoration acceleration approved and assigned." },
+    { "id": "audit_006", "actorId": "usr_ceo", "action": "action_assigned", "entityType": "recommendation", "entityId": "rec_legal", "timestamp": "2026-07-31T09:28:00+01:00", "summary": "Community access resolution assigned to Legal & Regulatory Manager." }
+  ],
+  "demoStates": {
+    "defaultPersonaId": "usr_commercial",
+    "defaultPublishedCycleId": "cycle_2026_w30",
+    "defaultOpenCycleId": "cycle_2026_w31",
+    "availableScenarios": [
+      { "id": "canonical", "label": "Canonical at-risk reporting cycle" },
+      { "id": "empty", "label": "No submissions received" },
+      { "id": "processing", "label": "Sources processing" },
+      { "id": "conflict", "label": "Unresolved multi-source conflict" },
+      { "id": "ready_to_publish", "label": "All required reports approved" }
+    ]
+  }
+}
