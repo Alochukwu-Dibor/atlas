@@ -9,7 +9,7 @@ import {
 } from './components/Shells';
 import { StateView, ToastProvider } from './components/Ui';
 
-const dashboardPage = () => import('./pages/DashboardPages');
+const executivePage = () => import('./pages/ExecutivePages');
 const reportingPage = () => import('./pages/ReportingPages');
 const modulePage = () => import('./pages/ModulePages');
 const CommercialDashboard = lazy(() =>
@@ -28,7 +28,7 @@ const DepartmentReportReview = lazy(() =>
   reportingPage().then((module) => ({ default: module.DepartmentReportReview })),
 );
 const ExecutiveDashboard = lazy(() =>
-  dashboardPage().then((module) => ({ default: module.ExecutiveDashboard })),
+  executivePage().then((module) => ({ default: module.ExecutiveDashboard })),
 );
 const FinancePage = lazy(() => modulePage().then((module) => ({ default: module.FinancePage })));
 const HsePage = lazy(() => modulePage().then((module) => ({ default: module.HsePage })));

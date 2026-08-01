@@ -157,6 +157,55 @@ export function getProductionKpis() {
   };
 }
 
+export type ProductionInterest = 'gross' | 'working_interest';
+
+export function getProductionScope(
+  fieldId = 'asset_oml30',
+  interest: ProductionInterest = 'gross',
+) {
+  const multiplier =
+    interest === 'working_interest' ? atlas.organisation.workingInterestPercent / 100 : 1;
+  const selectedFields =
+    fieldId === 'asset_oml30'
+      ? atlas.production.fields
+      : atlas.production.fields.filter((field) => field.fieldId === fieldId);
+  const actual = selectedFields.reduce((sum, field) => sum + field.actualBopd, 0) * multiplier;
+  const plan = selectedFields.reduce((sum, field) => sum + field.planBopd, 0) * multiplier;
+  const variance = actual - plan;
+  return {
+    actual: Math.round(actual),
+    plan: Math.round(plan),
+    variance: Math.round(variance),
+    variancePercent: plan ? Number(((variance / plan) * 100).toFixed(1)) : 0,
+    fieldCount: selectedFields.length,
+    interest,
+  };
+}
+
+export function getLiquidity() {
+  const { unrestrictedCashUsd, restrictedCashUsd, undrawnFacilitiesUsd } = atlas.finance.kpis;
+  return {
+    unrestrictedCashUsd,
+    restrictedCashUsd,
+    undrawnFacilitiesUsd,
+    availableLiquidityUsd: unrestrictedCashUsd + restrictedCashUsd + undrawnFacilitiesUsd,
+    runwayMonths: atlas.finance.kpis.runwayMonths,
+  };
+}
+
+export function getExecutiveMetrics() {
+  return {
+    production: getProductionKpis(),
+    liquidity: getLiquidity(),
+    hse: atlas.hse.kpis,
+    legal: atlas.legalRegulatory.kpis,
+  };
+}
+
+export function buildSyntheticExport(title: string) {
+  return `${title}\nGenerated ${format.date(atlas.meta.asOf)}\n\n${atlas.meta.disclosure}`;
+}
+
 export function getSourceReference(entityPath: string) {
   return atlas.sourceReferences.find((reference) => reference.entityPath === entityPath);
 }

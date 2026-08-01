@@ -3,7 +3,10 @@ import {
   atlas,
   format,
   getDepartmentReports,
+  getExecutiveMetrics,
+  getLiquidity,
   getProductionKpis,
+  getProductionScope,
   getReadiness,
   getSourceReference,
   toneForStatus,
@@ -42,5 +45,29 @@ describe('Atlas data selectors', () => {
     expect(format.usd(42_500_000)).toBe('$42.5m');
     expect(toneForStatus('overdue')).toBe('critical');
     expect(toneForStatus('needs_clarification')).toBe('warning');
+  });
+
+  it('reconciles gross production and working-interest calculations', () => {
+    const gross = getProductionScope();
+    const workingInterest = getProductionScope('asset_oml30', 'working_interest');
+    expect(gross.actual).toBe(getProductionKpis().actual);
+    expect(gross.plan).toBe(getProductionKpis().plan);
+    expect(workingInterest.actual).toBe(43_560);
+    expect(workingInterest.actual).toBe(Math.round(gross.actual * 0.45));
+  });
+
+  it('derives liquidity and repeated executive metrics from shared selectors', () => {
+    const liquidity = getLiquidity();
+    expect(liquidity.availableLiquidityUsd).toBe(
+      liquidity.unrestrictedCashUsd + liquidity.restrictedCashUsd + liquidity.undrawnFacilitiesUsd,
+    );
+    expect(getExecutiveMetrics().production.actual).toBe(getProductionKpis().actual);
+    expect(getExecutiveMetrics().liquidity.availableLiquidityUsd).toBe(
+      atlas.finance.kpis.availableLiquidityUsd,
+    );
+    expect(getExecutiveMetrics().hse.trir).toBe(atlas.executiveSummary.hse.trir);
+    expect(getExecutiveMetrics().legal.estimatedExposureUsd).toBe(
+      atlas.executiveSummary.legal.estimatedExposureUsd,
+    );
   });
 });

@@ -4,7 +4,7 @@ Atlas is a functional front-end prototype for synthetic OML 30 executive reporti
 
 > All operational, financial, HSE, and legal figures in this repository are synthetic and do not represent Shoreline Natural Resources’ actual performance.
 
-## Phase 2 scope
+## Phase 3 scope
 
 The current prototype includes:
 
@@ -18,8 +18,11 @@ The current prototype includes:
 - field-level clarification and response, resubmission, controlled Commercial overrides, approval, readiness, and audit history
 - device-local workflow persistence with canonical reset
 - Vitest and Testing Library coverage for selectors, permissions, state transitions, audit preservation, and the four approved input methods
+- a complete full-width CEO dashboard with reconciled production, cash, HSE, and legal performance
+- recommendation decisions, assignment requirements, visible owners and due dates, persistence, and audit events
+- functional Production, Finance, HSE, and Legal & Regulatory charts, filters, tables, accessible equivalents, exports, and detail drawers
 
-The build intentionally stops after Phase 2 Commercial approval. See `BUILD_AUDIT.md` for the verified boundary and remaining simulated scope.
+The build intentionally stops after the verified Phase 3 dashboards. See `BUILD_AUDIT.md` for the precise boundary and remaining simulated scope.
 
 ## Run locally
 
@@ -76,6 +79,8 @@ npm run build
 - `src/state/workflow.ts` — typed report state machine, audit behavior, validation gates, persistence, and workflow selectors
 - `src/components/` — reusable shells, UI primitives, and accessible chart wrappers
 - `src/pages/` — route-level structures grouped by reporting dashboards and performance modules
+- `src/pages/ExecutivePages.tsx` — CEO performance, recommendations, decisions, and audit interaction
+- `src/state/executive.ts` — deterministic decision state, assignment gates, persistence, and audit events
 - `src/styles.css` — Atlas Design System v3 tokens and structural desktop/responsive layouts
 
 Charts expose a textual summary and a switchable data-table equivalent. Print exports include a synthetic-data disclosure.

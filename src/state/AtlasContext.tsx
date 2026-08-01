@@ -16,6 +16,13 @@ import {
   type WorkflowAction,
   type WorkflowState,
 } from './workflow';
+import {
+  executiveReducer,
+  executiveStorageKey,
+  loadExecutiveState,
+  type ExecutiveAction,
+  type ExecutiveState,
+} from './executive';
 
 interface AtlasState {
   activeUserId: string;
@@ -25,6 +32,8 @@ interface AtlasState {
   scenarioId: ScenarioId;
   workflow: WorkflowState;
   workflowDispatch: Dispatch<WorkflowAction>;
+  executive: ExecutiveState;
+  executiveDispatch: Dispatch<ExecutiveAction>;
   setActiveUserId: (id: string) => void;
   setAssetId: (id: string) => void;
   setCycleId: (id: string) => void;
@@ -41,11 +50,20 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
   const [cycleId, setCycleId] = useState(defaults.defaultPublishedCycleId);
   const [scenarioId, setScenarioId] = useState<ScenarioId>('canonical');
   const [workflow, workflowDispatch] = useReducer(workflowReducer, undefined, loadWorkflowState);
+  const [executive, executiveDispatch] = useReducer(
+    executiveReducer,
+    undefined,
+    loadExecutiveState,
+  );
   const role = atlas.users.find((user) => user.id === activeUserId)?.role ?? 'commercial_manager';
 
   useEffect(() => {
     window.localStorage.setItem(workflowStorageKey, JSON.stringify(workflow));
   }, [workflow]);
+
+  useEffect(() => {
+    window.localStorage.setItem(executiveStorageKey, JSON.stringify(executive));
+  }, [executive]);
 
   const value = useMemo<AtlasState>(
     () => ({
@@ -56,6 +74,8 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
       scenarioId,
       workflow,
       workflowDispatch,
+      executive,
+      executiveDispatch,
       setActiveUserId,
       setAssetId,
       setCycleId,
@@ -66,7 +86,9 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
         setCycleId(defaults.defaultPublishedCycleId);
         setScenarioId('canonical');
         window.localStorage.removeItem(workflowStorageKey);
+        window.localStorage.removeItem(executiveStorageKey);
         workflowDispatch({ type: 'RESET' });
+        executiveDispatch({ type: 'RESET' });
       },
     }),
     [
@@ -78,6 +100,7 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
       role,
       scenarioId,
       workflow,
+      executive,
     ],
   );
 

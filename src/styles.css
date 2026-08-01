@@ -829,6 +829,29 @@ tr.is-clickable:hover {
   grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
+.inline-controls,
+.module-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.module-filter-row {
+  justify-content: flex-end;
+  margin: -8px 0 16px;
+  color: var(--atlas-text-secondary);
+  font-size: 12px;
+}
+.export-disclosure {
+  margin: -12px 0 16px;
+  color: var(--atlas-text-muted);
+  font-size: 10px;
+  white-space: pre-line;
+}
+.chart-context,
+.drawer-disclosure {
+  color: var(--atlas-text-secondary);
+  font-size: 11px;
+}
 .chart-card-layout {
   display: grid;
   grid-template-columns: 130px 1fr;
@@ -866,6 +889,19 @@ tr.is-clickable:hover {
 }
 .recommendation p {
   margin-bottom: 4px;
+}
+.recommendation > div:first-child {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+.decision-summary {
+  margin-top: 10px;
+  padding: 10px;
+  border-left: 3px solid var(--atlas-primary);
+  background: var(--atlas-primary-tint);
+  color: var(--atlas-text-secondary);
+  font-size: 12px;
 }
 .overlay {
   position: fixed;
@@ -1119,6 +1155,27 @@ tr.is-clickable:hover {
 .timeline__dot--due_soon {
   background: var(--atlas-warning);
   box-shadow: 0 0 0 1px var(--atlas-warning);
+}
+.timeline--horizontal {
+  grid-template-columns: repeat(5, minmax(135px, 1fr));
+  overflow-x: auto;
+  padding: 18px 0 0;
+  border-top: 2px solid var(--atlas-border);
+  border-left: 0;
+}
+.timeline--horizontal button {
+  padding: 18px 12px 8px 0;
+}
+.timeline--horizontal .timeline__dot {
+  top: -6px;
+  left: 2px;
+}
+.month-boundary {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--atlas-border-strong);
+  color: var(--atlas-text-secondary);
+  font-size: 11px;
 }
 
 .method-inputs {
