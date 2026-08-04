@@ -131,7 +131,7 @@ describe('route architecture', () => {
     await user.selectOptions(department, 'dept_finance');
     await user.click(screen.getByRole('link', { name: 'Submit Update' }));
     expect(
-      await screen.findByRole('heading', { name: 'Submit Weekly Execution Update' }),
+      await screen.findByRole('heading', { name: 'Step 1 of 3 — Context & methods' }),
     ).toBeVisible();
     expect(screen.getByLabelText('Department')).toHaveValue('Finance');
     await user.click(screen.getByRole('button', { name: 'Continue' }));

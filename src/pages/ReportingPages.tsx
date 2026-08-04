@@ -583,10 +583,6 @@ export function CreateReportPage() {
 
   return (
     <>
-      <PageHeader
-        title="Submit Weekly Execution Update"
-        description="Deterministic extraction and device-local persistence for synthetic prototype data."
-      />
       <ol className="steps" aria-label="Update creation progress">
         <li className={step === 1 ? 'is-active' : 'is-complete'}>
           <span>{step === 1 ? '1' : <Check aria-hidden="true" />}</span>Context & methods
@@ -598,6 +594,15 @@ export function CreateReportPage() {
           <span>3</span>Review & submit
         </li>
       </ol>
+      <PageHeader
+        title={
+          step === 1
+            ? 'Step 1 of 3 — Context & methods'
+            : step === 2
+              ? 'Step 2 of 3 — Weekly update'
+              : 'Step 3 of 3 — Review & submit'
+        }
+      />
       {step === 1 ? (
         <>
           <Panel title="1–4. Confirm update context" className="section">

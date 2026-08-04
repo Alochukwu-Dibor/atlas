@@ -3,6 +3,7 @@ import {
   BarChart3,
   BriefcaseBusiness,
   ClipboardCheck,
+  ChevronDown,
   FileText,
   Gavel,
   LayoutDashboard,
@@ -38,15 +39,7 @@ const executiveNavItems = [
 ];
 
 export function Brand() {
-  return (
-    <div className="brand">
-      <span className="brand__mark">A</span>
-      <div>
-        <strong>Atlas</strong>
-        <small>Shoreline Natural Resources</small>
-      </div>
-    </div>
-  );
+  return <div className="brand">Atlas</div>;
 }
 
 function PersonaControl() {
@@ -73,13 +66,27 @@ function PersonaControl() {
             : '/commercial',
     );
   };
+  const user = getUser(activeUserId)!;
   return (
-    <Select
-      label="Active demo persona"
-      value={activeUserId}
-      onChange={onChange}
-      options={roles.map((user) => ({ value: user.id, label: user.title }))}
-    />
+    <label className="persona-control">
+      <span className="avatar" aria-hidden="true" />
+      <span className="persona-control__identity">
+        <strong>{user.name}</strong>
+        <small>{user.title}</small>
+      </span>
+      <ChevronDown aria-hidden="true" />
+      <select
+        aria-label="Active demo persona"
+        value={activeUserId}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        {roles.map((role) => (
+          <option key={role.id} value={role.id}>
+            {role.title}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -223,26 +230,6 @@ function ScenarioOutlet() {
   return <Outlet />;
 }
 
-function Profile() {
-  const { activeUserId } = useAtlas();
-  const user = getUser(activeUserId)!;
-  return (
-    <div className="profile">
-      <span className="avatar">
-        {user.name
-          .split(' ')
-          .map((name) => name[0])
-          .join('')
-          .slice(0, 2)}
-      </span>
-      <div>
-        <strong>{user.name}</strong>
-        <small>{user.title}</small>
-      </div>
-    </div>
-  );
-}
-
 export function ContextControls({ allowOpenCycle = true }: { allowOpenCycle?: boolean }) {
   const {
     assetId,
@@ -329,35 +316,41 @@ export function SidebarShell() {
   }
   const primaryItems = role === 'commercial_manager' ? commercialNavItems : executiveNavItems;
   return (
-    <div className="shell shell--sidebar">
-      <aside className="sidebar">
-        <Brand />
-        <nav aria-label="Primary navigation">
-          {primaryItems.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} className={({ isActive }) => (isActive ? 'is-active' : '')}>
-              <Icon aria-hidden="true" />
-              {label}
-            </NavLink>
-          ))}
-        </nav>
-        {role === 'commercial_manager' && (
-          <nav aria-label="Configuration navigation" className="sidebar__configuration">
-            <span className="sidebar__section-label">Configuration</span>
-            {commercialConfigurationItems.map(({ to, label, icon: Icon }) => (
+    <div className="shell shell--top">
+      <header className="app-header">
+        <div className="app-header__top">
+          <Brand />
+          <div className="app-header__actions">
+            <AssignedActionInbox />
+            <PersonaControl />
+          </div>
+        </div>
+        <div className="app-header__nav-row">
+          <nav aria-label="Primary navigation" className="top-nav">
+            {primaryItems.map(({ to, label, icon: Icon }) => (
               <NavLink key={to} to={to} className={({ isActive }) => (isActive ? 'is-active' : '')}>
                 <Icon aria-hidden="true" />
                 {label}
               </NavLink>
             ))}
           </nav>
-        )}
-        <div className="sidebar__footer">
-          <AssignedActionInbox />
-          <PersonaControl />
-          <Profile />
-          <span className="synthetic-note">Synthetic prototype data</span>
+          {role === 'commercial_manager' && (
+            <nav aria-label="Configuration navigation" className="top-nav top-nav--configuration">
+              {commercialConfigurationItems.map(({ to, label, icon: Icon }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  className={({ isActive }) => (isActive ? 'is-active' : '')}
+                >
+                  <Icon aria-hidden="true" />
+                  {label}
+                </NavLink>
+              ))}
+            </nav>
+          )}
         </div>
-      </aside>
+        <span className="synthetic-note">Synthetic prototype data</span>
+      </header>
       <main className="workspace">
         <ScenarioOutlet key={activeUserId} />
       </main>
@@ -368,7 +361,6 @@ export function SidebarShell() {
 export function DepartmentShell() {
   const { role, departmentId } = useAtlas();
   const department = getDepartment(departmentId)!;
-  const manager = getUser(department.managerId ?? '');
   if (role !== 'department_manager') {
     return (
       <StateView
@@ -381,34 +373,22 @@ export function DepartmentShell() {
   }
   return (
     <div className="shell shell--department">
-      <header className="department-header">
-        <Brand />
-        <span className="module-label">
-          <FileText aria-hidden="true" />
-          Weekly Execution Updates · {department.name}
-        </span>
-        <span className="last-updated">Last updated 1 Aug 2026 · 09:00 WAT</span>
-        <div className="department-header__actions">
+      <header className="app-header department-header">
+        <div className="app-header__top">
+          <Brand />
+          <div className="app-header__actions department-header__actions">
+            <AssignedActionInbox responsibleOnly responsibleUserId={department.managerId} />
+            <DepartmentControl />
+            <PersonaControl />
+          </div>
+        </div>
+        <div className="app-header__nav-row">
           <nav className="contributor-nav" aria-label="Contributor navigation">
             <NavLink to="/department/reports/new">Submit Update</NavLink>
-            <NavLink to="/department">My Updates</NavLink>
+            <NavLink to="/department" end>
+              My Updates
+            </NavLink>
           </nav>
-          <PersonaControl />
-          <DepartmentControl />
-          <AssignedActionInbox responsibleOnly responsibleUserId={department.managerId} />
-          <div className="profile">
-            <span className="avatar">
-              {(manager?.name ?? department.name)
-                .split(' ')
-                .map((name) => name[0])
-                .join('')
-                .slice(0, 2)}
-            </span>
-            <div>
-              <strong>{manager?.name ?? 'Acting Department Manager'}</strong>
-              <small>{manager?.title ?? `${department.name} Manager`}</small>
-            </div>
-          </div>
         </div>
       </header>
       <main className="department-workspace">
@@ -432,18 +412,21 @@ export function ExecutiveShell() {
   }
   return (
     <div className="shell shell--executive">
-      <header className="executive-header">
-        <Brand />
-        <nav className="executive-nav" aria-label="Executive navigation">
-          {executiveNavItems.map(({ to, label }) => (
-            <NavLink key={to} to={to} end={to === '/executive'}>
-              {label}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="executive-header__actions">
-          <PersonaControl />
-          <Profile />
+      <header className="app-header executive-header">
+        <div className="app-header__top">
+          <Brand />
+          <div className="app-header__actions executive-header__actions">
+            <PersonaControl />
+          </div>
+        </div>
+        <div className="app-header__nav-row">
+          <nav className="executive-nav" aria-label="Executive navigation">
+            {executiveNavItems.map(({ to, label }) => (
+              <NavLink key={to} to={to} end={to === '/executive'}>
+                {label}
+              </NavLink>
+            ))}
+          </nav>
         </div>
       </header>
       <main className="executive-workspace">
