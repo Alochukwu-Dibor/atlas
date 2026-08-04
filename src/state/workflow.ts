@@ -1,7 +1,13 @@
 import { atlas, getDepartment, getUser } from '../data/atlas';
 
 export type ReportStatus =
-  'draft' | 'submitted' | 'needs_clarification' | 'resubmitted' | 'approved' | 'published_locked';
+  | 'draft'
+  | 'submitted'
+  | 'needs_clarification'
+  | 'resubmitted'
+  | 'rejected'
+  | 'approved'
+  | 'published_locked';
 
 export type SourceMethod =
   'structured_form' | 'document_upload' | 'xlsx_upload' | 'paste_email_or_transcript';
@@ -91,6 +97,47 @@ export interface WorkflowAuditEvent {
   after?: string;
 }
 
+export interface CommitmentOutcome {
+  commitmentId: string;
+  currentOutcome: string;
+  explanation: string;
+  newForecast: string;
+  status: string;
+  delayReason: string;
+  evidenceIds: string[];
+}
+
+export interface WorkflowCommitment {
+  id: string;
+  reportId: string | null;
+  description: string;
+  ownerId: string;
+  departmentId: string;
+  dueDate: string;
+  expectedOutcome: string;
+  linkedType: 'objective' | 'kpi' | 'activity' | 'milestone' | 'risk';
+  linkedId: string;
+  status: string;
+  delayReason: string;
+  revisedForecast: string;
+  evidenceIds: string[];
+  revisionCount: number;
+}
+
+export interface WeeklyUpdateContent {
+  executiveHighlight: string;
+  kpiUpdates: string;
+  completedActivityIds: string[];
+  ongoingActivityIds: string[];
+  previousCommitmentOutcomes: CommitmentOutcome[];
+  risksAndConstraints: string;
+  forecastChanges: string;
+  nextWeekPlan: string;
+  supportRequired: string;
+  materialChange: string;
+  validationWarnings: string[];
+}
+
 export interface WorkflowReport {
   id: string;
   cycleId: string;
@@ -112,6 +159,8 @@ export interface WorkflowReport {
   certification: boolean;
   revision: number;
   clarificationAnswered: boolean;
+  weekly: WeeklyUpdateContent;
+  commitmentIds: string[];
   supersedesReportId?: string;
 }
 
@@ -125,8 +174,9 @@ export interface CyclePublication {
 }
 
 export interface WorkflowState {
-  version: 4;
+  version: 5;
   reports: WorkflowReport[];
+  commitments: WorkflowCommitment[];
   sources: WorkflowSource[];
   comments: WorkflowComment[];
   corrections: ManagerCorrection[];
@@ -144,6 +194,7 @@ function normaliseStatus(status: string): ReportStatus {
       'submitted',
       'needs_clarification',
       'resubmitted',
+      'rejected',
       'approved',
       'published_locked',
     ].includes(status)
@@ -151,6 +202,64 @@ function normaliseStatus(status: string): ReportStatus {
     return status as ReportStatus;
   }
   return 'draft';
+}
+
+function weeklyContentFor(departmentId: string, cycleId: string): WeeklyUpdateContent {
+  const fixture = atlas.weeklyExecutionUpdates.find(
+    (update) => update.departmentId === departmentId && update.reportingPeriodId === cycleId,
+  );
+  return {
+    executiveHighlight:
+      fixture?.executiveHighlight ??
+      `${getDepartment(departmentId)?.name ?? 'Department'} execution remained stable this period.`,
+    kpiUpdates: fieldsForDepartment(departmentId)
+      .map((field) => `${field.label}: ${field.value}${field.unit ? ` ${field.unit}` : ''}`)
+      .join('\n'),
+    completedActivityIds: fixture?.completedActivityIds ?? [],
+    ongoingActivityIds:
+      fixture?.ongoingActivityIds ??
+      atlas.operationalActivities
+        .filter((activity) => activity.departmentId === departmentId)
+        .map((activity) => activity.id),
+    previousCommitmentOutcomes: [],
+    risksAndConstraints:
+      fixture?.riskIds
+        .map((riskId) => atlas.executionRisks.find((risk) => risk.id === riskId)?.description)
+        .filter(Boolean)
+        .join('\n') ?? '',
+    forecastChanges: fixture?.forecastChanges ?? 'No material forecast change reported.',
+    nextWeekPlan: fixture?.nextWeekPlan ?? 'Continue approved departmental delivery plan.',
+    supportRequired: fixture?.supportRequired ?? 'No additional support required.',
+    materialChange: fixture?.forecastChanges ?? 'No material change.',
+    validationWarnings: [],
+  };
+}
+
+function initialCommitments(): WorkflowCommitment[] {
+  return atlas.executionCommitments.map((commitment) => ({
+    id: commitment.id,
+    reportId: null,
+    description: commitment.description,
+    ownerId: commitment.ownerId ?? commitment.departmentId ?? '',
+    departmentId: commitment.departmentId ?? '',
+    dueDate: commitment.dueDate,
+    expectedOutcome: commitment.expectedResult,
+    linkedType: commitment.linkedActivityId
+      ? 'activity'
+      : commitment.linkedKpiId
+        ? 'kpi'
+        : 'objective',
+    linkedId:
+      commitment.linkedActivityId ??
+      commitment.linkedKpiId ??
+      commitment.strategicObjectiveIds[0] ??
+      '',
+    status: commitment.status,
+    delayReason: commitment.delayReason ?? '',
+    revisedForecast: commitment.revisedForecast ?? commitment.dueDate,
+    evidenceIds: [...commitment.evidenceIds],
+    revisionCount: commitment.revisionCount,
+  }));
 }
 
 function normaliseSourceStatus(status: string): SourceStatus {
@@ -442,6 +551,10 @@ export function createInitialWorkflowState(): WorkflowState {
     certification: report.status !== 'draft',
     revision: report.status === 'needs_clarification' ? 1 : 0,
     clarificationAnswered: false,
+    weekly: weeklyContentFor(report.departmentId, report.cycleId),
+    commitmentIds: atlas.executionCommitments
+      .filter((commitment) => commitment.departmentId === report.departmentId)
+      .map((commitment) => commitment.id),
   }));
 
   for (const department of atlas.departments.filter((item) => item.required)) {
@@ -474,6 +587,10 @@ export function createInitialWorkflowState(): WorkflowState {
         certification: false,
         revision: 0,
         clarificationAnswered: false,
+        weekly: weeklyContentFor(department.id, atlas.demoStates.defaultOpenCycleId),
+        commitmentIds: atlas.executionCommitments
+          .filter((commitment) => commitment.departmentId === department.id)
+          .map((commitment) => commitment.id),
       });
     }
   }
@@ -519,8 +636,9 @@ export function createInitialWorkflowState(): WorkflowState {
   }));
 
   return {
-    version: 4,
+    version: 5,
     reports,
+    commitments: initialCommitments(),
     sources,
     comments,
     corrections: [],
@@ -579,6 +697,21 @@ export type WorkflowAction =
     }
   | { type: 'REMOVE_SOURCE'; reportId: string; sourceId: string; actorId: string; now: string }
   | { type: 'CORRECT_FIELD'; correction: ManagerCorrection }
+  | {
+      type: 'UPDATE_WEEKLY_CONTENT';
+      reportId: string;
+      content: WeeklyUpdateContent;
+      actorId: string;
+      now: string;
+    }
+  | {
+      type: 'UPDATE_COMMITMENT_OUTCOME';
+      reportId: string;
+      outcome: CommitmentOutcome;
+      actorId: string;
+      now: string;
+    }
+  | { type: 'ADD_COMMITMENT'; commitment: WorkflowCommitment; actorId: string; now: string }
   | { type: 'SUBMIT_REPORT'; reportId: string; actorId: string; now: string }
   | { type: 'REQUEST_CLARIFICATION'; comment: WorkflowComment }
   | {
@@ -590,6 +723,7 @@ export type WorkflowAction =
       now: string;
     }
   | { type: 'APPROVE_REPORT'; reportId: string; actorId: string; now: string }
+  | { type: 'REJECT_REPORT'; reportId: string; actorId: string; reason: string; now: string }
   | { type: 'APPLY_OVERRIDE'; override: ControlledOverride }
   | {
       type: 'SAVE_EXECUTIVE_NARRATIVE';
@@ -785,6 +919,10 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
           certification: true,
           revision: 0,
           clarificationAnswered: true,
+          weekly: weeklyContentFor(department.id, action.cycleId),
+          commitmentIds: atlas.executionCommitments
+            .filter((commitment) => commitment.departmentId === department.id)
+            .map((commitment) => commitment.id),
         });
       }
     }
@@ -845,6 +983,7 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
       reports: updateReport(state.reports, action.source.reportId, (report) => ({
         ...report,
         sourceIds: [...report.sourceIds, action.source.id],
+        evidenceIds: [...new Set([...report.evidenceIds, action.source.id])],
         fields: report.fields.map((field) =>
           field.key in action.source.extractedValues
             ? { ...field, sourceIds: [...new Set([...field.sourceIds, action.source.id])] }
@@ -883,6 +1022,9 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
         sourceIds: report.sourceIds.map((id) =>
           id === action.sourceId ? action.replacement.id : id,
         ),
+        evidenceIds: report.evidenceIds.map((id) =>
+          id === action.sourceId ? action.replacement.id : id,
+        ),
       })),
       auditEvents: audit(state, {
         actorId: action.actorId,
@@ -905,6 +1047,7 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
       reports: updateReport(state.reports, action.reportId, (report) => ({
         ...report,
         sourceIds: report.sourceIds.filter((id) => id !== action.sourceId),
+        evidenceIds: report.evidenceIds.filter((id) => id !== action.sourceId),
       })),
       auditEvents: audit(state, {
         actorId: action.actorId,
@@ -945,16 +1088,114 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
     };
   }
 
+  if (action.type === 'UPDATE_WEEKLY_CONTENT') {
+    return {
+      ...state,
+      reports: updateReport(state.reports, action.reportId, (report) => ({
+        ...report,
+        weekly: action.content,
+      })),
+      auditEvents: audit(state, {
+        actorId: action.actorId,
+        action: 'weekly_update_structured',
+        entityType: 'weekly_execution_update',
+        entityId: action.reportId,
+        timestamp: action.now,
+        summary: 'Contributor reviewed and saved the structured Weekly Execution Update.',
+      }),
+      lastError: null,
+    };
+  }
+
+  if (action.type === 'UPDATE_COMMITMENT_OUTCOME') {
+    const commitment = state.commitments.find((item) => item.id === action.outcome.commitmentId);
+    if (!commitment) return { ...state, lastError: 'The previous commitment was not found.' };
+    const revised = action.outcome.newForecast !== commitment.revisedForecast;
+    return {
+      ...state,
+      commitments: state.commitments.map((item) =>
+        item.id === commitment.id
+          ? {
+              ...item,
+              status: action.outcome.status,
+              delayReason: action.outcome.delayReason,
+              revisedForecast: action.outcome.newForecast,
+              evidenceIds: action.outcome.evidenceIds,
+              revisionCount: revised ? item.revisionCount + 1 : item.revisionCount,
+            }
+          : item,
+      ),
+      reports: updateReport(state.reports, action.reportId, (report) => ({
+        ...report,
+        weekly: {
+          ...report.weekly,
+          previousCommitmentOutcomes: [
+            ...report.weekly.previousCommitmentOutcomes.filter(
+              (item) => item.commitmentId !== action.outcome.commitmentId,
+            ),
+            action.outcome,
+          ],
+        },
+      })),
+      auditEvents: audit(state, {
+        actorId: action.actorId,
+        action: revised ? 'commitment_forecast_revised' : 'commitment_outcome_recorded',
+        entityType: 'commitment',
+        entityId: commitment.id,
+        timestamp: action.now,
+        summary: `Commitment outcome recorded: ${action.outcome.currentOutcome}`,
+        before: commitment.revisedForecast,
+        after: action.outcome.newForecast,
+      }),
+      lastError: null,
+    };
+  }
+
+  if (action.type === 'ADD_COMMITMENT') {
+    if (
+      !action.commitment.description.trim() ||
+      !action.commitment.ownerId ||
+      !action.commitment.dueDate ||
+      !action.commitment.expectedOutcome.trim() ||
+      !action.commitment.linkedId
+    ) {
+      return { ...state, lastError: 'Complete every required commitment field.' };
+    }
+    return {
+      ...state,
+      commitments: [...state.commitments, action.commitment],
+      reports: action.commitment.reportId
+        ? updateReport(state.reports, action.commitment.reportId, (report) => ({
+            ...report,
+            commitmentIds: [...report.commitmentIds, action.commitment.id],
+          }))
+        : state.reports,
+      auditEvents: audit(state, {
+        actorId: action.actorId,
+        action: 'commitment_created',
+        entityType: 'commitment',
+        entityId: action.commitment.id,
+        timestamp: action.now,
+        summary: `New commitment created: ${action.commitment.description}`,
+      }),
+      lastError: null,
+    };
+  }
+
   if (action.type === 'SUBMIT_REPORT') {
     const report = state.reports.find((item) => item.id === action.reportId);
-    if (!report || !['draft', 'needs_clarification'].includes(report.status)) {
-      return { ...state, lastError: 'Only Draft or Needs Clarification updates can be submitted.' };
+    if (!report || !['draft', 'needs_clarification', 'rejected'].includes(report.status)) {
+      return {
+        ...state,
+        lastError: 'Only Draft, Rejected, or Needs Clarification updates can be submitted.',
+      };
     }
     if (report.status === 'needs_clarification' && !report.clarificationAnswered) {
       return { ...state, lastError: 'Respond to every clarification before resubmitting.' };
     }
-    const nextStatus: ReportStatus =
-      report.status === 'needs_clarification' ? 'resubmitted' : 'submitted';
+    const nextStatus: ReportStatus = ['needs_clarification', 'rejected'].includes(report.status)
+      ? 'resubmitted'
+      : 'submitted';
     return {
       ...state,
       reports: updateReport(state.reports, action.reportId, (item) => ({
@@ -1063,6 +1304,33 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
     };
   }
 
+  if (action.type === 'REJECT_REPORT') {
+    const report = state.reports.find((item) => item.id === action.reportId);
+    if (!report || !['submitted', 'resubmitted'].includes(report.status)) {
+      return { ...state, lastError: 'Only Submitted or Resubmitted updates can be rejected.' };
+    }
+    if (!action.reason.trim()) return { ...state, lastError: 'A rejection reason is required.' };
+    return {
+      ...state,
+      reports: updateReport(state.reports, action.reportId, (item) => ({
+        ...item,
+        status: 'rejected',
+        clarificationAnswered: true,
+      })),
+      auditEvents: audit(state, {
+        actorId: action.actorId,
+        action: 'report_rejected',
+        entityType: 'department_report',
+        entityId: action.reportId,
+        timestamp: action.now,
+        summary: `Commercial Manager rejected the update: ${action.reason.trim()}`,
+        before: report.status,
+        after: 'rejected',
+      }),
+      lastError: null,
+    };
+  }
+
   if (action.type === 'APPLY_OVERRIDE') {
     const override = action.override;
     const report = state.reports.find((item) => item.id === override.reportId);
@@ -1092,7 +1360,7 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
   return state;
 }
 
-export const workflowStorageKey = 'atlas.prototype.workflow.v4';
+export const workflowStorageKey = 'atlas.prototype.workflow.v5';
 
 export function loadWorkflowState(): WorkflowState {
   if (typeof window === 'undefined') return createInitialWorkflowState();
@@ -1100,7 +1368,7 @@ export function loadWorkflowState(): WorkflowState {
     const stored = window.localStorage.getItem(workflowStorageKey);
     if (!stored) return createInitialWorkflowState();
     const parsed = JSON.parse(stored) as WorkflowState;
-    return parsed.version === 4 ? parsed : createInitialWorkflowState();
+    return parsed.version === 5 ? parsed : createInitialWorkflowState();
   } catch {
     return createInitialWorkflowState();
   }
@@ -1120,6 +1388,30 @@ export function selectReportSources(state: WorkflowState, reportId: string) {
   return report.sourceIds
     .map((sourceId) => state.sources.find((source) => source.id === sourceId))
     .filter((source): source is WorkflowSource => Boolean(source));
+}
+
+export function selectCommitmentsForDepartment(state: WorkflowState, departmentId: string) {
+  return state.commitments.filter((commitment) => commitment.departmentId === departmentId);
+}
+
+export function selectReportCommitments(state: WorkflowState, reportId: string) {
+  const report = state.reports.find((item) => item.id === reportId);
+  if (!report) return [];
+  return report.commitmentIds
+    .map((id) => state.commitments.find((commitment) => commitment.id === id))
+    .filter((commitment): commitment is WorkflowCommitment => Boolean(commitment));
+}
+
+export function selectPreviousReport(state: WorkflowState, report: WorkflowReport) {
+  return state.reports
+    .filter(
+      (item) =>
+        item.departmentId === report.departmentId &&
+        item.id !== report.id &&
+        item.submittedAt &&
+        item.submittedAt < (report.submittedAt ?? '9999'),
+    )
+    .sort((a, b) => (b.submittedAt ?? '').localeCompare(a.submittedAt ?? ''))[0];
 }
 
 export function selectReadiness(state: WorkflowState, cycleId: string) {
@@ -1153,7 +1445,9 @@ export function selectSubmissionQueue(state: WorkflowState, cycleId?: string) {
   return state.reports.filter(
     (report) =>
       (!cycleId || report.cycleId === cycleId) &&
-      ['submitted', 'resubmitted', 'needs_clarification'].includes(report.status),
+      ['submitted', 'resubmitted', 'needs_clarification', 'approved', 'rejected'].includes(
+        report.status,
+      ),
   );
 }
 
@@ -1180,6 +1474,9 @@ export function getSubmissionBlockers(
     report.fields.some((field) => field.required && !field.value.trim())
       ? 'Complete every required standardised field.'
       : '',
+    !report.weekly.executiveHighlight.trim() ? 'Add an executive highlight.' : '',
+    !report.weekly.nextWeekPlan.trim() ? 'Add plans for next week.' : '',
+    !report.weekly.supportRequired.trim() ? 'Confirm support or decision required.' : '',
     !certified ? 'Confirm the certification statement.' : '',
   ].filter(Boolean);
 }

@@ -22,7 +22,6 @@ import {
   DetailLink,
   Drawer,
   Field,
-  KpiCard,
   Modal,
   PageHeader,
   Panel,
@@ -43,6 +42,9 @@ import {
   reportDepartmentName,
   getSubmissionBlockers,
   selectReadiness,
+  selectCommitmentsForDepartment,
+  selectPreviousReport,
+  selectReportCommitments,
   selectReportSources,
   selectReportsForDepartment,
   selectSubmissionQueue,
@@ -50,26 +52,28 @@ import {
   type SourceMethod,
   type SourceStatus,
   type WorkflowReport,
+  type WeeklyUpdateContent,
+  type WorkflowCommitment,
   type WorkflowSource,
 } from '../state/workflow';
 
 const methodDefinitions = [
   {
     id: 'structured_form',
-    label: 'Atlas Structured Form',
+    label: 'Structured form',
     detail: 'Guided departmental fields and validations',
     icon: FormInput,
   },
-  { id: 'document_upload', label: 'Document Upload', detail: 'PDF or DOCX', icon: Upload },
+  { id: 'document_upload', label: 'Report upload', detail: 'PDF or DOCX report', icon: Upload },
   {
     id: 'xlsx_upload',
-    label: 'XLSX Upload',
+    label: 'Spreadsheet upload',
     detail: 'Atlas template or existing workbook',
     icon: FileSpreadsheet,
   },
   {
     id: 'paste_email_or_transcript',
-    label: 'Paste Email or Call Transcript',
+    label: 'Manual entry or pasted transcript',
     detail: 'Email and Call Transcript are source types inside this method',
     icon: Mail,
   },
@@ -120,10 +124,10 @@ export function DepartmentDashboard() {
   const { departmentId, cycleId, workflow } = useAtlas();
   const reports = selectReportsForDepartment(workflow, departmentId);
   const activeCycle = getCycle(cycleId);
-  const pending = reports.filter((report) => ['submitted', 'resubmitted'].includes(report.status));
   const returned = reports.filter((report) => report.status === 'needs_clarification');
-  const due = reports.filter(
-    (report) => report.cycleId === activeCycle.id && report.status === 'draft',
+  const commitments = selectCommitmentsForDepartment(workflow, departmentId);
+  const dueCommitments = commitments.filter((commitment) =>
+    ['in_progress', 'delayed', 'at_risk'].includes(commitment.status),
   );
 
   return (
@@ -132,43 +136,48 @@ export function DepartmentDashboard() {
         title="My Updates"
         description="Prepare, certify and track your department’s Weekly Execution Updates. Changes are stored only on this device for the prototype."
       />
-      <div className="grid grid--3">
-        <KpiCard
-          label="Submissions due"
-          value={String(due.length)}
-          status={due.length ? 'due_soon' : 'approved'}
-          context={due.length ? activeCycle.label : 'All required updates submitted'}
-          onClick={due.length ? () => navigate('/department/reports/new') : undefined}
-        />
-        <KpiCard
-          label="Pending Commercial review"
-          value={String(pending.length)}
-          status={pending.length ? 'submitted' : 'approved'}
-          context={pending.length ? 'Awaiting Commercial review' : 'No updates waiting'}
-          onClick={pending[0] ? () => navigate(`/department/reports/${pending[0].id}`) : undefined}
-        />
-        <KpiCard
-          label="Returned submissions"
-          value={String(returned.length)}
-          status={returned.length ? 'needs_clarification' : 'approved'}
-          context={returned.length ? 'Commercial response required' : 'No action required'}
-          onClick={
-            returned[0] ? () => navigate(`/department/reports/${returned[0].id}`) : undefined
-          }
-        />
+      <div className="contributor-attention section">
+        <Panel title="Current submission deadline">
+          <strong>{activeCycle.label}</strong>
+          <p>Submit by 3 Aug 2026 · 17:00 WAT.</p>
+          <Button onClick={() => navigate('/department/reports/new')}>Continue update</Button>
+        </Panel>
+        <Panel title="Work requiring attention">
+          <p>{dueCommitments.length} previous commitments are due or remain open.</p>
+          <p>{returned.length} clarification requests require a response.</p>
+        </Panel>
       </div>
       <Panel title="Update history" className="section">
         <DataTable
           caption="Department submission history"
-          headers={['Project · Period', 'Method', 'Status', 'Submitted']}
+          headers={[
+            'Reporting period',
+            'Business unit or project',
+            'Submitted date',
+            'Validation status',
+            'Clarification required',
+            'Commitments due',
+            'Available action',
+          ]}
           rows={reports.map((report) => [
-            <div>
-              <strong>{report.title}</strong>
-              <small>OML 30 · {getCycle(report.cycleId).label}</small>
-            </div>,
-            report.methods.length ? report.methods.map(methodLabel).join(' · ') : 'No sources yet',
+            getCycle(report.cycleId).label,
+            report.projectId
+              ? (atlas.projects.find((project) => project.id === report.projectId)?.name ??
+                'Project')
+              : (atlas.businessUnits.find((unit) => unit.id === report.businessUnitId)?.name ??
+                '—'),
+            report.submittedAt ? format.date(report.submittedAt) : 'Not submitted',
             <StatusBadge status={report.status} />,
-            report.submittedAt ? format.date(report.submittedAt) : '—',
+            report.status === 'needs_clarification' ? 'Yes' : 'No',
+            String(
+              commitments.filter((commitment) => report.commitmentIds.includes(commitment.id))
+                .length,
+            ),
+            report.status === 'draft'
+              ? 'Continue'
+              : ['needs_clarification', 'rejected'].includes(report.status)
+                ? 'Respond and revise'
+                : 'View update',
           ])}
           onRowClick={(index) => navigate(`/department/reports/${reports[index].id}`)}
         />
@@ -228,7 +237,7 @@ function MethodInputs({ report, method, onAdd }: MethodInputsProps) {
 
   if (method === 'structured_form') {
     return (
-      <Panel title="Atlas Structured Form" className="method-input">
+      <Panel title="Structured form" className="method-input">
         <div className="form-grid">
           {report.fields.map((field) => (
             <Field
@@ -297,7 +306,7 @@ function MethodInputs({ report, method, onAdd }: MethodInputsProps) {
 
   if (method === 'document_upload') {
     return (
-      <Panel title="Document Upload · PDF or DOCX" className="method-input">
+      <Panel title="Report upload · PDF or DOCX" className="method-input">
         <p>
           Deterministic fixture extraction only. Atlas does not perform live OCR or AI processing.
         </p>
@@ -364,7 +373,7 @@ function MethodInputs({ report, method, onAdd }: MethodInputsProps) {
 
   if (method === 'xlsx_upload') {
     return (
-      <Panel title="XLSX Upload" className="method-input">
+      <Panel title="Spreadsheet upload" className="method-input">
         <p>
           Mapping is deterministic and fixture-driven; no live spreadsheet intelligence is claimed.
         </p>
@@ -433,7 +442,7 @@ function MethodInputs({ report, method, onAdd }: MethodInputsProps) {
   }
 
   return (
-    <Panel title="Paste Email or Call Transcript" className="method-input">
+    <Panel title="Manual entry or pasted transcript" className="method-input">
       <div className="form-grid">
         <Field label="Source type">
           <select
@@ -492,6 +501,7 @@ export function CreateReportPage() {
   const {
     activeUserId,
     businessUnitId,
+    setBusinessUnitId,
     departmentId,
     cycleId,
     setCycleId,
@@ -505,7 +515,7 @@ export function CreateReportPage() {
         item.departmentId === departmentId && item.cycleId === atlas.demoStates.defaultOpenCycleId,
     ) ?? workflow.reports.find((item) => item.departmentId === departmentId)!;
   const [selected, setSelected] = useState<SourceMethod[]>(report.methods);
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [title, setTitle] = useState(report.title);
   const [objectiveId, setObjectiveId] = useState(
     report.strategicObjectiveIds[0] ?? atlas.strategicObjectives[0].id,
@@ -525,6 +535,19 @@ export function CreateReportPage() {
   const [correctionValue, setCorrectionValue] = useState(primaryField.value);
   const [correctionReason, setCorrectionReason] = useState('');
   const [certified, setCertified] = useState(false);
+  const [weekly, setWeekly] = useState<WeeklyUpdateContent>(report.weekly);
+  const [commitmentDraft, setCommitmentDraft] = useState({
+    description: '',
+    ownerId: activeUserId,
+    dueDate: '2026-08-09',
+    expectedOutcome: '',
+    linkedType: 'objective' as WorkflowCommitment['linkedType'],
+    linkedId: objectiveId,
+    status: 'not_started',
+    delayReason: '',
+    revisedForecast: '2026-08-09',
+    evidence: '',
+  });
 
   useEffect(() => {
     if (cycleId !== atlas.demoStates.defaultOpenCycleId) {
@@ -533,6 +556,8 @@ export function CreateReportPage() {
   }, [cycleId, setCycleId]);
 
   const sources = selectReportSources(workflow, report.id);
+  const commitments = selectCommitmentsForDepartment(workflow, departmentId);
+  const reportCommitments = selectReportCommitments(workflow, report.id);
   const corrections = workflow.corrections.filter(
     (correction) => correction.reportId === report.id,
   );
@@ -543,7 +568,8 @@ export function CreateReportPage() {
   const missingWarnings = sources.filter((source) => source.status === 'partial');
   const blockedReasons = getSubmissionBlockers(report, sources, corrections, certified);
   const canSubmit =
-    blockedReasons.length === 0 && ['draft', 'needs_clarification'].includes(report.status);
+    blockedReasons.length === 0 &&
+    ['draft', 'needs_clarification', 'rejected'].includes(report.status);
 
   const toggleMethod = (method: SourceMethod) =>
     setSelected((current) =>
@@ -563,18 +589,28 @@ export function CreateReportPage() {
       />
       <ol className="steps" aria-label="Update creation progress">
         <li className={step === 1 ? 'is-active' : 'is-complete'}>
-          <span>{step === 1 ? '1' : <Check aria-hidden="true" />}</span>Details & Method
+          <span>{step === 1 ? '1' : <Check aria-hidden="true" />}</span>Context & methods
         </li>
         <li className={step === 2 ? 'is-active' : ''}>
-          <span>2</span>Content
+          <span>{step === 3 ? <Check aria-hidden="true" /> : '2'}</span>Weekly update
+        </li>
+        <li className={step === 3 ? 'is-active' : ''}>
+          <span>3</span>Review & submit
         </li>
       </ol>
       {step === 1 ? (
         <>
-          <Panel title="Common details" className="section">
+          <Panel title="1–4. Confirm update context" className="section">
             <div className="form-grid">
+              <Field label="1. Confirm department">
+                <input value={department.name} disabled aria-label="Department" />
+              </Field>
               <Field label="Business unit">
-                <select aria-label="Business unit" value={businessUnitId} disabled>
+                <select
+                  aria-label="Business unit"
+                  value={businessUnitId}
+                  onChange={(event) => setBusinessUnitId(event.target.value)}
+                >
                   {atlas.businessUnits.map((unit) => (
                     <option key={unit.id} value={unit.id}>
                       {unit.name}
@@ -582,7 +618,7 @@ export function CreateReportPage() {
                   ))}
                 </select>
               </Field>
-              <Field label="Strategic objective">
+              <Field label="Strategic objective (optional)">
                 <select
                   value={objectiveId}
                   onChange={(event) => setObjectiveId(event.target.value)}
@@ -613,9 +649,6 @@ export function CreateReportPage() {
                   ))}
                 </select>
               </Field>
-              <Field label="Department">
-                <input value={department.name} disabled aria-label="Department" />
-              </Field>
               <Field label="Reporting period">
                 <select value={cycleId} onChange={(event) => setCycleId(event.target.value)}>
                   {atlas.reportingCycles.map((cycle) => (
@@ -644,7 +677,7 @@ export function CreateReportPage() {
           <section className="section" aria-labelledby="method-title">
             <div className="section-heading">
               <div>
-                <h2 id="method-title">Choose submission methods</h2>
+                <h2 id="method-title">5. Select one or more submission methods</h2>
                 <p>
                   Select one or more methods. Several sources of the same method can be added in
                   Content.
@@ -682,12 +715,362 @@ export function CreateReportPage() {
             </div>
           </section>
         </>
-      ) : (
+      ) : step === 2 ? (
         <>
+          <Panel title="6. Update commitments due from the previous period" className="section">
+            {commitments.length === 0 ? (
+              <div className="compact-empty">
+                <History />
+                <p>No previous commitments are due for this department.</p>
+              </div>
+            ) : (
+              <div className="commitment-comparisons">
+                {commitments.map((commitment) => {
+                  const outcome = weekly.previousCommitmentOutcomes.find(
+                    (item) => item.commitmentId === commitment.id,
+                  ) ?? {
+                    commitmentId: commitment.id,
+                    currentOutcome: '',
+                    explanation: '',
+                    newForecast: commitment.revisedForecast || commitment.dueDate,
+                    status: commitment.status,
+                    delayReason: commitment.delayReason,
+                    evidenceIds: commitment.evidenceIds,
+                  };
+                  const updateOutcome = (changes: Partial<typeof outcome>) =>
+                    setWeekly((current) => ({
+                      ...current,
+                      previousCommitmentOutcomes: [
+                        ...current.previousCommitmentOutcomes.filter(
+                          (item) => item.commitmentId !== commitment.id,
+                        ),
+                        { ...outcome, ...changes },
+                      ],
+                    }));
+                  return (
+                    <article className="commitment-comparison" key={commitment.id}>
+                      <div>
+                        <small>Previous commitment</small>
+                        <strong>{commitment.description}</strong>
+                        <span>Expected: {commitment.expectedOutcome}</span>
+                      </div>
+                      <Field label="Current outcome">
+                        <textarea
+                          rows={2}
+                          value={outcome.currentOutcome}
+                          onChange={(event) =>
+                            updateOutcome({ currentOutcome: event.target.value })
+                          }
+                        />
+                      </Field>
+                      <Field label="Explanation">
+                        <textarea
+                          rows={2}
+                          value={outcome.explanation}
+                          onChange={(event) => updateOutcome({ explanation: event.target.value })}
+                        />
+                      </Field>
+                      <Field label="New forecast">
+                        <input
+                          type="date"
+                          value={outcome.newForecast}
+                          onChange={(event) => updateOutcome({ newForecast: event.target.value })}
+                        />
+                      </Field>
+                      <Field label="Status">
+                        <select
+                          value={outcome.status}
+                          onChange={(event) => updateOutcome({ status: event.target.value })}
+                        >
+                          <option value="complete">Complete</option>
+                          <option value="in_progress">In progress</option>
+                          <option value="delayed">Delayed</option>
+                          <option value="blocked">Blocked</option>
+                        </select>
+                      </Field>
+                      <Field label="Evidence reference">
+                        <input
+                          value={outcome.evidenceIds.join(', ')}
+                          onChange={(event) =>
+                            updateOutcome({
+                              evidenceIds: event.target.value
+                                .split(',')
+                                .map((value) => value.trim())
+                                .filter(Boolean),
+                            })
+                          }
+                        />
+                      </Field>
+                      {['delayed', 'blocked'].includes(outcome.status) && (
+                        <Field label="Delay reason">
+                          <input
+                            value={outcome.delayReason}
+                            onChange={(event) => updateOutcome({ delayReason: event.target.value })}
+                          />
+                        </Field>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </Panel>
+
+          <Panel title="7. Enter this week’s execution position" className="section">
+            <div className="form-grid form-grid--wide">
+              {[
+                ['Executive highlight', 'executiveHighlight'],
+                ['KPI updates', 'kpiUpdates'],
+                ['Risks and constraints', 'risksAndConstraints'],
+                ['Forecast changes', 'forecastChanges'],
+                ['Plans for next week', 'nextWeekPlan'],
+                ['Support or decision required', 'supportRequired'],
+              ].map(([label, key]) => (
+                <Field key={key} label={label}>
+                  <textarea
+                    rows={3}
+                    value={weekly[key as keyof WeeklyUpdateContent] as string}
+                    onChange={(event) =>
+                      setWeekly((current) => ({ ...current, [key]: event.target.value }))
+                    }
+                  />
+                </Field>
+              ))}
+            </div>
+            <div className="activity-selector">
+              <strong>Activities completed and ongoing operational activities</strong>
+              {atlas.operationalActivities
+                .filter((activity) => activity.departmentId === departmentId)
+                .map((activity) => (
+                  <article key={activity.id}>
+                    <div>
+                      <strong>{activity.title}</strong>
+                      <small>
+                        {activity.progressPercent}% complete · {activity.blocker || 'No blocker'}
+                      </small>
+                    </div>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={weekly.completedActivityIds.includes(activity.id)}
+                        onChange={(event) =>
+                          setWeekly((current) => ({
+                            ...current,
+                            completedActivityIds: event.target.checked
+                              ? [...current.completedActivityIds, activity.id]
+                              : current.completedActivityIds.filter((id) => id !== activity.id),
+                          }))
+                        }
+                      />
+                      Completed
+                    </label>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={weekly.ongoingActivityIds.includes(activity.id)}
+                        onChange={(event) =>
+                          setWeekly((current) => ({
+                            ...current,
+                            ongoingActivityIds: event.target.checked
+                              ? [...current.ongoingActivityIds, activity.id]
+                              : current.ongoingActivityIds.filter((id) => id !== activity.id),
+                          }))
+                        }
+                      />
+                      Ongoing
+                    </label>
+                  </article>
+                ))}
+            </div>
+          </Panel>
+
+          <Panel title="8. Add new commitments" className="section">
+            <div className="form-grid">
+              <Field label="Description">
+                <textarea
+                  rows={2}
+                  value={commitmentDraft.description}
+                  onChange={(event) =>
+                    setCommitmentDraft((current) => ({
+                      ...current,
+                      description: event.target.value,
+                    }))
+                  }
+                />
+              </Field>
+              <Field label="Owner">
+                <select
+                  value={commitmentDraft.ownerId}
+                  onChange={(event) =>
+                    setCommitmentDraft((current) => ({ ...current, ownerId: event.target.value }))
+                  }
+                >
+                  {atlas.users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Due date">
+                <input
+                  type="date"
+                  value={commitmentDraft.dueDate}
+                  onChange={(event) =>
+                    setCommitmentDraft((current) => ({
+                      ...current,
+                      dueDate: event.target.value,
+                      revisedForecast: event.target.value,
+                    }))
+                  }
+                />
+              </Field>
+              <Field label="Expected outcome">
+                <textarea
+                  rows={2}
+                  value={commitmentDraft.expectedOutcome}
+                  onChange={(event) =>
+                    setCommitmentDraft((current) => ({
+                      ...current,
+                      expectedOutcome: event.target.value,
+                    }))
+                  }
+                />
+              </Field>
+              <Field label="Linked objective, KPI, activity, milestone or risk">
+                <select
+                  value={`${commitmentDraft.linkedType}:${commitmentDraft.linkedId}`}
+                  onChange={(event) => {
+                    const [linkedType, linkedId] = event.target.value.split(':');
+                    setCommitmentDraft((current) => ({
+                      ...current,
+                      linkedType: linkedType as WorkflowCommitment['linkedType'],
+                      linkedId,
+                    }));
+                  }}
+                >
+                  {atlas.strategicObjectives.map((item) => (
+                    <option key={item.id} value={`objective:${item.id}`}>
+                      {item.name}
+                    </option>
+                  ))}
+                  {atlas.kpiDefinitions.map((item) => (
+                    <option key={item.id} value={`kpi:${item.id}`}>
+                      {item.name}
+                    </option>
+                  ))}
+                  {atlas.operationalActivities.map((item) => (
+                    <option key={item.id} value={`activity:${item.id}`}>
+                      {item.title}
+                    </option>
+                  ))}
+                  {atlas.milestones.map((item) => (
+                    <option key={item.id} value={`milestone:${item.id}`}>
+                      {item.name}
+                    </option>
+                  ))}
+                  {atlas.executionRisks.map((item) => (
+                    <option key={item.id} value={`risk:${item.id}`}>
+                      {item.description}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Status">
+                <select
+                  value={commitmentDraft.status}
+                  onChange={(event) =>
+                    setCommitmentDraft((current) => ({ ...current, status: event.target.value }))
+                  }
+                >
+                  <option value="not_started">Not started</option>
+                  <option value="in_progress">In progress</option>
+                  <option value="at_risk">At risk</option>
+                </select>
+              </Field>
+              {['at_risk', 'delayed'].includes(commitmentDraft.status) && (
+                <Field label="Delay reason">
+                  <input
+                    value={commitmentDraft.delayReason}
+                    onChange={(event) =>
+                      setCommitmentDraft((current) => ({
+                        ...current,
+                        delayReason: event.target.value,
+                      }))
+                    }
+                  />
+                </Field>
+              )}
+              <Field label="Revised forecast">
+                <input
+                  type="date"
+                  value={commitmentDraft.revisedForecast}
+                  onChange={(event) =>
+                    setCommitmentDraft((current) => ({
+                      ...current,
+                      revisedForecast: event.target.value,
+                    }))
+                  }
+                />
+              </Field>
+              <Field label="Revision count">
+                <input value="0" disabled aria-label="Revision count" />
+              </Field>
+              <Field label="Evidence reference">
+                <input
+                  value={commitmentDraft.evidence}
+                  onChange={(event) =>
+                    setCommitmentDraft((current) => ({ ...current, evidence: event.target.value }))
+                  }
+                  placeholder="Optional evidence record or source reference"
+                />
+              </Field>
+            </div>
+            <Button
+              variant="secondary"
+              disabled={
+                !commitmentDraft.description.trim() || !commitmentDraft.expectedOutcome.trim()
+              }
+              onClick={() => {
+                const id = `commitment_phase2_${workflow.commitments.length + 1}`;
+                workflowDispatch({
+                  type: 'ADD_COMMITMENT',
+                  actorId: activeUserId,
+                  now: prototypeTime(workflow.auditEvents.length + 1),
+                  commitment: {
+                    id,
+                    reportId: report.id,
+                    description: commitmentDraft.description,
+                    ownerId: commitmentDraft.ownerId,
+                    departmentId,
+                    dueDate: commitmentDraft.dueDate,
+                    expectedOutcome: commitmentDraft.expectedOutcome,
+                    linkedType: commitmentDraft.linkedType,
+                    linkedId: commitmentDraft.linkedId,
+                    status: commitmentDraft.status,
+                    delayReason: commitmentDraft.delayReason,
+                    revisedForecast: commitmentDraft.revisedForecast,
+                    evidenceIds: commitmentDraft.evidence ? [commitmentDraft.evidence] : [],
+                    revisionCount: 0,
+                  },
+                });
+                setCommitmentDraft((current) => ({
+                  ...current,
+                  description: '',
+                  expectedOutcome: '',
+                  evidence: '',
+                }));
+                showToast('Commitment added to this Weekly Execution Update');
+              }}
+            >
+              <Plus /> Add commitment
+            </Button>
+          </Panel>
+
           <section className="section" aria-labelledby="content-method-title">
             <div className="section-heading">
               <div>
-                <h2 id="content-method-title">Method content</h2>
+                <h2 id="content-method-title">9. Add supporting evidence</h2>
                 <p>
                   Each input creates a deterministic source record with its own processing state.
                 </p>
@@ -873,15 +1256,118 @@ export function CreateReportPage() {
               </dl>
             </Panel>
           </div>
-          <Panel className="section certification">
+          <Panel className="section">
+            <div className="form-actions">
+              <Button variant="secondary" onClick={() => setStep(1)}>
+                Back
+              </Button>
+              <Button
+                onClick={() => {
+                  workflowDispatch({
+                    type: 'UPDATE_WEEKLY_CONTENT',
+                    reportId: report.id,
+                    content: weekly,
+                    actorId: activeUserId,
+                    now: prototypeTime(workflow.auditEvents.length + 1),
+                  });
+                  weekly.previousCommitmentOutcomes.forEach((outcome, index) =>
+                    workflowDispatch({
+                      type: 'UPDATE_COMMITMENT_OUTCOME',
+                      reportId: report.id,
+                      outcome,
+                      actorId: activeUserId,
+                      now: prototypeTime(workflow.auditEvents.length + index + 2),
+                    }),
+                  );
+                  setStep(3);
+                }}
+              >
+                Review structured information
+              </Button>
+            </div>
+          </Panel>
+        </>
+      ) : (
+        <>
+          <Panel title="10. Review structured information" className="section review-summary">
+            <dl className="summary-list">
+              <div>
+                <dt>Department</dt>
+                <dd>{department.name}</dd>
+              </div>
+              <div>
+                <dt>Business unit</dt>
+                <dd>{atlas.businessUnits.find((item) => item.id === businessUnitId)?.name}</dd>
+              </div>
+              <div>
+                <dt>Reporting period</dt>
+                <dd>{getCycle(cycleId).label}</dd>
+              </div>
+              <div>
+                <dt>Submission methods</dt>
+                <dd>{selected.map(methodLabel).join(' · ')}</dd>
+              </div>
+              <div>
+                <dt>Project / asset</dt>
+                <dd>{executionContext || 'Not project-specific'}</dd>
+              </div>
+              <div>
+                <dt>Evidence sources</dt>
+                <dd>{sources.length}</dd>
+              </div>
+            </dl>
+            <div className="structured-review-grid">
+              <div>
+                <small>Executive highlight</small>
+                <p>{weekly.executiveHighlight}</p>
+              </div>
+              <div>
+                <small>KPI updates</small>
+                <p>{weekly.kpiUpdates}</p>
+              </div>
+              <div>
+                <small>Activities completed</small>
+                <p>{weekly.completedActivityIds.length}</p>
+              </div>
+              <div>
+                <small>Ongoing activities</small>
+                <p>{weekly.ongoingActivityIds.length}</p>
+              </div>
+              <div>
+                <small>Previous commitments and outcomes</small>
+                <p>{weekly.previousCommitmentOutcomes.length}</p>
+              </div>
+              <div>
+                <small>New commitments</small>
+                <p>{reportCommitments.filter((item) => item.reportId === report.id).length}</p>
+              </div>
+              <div>
+                <small>Risks and constraints</small>
+                <p>{weekly.risksAndConstraints}</p>
+              </div>
+              <div>
+                <small>Forecast changes</small>
+                <p>{weekly.forecastChanges}</p>
+              </div>
+              <div>
+                <small>Plans for next week</small>
+                <p>{weekly.nextWeekPlan}</p>
+              </div>
+              <div>
+                <small>Support or decision required</small>
+                <p>{weekly.supportRequired}</p>
+              </div>
+            </div>
+          </Panel>
+          <Panel title="11. Certify and submit" className="section certification">
             <label>
               <input
                 type="checkbox"
                 checked={certified}
                 onChange={(event) => setCertified(event.target.checked)}
               />
-              I confirm that I have reviewed the extracted information and that this report
-              accurately represents the department’s position for the reporting period.
+              I confirm that I reviewed the structured information and it accurately represents the
+              department’s position.
             </label>
             {blockedReasons.length > 0 && (
               <div className="blocking-list" role="status">
@@ -894,7 +1380,7 @@ export function CreateReportPage() {
               </div>
             )}
             <div className="form-actions">
-              <Button variant="secondary" onClick={() => setStep(1)}>
+              <Button variant="secondary" onClick={() => setStep(2)}>
                 Back
               </Button>
               <Button
@@ -1088,6 +1574,14 @@ export function DepartmentReportReview() {
               ? 'This published snapshot is immutable. Create a revision for any later correction.'
               : 'This update is locked for the Department Manager while Commercial review is in progress.'}
           </span>
+        </div>
+      )}
+      {report.status === 'rejected' && (
+        <div className="warning-banner page-notice">
+          <CircleAlert />
+          Commercial rejected this update. Revise its structured information and resubmit it for
+          review.
+          <Button onClick={() => navigate('/department/reports/new')}>Revise update</Button>
         </div>
       )}
       <div className="review-layout section">
@@ -1532,13 +2026,17 @@ export function CommercialReviewPage() {
   const report = workflow.reports.find((item) => item.id === id);
   const queue = selectSubmissionQueue(workflow);
   const queueIndex = queue.findIndex((item) => item.id === id);
-  const [modal, setModal] = useState<'clarify' | 'override' | null>(null);
+  const [modal, setModal] = useState<'clarify' | 'override' | 'reject' | null>(null);
+  const [detailTab, setDetailTab] = useState<'summary' | 'commitments' | 'impact' | 'history'>(
+    'summary',
+  );
   const [field, setField] = useState('Gross oil production');
   const [comment, setComment] = useState('');
   const [dueDate, setDueDate] = useState('2026-08-03');
   const [overrideValue, setOverrideValue] = useState('');
   const [overrideReason, setOverrideReason] = useState('');
   const [viewSource, setViewSource] = useState<WorkflowSource | null>(null);
+  const [evidenceOpen, setEvidenceOpen] = useState(false);
   if (!report)
     return (
       <Panel title="Submission unavailable">
@@ -1552,6 +2050,8 @@ export function CommercialReviewPage() {
   const auditEvents = workflow.auditEvents.filter(
     (event) => event.entityId === report.id || report.sourceIds.includes(event.entityId),
   );
+  const previousReport = selectPreviousReport(workflow, report);
+  const reviewCommitments = selectReportCommitments(workflow, report.id);
   const reviewable = ['submitted', 'resubmitted'].includes(report.status);
   const selectedField = report.fields.find((item) => item.label === field) ?? report.fields[0];
   return (
@@ -1581,88 +2081,164 @@ export function CommercialReviewPage() {
           Next
         </Button>
       </div>
-      <div className="review-layout section">
-        <Panel title="Standardised update and source lineage">
-          <dl className="metric-review">
-            {report.fields.map((item) => {
-              const correction = [...corrections]
-                .reverse()
-                .find((entry) => entry.fieldKey === item.key);
-              const override = [...overrides]
-                .reverse()
-                .find((entry) => entry.fieldKey === item.key);
-              return (
-                <div key={item.key}>
-                  <dt>{item.label}</dt>
-                  <dd>
-                    {item.value} {item.unit}
-                  </dd>
-                  <small>
-                    Source references: {item.sourceIds.join(', ')} ·{' '}
-                    {Math.round(item.confidence * 100)}% confidence
-                  </small>
-                  {correction && (
-                    <small className="audit-note">
-                      Manager correction preserved: {correction.originalValue} →{' '}
-                      {correction.correctedValue}. Reason: {correction.reason}
-                    </small>
-                  )}
-                  {override && (
-                    <small className="override-note">
-                      Commercial override for consolidation: {override.departmentValue} →{' '}
-                      {override.revisedValue}. Reason: {override.reason}
-                    </small>
-                  )}
-                </div>
-              );
-            })}
-          </dl>
-        </Panel>
-        <div className="review-stack">
-          <Panel title="Sources and evidence">
-            {sources.map((source) => (
-              <button
-                className="source-item source-item--button"
-                key={source.id}
-                onClick={() => setViewSource(source)}
-              >
-                <FileText />
-                <div>
-                  <strong>{source.name}</strong>
-                  <small>{source.reference}</small>
-                </div>
-                <StatusBadge status={source.status} />
-              </button>
-            ))}
+      <div className="review-tabs section" role="tablist" aria-label="Review detail">
+        {[
+          ['summary', 'Submitted summary'],
+          ['commitments', 'Commitments'],
+          ['impact', 'KPI and objective impact'],
+          ['history', 'Review history'],
+        ].map(([value, label]) => (
+          <button
+            key={value}
+            role="tab"
+            aria-selected={detailTab === value}
+            className={detailTab === value ? 'is-active' : ''}
+            onClick={() => setDetailTab(value as typeof detailTab)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {detailTab === 'summary' && (
+        <div className="review-layout section">
+          <Panel title="What was submitted">
+            <p className="review-highlight">{report.weekly.executiveHighlight}</p>
+            <dl className="summary-list">
+              <div>
+                <dt>Forecast changes</dt>
+                <dd>{report.weekly.forecastChanges}</dd>
+              </div>
+              <div>
+                <dt>Next week</dt>
+                <dd>{report.weekly.nextWeekPlan}</dd>
+              </div>
+              <div>
+                <dt>Support required</dt>
+                <dd>{report.weekly.supportRequired}</dd>
+              </div>
+            </dl>
           </Panel>
-          <Panel title="Comments and audit history">
-            {comments.map((item) => (
-              <article className="comment-card" key={item.id}>
-                <StatusBadge status={item.status} />
-                <strong>{item.field}</strong>
-                <p>{item.question}</p>
-                {item.response && (
-                  <div className="response">
-                    <small>Department response</small>
-                    <p>{item.response}</p>
-                  </div>
-                )}
-              </article>
-            ))}
-            {auditEvents.map((event) => (
-              <article className="audit-item" key={event.id}>
-                <History />
-                <div>
-                  <strong>{event.summary}</strong>
-                  <small>
-                    {event.actorRole.replaceAll('_', ' ')} · {format.date(event.timestamp)}
-                  </small>
-                </div>
-              </article>
-            ))}
+          <Panel title="Change from previous period">
+            <p>{report.weekly.materialChange}</p>
+            <small>
+              Previous:{' '}
+              {previousReport?.weekly.executiveHighlight ?? 'No comparable prior update available.'}
+            </small>
+            <Button variant="secondary" onClick={() => setEvidenceOpen(true)}>
+              View evidence ({sources.length})
+            </Button>
           </Panel>
         </div>
-      </div>
+      )}
+      {detailTab === 'commitments' && (
+        <Panel
+          title="Previous commitments → Current outcome → Explanation → New forecast"
+          className="section"
+        >
+          <DataTable
+            caption="Commitment comparison"
+            headers={[
+              'Previous commitment',
+              'Current outcome',
+              'Explanation',
+              'New forecast',
+              'Revisions',
+            ]}
+            rows={reviewCommitments.map((commitment) => {
+              const outcome = report.weekly.previousCommitmentOutcomes.find(
+                (item) => item.commitmentId === commitment.id,
+              );
+              return [
+                commitment.description,
+                outcome?.currentOutcome ||
+                  (commitment.reportId === report.id ? 'New commitment' : 'Not updated'),
+                outcome?.explanation || commitment.expectedOutcome,
+                outcome?.newForecast || commitment.revisedForecast,
+                String(commitment.revisionCount),
+              ];
+            })}
+          />
+        </Panel>
+      )}
+      {detailTab === 'impact' && (
+        <div className="review-layout section">
+          <Panel title="Affected KPIs and objectives">
+            <dl className="metric-review">
+              {report.fields.map((item) => {
+                const correction = [...corrections]
+                  .reverse()
+                  .find((entry) => entry.fieldKey === item.key);
+                const override = [...overrides]
+                  .reverse()
+                  .find((entry) => entry.fieldKey === item.key);
+                return (
+                  <div key={item.key}>
+                    <dt>{item.label}</dt>
+                    <dd>
+                      {item.value} {item.unit}
+                    </dd>
+                    {correction && (
+                      <small className="audit-note">
+                        Manager correction: {correction.originalValue} → {correction.correctedValue}
+                        . {correction.reason}
+                      </small>
+                    )}
+                    {override && (
+                      <small className="override-note">
+                        Commercial edit: {override.departmentValue} → {override.revisedValue}.{' '}
+                        {override.reason}
+                      </small>
+                    )}
+                  </div>
+                );
+              })}
+            </dl>
+            <p>
+              Objectives:{' '}
+              {report.strategicObjectiveIds
+                .map((id) => atlas.strategicObjectives.find((item) => item.id === id)?.name)
+                .join(' · ')}
+            </p>
+          </Panel>
+          <Panel title="Validation warnings">
+            {report.weekly.validationWarnings.length ? (
+              report.weekly.validationWarnings.map((warning) => (
+                <p className="warning-banner" key={warning}>
+                  {warning}
+                </p>
+              ))
+            ) : (
+              <div className="compact-empty">
+                <Check />
+                <p>No unresolved validation warnings.</p>
+              </div>
+            )}
+          </Panel>
+        </div>
+      )}
+      {detailTab === 'history' && (
+        <Panel title="Review history" className="section">
+          {comments.map((item) => (
+            <article className="comment-card" key={item.id}>
+              <StatusBadge status={item.status} />
+              <strong>{item.field}</strong>
+              <p>{item.question}</p>
+              {item.response && <p>{item.response}</p>}
+            </article>
+          ))}
+          {auditEvents.map((event) => (
+            <article className="audit-item" key={event.id}>
+              <History />
+              <div>
+                <strong>{event.summary}</strong>
+                <small>
+                  {event.actorRole.replaceAll('_', ' ')} · {format.date(event.timestamp)}
+                </small>
+              </div>
+            </article>
+          ))}
+        </Panel>
+      )}
       {workflow.lastError && (
         <div className="warning-banner section" role="alert">
           <CircleAlert />
@@ -1689,7 +2265,10 @@ export function CommercialReviewPage() {
             setModal('override');
           }}
         >
-          Controlled override
+          Edit structured information
+        </Button>
+        <Button variant="destructive" disabled={!reviewable} onClick={() => setModal('reject')}>
+          Reject
         </Button>
         <Button
           disabled={!reviewable}
@@ -1704,11 +2283,17 @@ export function CommercialReviewPage() {
             showToast('Update approved; readiness recalculated');
           }}
         >
-          Approve update
+          Approve
         </Button>
       </div>
       <Modal
-        title={modal === 'override' ? 'Apply controlled override' : 'Request clarification'}
+        title={
+          modal === 'override'
+            ? 'Edit structured information'
+            : modal === 'reject'
+              ? 'Reject Weekly Execution Update'
+              : 'Request clarification'
+        }
         open={Boolean(modal)}
         onClose={() => setModal(null)}
         footer={
@@ -1738,7 +2323,16 @@ export function CommercialReviewPage() {
                       timestamp: prototypeTime(workflow.auditEvents.length + 1),
                     },
                   });
-                  showToast('Controlled override recorded separately from the department value');
+                  showToast('Commercial edit recorded separately from the department value');
+                } else if (modal === 'reject') {
+                  workflowDispatch({
+                    type: 'REJECT_REPORT',
+                    reportId: report.id,
+                    actorId: activeUserId,
+                    reason: comment,
+                    now: prototypeTime(workflow.auditEvents.length + 1),
+                  });
+                  showToast('Update rejected with an auditable reason', 'warning');
                 } else {
                   workflowDispatch({
                     type: 'REQUEST_CLARIFICATION',
@@ -1765,13 +2359,15 @@ export function CommercialReviewPage() {
           </>
         }
       >
-        <Field label="Field or section">
-          <select value={field} onChange={(event) => setField(event.target.value)}>
-            {report.fields.map((item) => (
-              <option key={item.key}>{item.label}</option>
-            ))}
-          </select>
-        </Field>
+        {modal !== 'reject' && (
+          <Field label="Field or section">
+            <select value={field} onChange={(event) => setField(event.target.value)}>
+              {report.fields.map((item) => (
+                <option key={item.key}>{item.label}</option>
+              ))}
+            </select>
+          </Field>
+        )}
         {modal === 'override' ? (
           <>
             <div className="preserved-value">
@@ -1797,6 +2393,15 @@ export function CommercialReviewPage() {
               />
             </Field>
           </>
+        ) : modal === 'reject' ? (
+          <Field label="Rejection reason">
+            <textarea
+              aria-label="Rejection reason"
+              value={comment}
+              onChange={(event) => setComment(event.target.value)}
+              rows={4}
+            />
+          </Field>
         ) : (
           <>
             <Field label="Field-level question">
@@ -1818,10 +2423,28 @@ export function CommercialReviewPage() {
         )}
       </Modal>
       <Drawer
-        title={viewSource?.name ?? ''}
-        open={Boolean(viewSource)}
-        onClose={() => setViewSource(null)}
+        title={viewSource?.name ?? 'Supporting evidence'}
+        open={evidenceOpen}
+        onClose={() => {
+          setEvidenceOpen(false);
+          setViewSource(null);
+        }}
       >
+        {!viewSource &&
+          sources.map((source) => (
+            <button
+              className="source-item source-item--button"
+              key={source.id}
+              onClick={() => setViewSource(source)}
+            >
+              <FileText />
+              <div>
+                <strong>{source.name}</strong>
+                <small>{source.reference}</small>
+              </div>
+              <StatusBadge status={source.status} />
+            </button>
+          ))}
         {viewSource && (
           <>
             <StatusBadge status={viewSource.status} />

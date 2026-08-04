@@ -8,6 +8,7 @@ Atlas is the completed front-end prototype for synthetic OML 30 executive report
 
 - Strict TypeScript React/Vite application with role-aware Department, Commercial/module, and CEO shells.
 - Phase 1 decision-intelligence foundation: approved business plan, linked execution entities, Weekly Execution Updates, CFO persona, Outputs, Decision Support, evidence, and revision history.
+- Phase 2 contributor and review workflow: structured weekly execution content, operational activities, commitment outcomes and revisions, contextual evidence, clarifications, table-led Commercial Reviews, rejection, and approval.
 - All ten specified routes and their locked desktop/responsive structures, plus the approved Commercial Projects and Recommendations workspaces.
 - Exactly four Department input methods, repeatable multi-source entry, deterministic extraction states, conflicts, source lineage, corrections, certification, clarification, resubmission, override, and approval.
 - Commercial readiness, executive-narrative preview, controlled publication exceptions, publication gate, CEO notification simulation, immutable published cycles, and separate post-publication revisions.
@@ -17,7 +18,7 @@ Atlas is the completed front-end prototype for synthetic OML 30 executive report
 - Loading, empty, recoverable error, no-access, processing, conflict, read-only, and locked states through deterministic scenarios and route permissions.
 - Device-local persistence and a confirmation-protected canonical reset.
 
-See [PHASE_1_AUDIT.md](./PHASE_1_AUDIT.md) for the current IA-refinement audit. [FINAL_ACCEPTANCE.md](./FINAL_ACCEPTANCE.md) and [BUILD_AUDIT.md](./BUILD_AUDIT.md) retain the pre-refinement prototype acceptance record.
+See [PHASE_2_AUDIT.md](./PHASE_2_AUDIT.md) for the current IA-refinement audit. [PHASE_1_AUDIT.md](./PHASE_1_AUDIT.md), [FINAL_ACCEPTANCE.md](./FINAL_ACCEPTANCE.md), and [BUILD_AUDIT.md](./BUILD_AUDIT.md) retain earlier acceptance records.
 
 ## Run locally
 
@@ -80,14 +81,14 @@ npm run build
 npm audit --omit=dev
 ```
 
-The Phase 1 suite passes formatting, lint, strict typecheck, 41 tests, and production build. See the current audit for the remaining detailed IA work.
+The Phase 2 suite passes formatting, lint, strict typecheck, 45 tests, and production build. See the current audit for deferred detailed IA work.
 
 ## Architecture
 
 - `src/data/types.ts` — explicit planning, execution, decision, evidence, output, and history domain contracts.
 - `src/data/atlas.ts` — typed fixture graph, selectors, status semantics, and formatters.
 - `src/state/AtlasContext.tsx` — shared persona, context, scenarios, persistence, and reset.
-- `src/state/workflow.ts` — reporting, publication, lock, revision, and audit state machine.
+- `src/state/workflow.ts` — Weekly Execution Updates, commitments, clarifications, Commercial review, publication, lock, revision, and audit state machine.
 - `src/state/executive.ts` — decisions, assignments, progress, persistence, and audit state.
 - `src/components/` — shells, design-system primitives, accessible charts, drawers, and dialogs.
 - `src/pages/` — architecture, contributor, review, executive, and performance route implementations.

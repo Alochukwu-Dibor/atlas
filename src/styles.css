@@ -1499,6 +1499,107 @@ blockquote {
   }
 }
 
+.contributor-attention,
+.review-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.filter-bar,
+.review-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-bar {
+  padding: 12px;
+  border: 1px solid var(--atlas-border);
+  border-radius: 8px;
+  background: var(--atlas-surface);
+}
+
+.review-tabs {
+  border-bottom: 1px solid var(--atlas-border);
+}
+
+.review-tabs button {
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--atlas-text-secondary);
+}
+
+.review-tabs button.is-active {
+  border-bottom-color: var(--atlas-primary);
+  color: var(--text);
+}
+
+.commitment-comparisons {
+  display: grid;
+  gap: 12px;
+}
+
+.commitment-comparison {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) repeat(5, minmax(140px, 1fr));
+  gap: 12px;
+  align-items: end;
+  padding: 16px;
+  border: 1px solid var(--atlas-border);
+  border-radius: 8px;
+}
+
+.commitment-comparison > div:first-child,
+.activity-selector article {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.activity-selector {
+  display: grid;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.activity-selector article {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--atlas-border);
+}
+
+.structured-review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.structured-review-grid > div {
+  padding: 12px;
+  border: 1px solid var(--atlas-border);
+  border-radius: 6px;
+  white-space: pre-line;
+}
+
+.review-highlight {
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 1100px) {
+  .commitment-comparison {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 760px) {
   .workspace,
   .department-workspace,
@@ -1542,6 +1643,11 @@ blockquote {
   .method-grid,
   .content-split,
   .review-layout {
+    grid-template-columns: 1fr;
+  }
+  .contributor-attention,
+  .structured-review-grid,
+  .commitment-comparison {
     grid-template-columns: 1fr;
   }
   .conflict-values {

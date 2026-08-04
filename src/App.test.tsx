@@ -137,4 +137,51 @@ describe('route architecture', () => {
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     expect(screen.getByLabelText('Available liquidity')).toHaveValue('42500000');
   });
+
+  it('keeps Contributor navigation limited to Submit Update and My Updates', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={['/commercial']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    await user.selectOptions(screen.getByLabelText('Active demo persona'), 'usr_operations');
+    const navigation = await screen.findByRole('navigation', { name: 'Contributor navigation' });
+    expect(navigation).toHaveTextContent('Submit UpdateMy Updates');
+    expect(navigation.querySelectorAll('a')).toHaveLength(2);
+    expect(screen.queryByRole('link', { name: 'Projects' })).not.toBeInTheDocument();
+  });
+
+  it('renders the table-led Commercial Reviews workspace with all required filters', async () => {
+    render(
+      <MemoryRouter initialEntries={['/reviews']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole('heading', { name: 'Reviews' })).toBeVisible();
+    expect(screen.getByLabelText('Reporting period filter')).toBeVisible();
+    expect(screen.getByLabelText('Business unit or project filter')).toBeVisible();
+    expect(screen.getByLabelText('Review status filter')).toBeVisible();
+    const table = screen.getByRole('table', { name: 'Weekly Execution Update review queue' });
+    expect(table).toHaveTextContent('Department');
+    expect(table).toHaveTextContent('Material change');
+    expect(table).toHaveTextContent('Action');
+  });
+
+  it('denies a Contributor access to Commercial Reviews', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={['/reviews']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    await user.selectOptions(screen.getByLabelText('Active demo persona'), 'usr_operations');
+    expect(await screen.findByRole('heading', { name: 'My Updates' })).toBeVisible();
+  });
 });

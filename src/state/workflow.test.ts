@@ -302,4 +302,116 @@ describe('Atlas reporting workflow', () => {
     expect(revised.reports.find((report) => report.id === original.id)).toEqual(original);
     expect(revised.auditEvents.at(-1)?.action).toBe('post_publication_revision_created');
   });
+
+  it('completes the contributor-to-review flow with commitments, clarification, rejection, and approval', () => {
+    const initial = createInitialWorkflowState();
+    const report = initial.reports.find((item) => item.id === 'rpt_ops_w31')!;
+    const structured = workflowReducer(initial, {
+      type: 'UPDATE_WEEKLY_CONTENT',
+      reportId: report.id,
+      actorId,
+      now,
+      content: {
+        ...report.weekly,
+        executiveHighlight: 'Rotor logistics remains the material production constraint.',
+        materialChange: 'Production forecast moved from 110,000 to 104,000 bopd.',
+      },
+    });
+    const withOutcome = workflowReducer(structured, {
+      type: 'UPDATE_COMMITMENT_OUTCOME',
+      reportId: report.id,
+      actorId,
+      now,
+      outcome: {
+        commitmentId: 'commit_rotor',
+        currentOutcome: 'Expedited route confirmed; final airway bill remains outstanding.',
+        explanation: 'Carrier allocation moved by two days.',
+        newForecast: '2026-08-11',
+        status: 'delayed',
+        delayReason: 'Carrier allocation moved.',
+        evidenceIds: ['ev_ops_update'],
+      },
+    });
+    expect(withOutcome.commitments.find((item) => item.id === 'commit_rotor')?.revisionCount).toBe(
+      2,
+    );
+    const withCommitment = workflowReducer(withOutcome, {
+      type: 'ADD_COMMITMENT',
+      actorId,
+      now,
+      commitment: {
+        id: 'commit_phase2_test',
+        reportId: report.id,
+        description: 'Confirm airway bill and site receipt window.',
+        ownerId: actorId,
+        departmentId: 'dept_operations',
+        dueDate: '2026-08-06',
+        expectedOutcome: 'Rotor delivery window protected.',
+        linkedType: 'activity',
+        linkedId: 'act_compressor_restore',
+        status: 'not_started',
+        delayReason: '',
+        revisedForecast: '2026-08-06',
+        evidenceIds: ['ev_ops_update'],
+        revisionCount: 0,
+      },
+    });
+    expect(withCommitment.reports.find((item) => item.id === report.id)?.commitmentIds).toContain(
+      'commit_phase2_test',
+    );
+    const submitted = workflowReducer(withCommitment, {
+      type: 'SUBMIT_REPORT',
+      reportId: report.id,
+      actorId,
+      now,
+    });
+    const clarified = workflowReducer(submitted, {
+      type: 'REQUEST_CLARIFICATION',
+      comment: {
+        id: 'clarification_phase2',
+        reportId: report.id,
+        field: 'Forecast changes',
+        authorId: 'usr_commercial',
+        question: 'Confirm the carrier evidence reference.',
+        status: 'open',
+        createdAt: now,
+      },
+    });
+    const answered = workflowReducer(clarified, {
+      type: 'RESPOND_CLARIFICATION',
+      reportId: report.id,
+      commentId: 'clarification_phase2',
+      response: 'Confirmed in ev_ops_update.',
+      actorId,
+      now,
+    });
+    const resubmitted = workflowReducer(answered, {
+      type: 'SUBMIT_REPORT',
+      reportId: report.id,
+      actorId,
+      now,
+    });
+    const rejected = workflowReducer(resubmitted, {
+      type: 'REJECT_REPORT',
+      reportId: report.id,
+      actorId: 'usr_commercial',
+      reason: 'Expected outcome needs a measurable acceptance condition.',
+      now,
+    });
+    expect(rejected.reports.find((item) => item.id === report.id)?.status).toBe('rejected');
+    const revised = workflowReducer(rejected, {
+      type: 'SUBMIT_REPORT',
+      reportId: report.id,
+      actorId,
+      now,
+    });
+    const approved = workflowReducer(revised, {
+      type: 'APPROVE_REPORT',
+      reportId: report.id,
+      actorId: 'usr_commercial',
+      now,
+    });
+    expect(approved.reports.find((item) => item.id === report.id)?.status).toBe('approved');
+    expect(approved.auditEvents.map((event) => event.action)).toContain('report_rejected');
+  });
 });

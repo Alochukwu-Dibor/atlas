@@ -8,6 +8,7 @@ import {
   KpiCard,
   PageHeader,
   Panel,
+  Select,
   StatusBadge,
 } from '../components/Ui';
 import {
@@ -102,8 +103,25 @@ export function ExecutionPage() {
 
 export function ReviewsPage() {
   const navigate = useNavigate();
-  const { cycleId, workflow } = useAtlas();
-  const queue = selectSubmissionQueue(workflow, cycleId);
+  const { workflow } = useAtlas();
+  const [periodFilter, setPeriodFilter] = useState('all');
+  const [contextFilter, setContextFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const queue = selectSubmissionQueue(workflow).filter(
+    (update) =>
+      (periodFilter === 'all' || update.cycleId === periodFilter) &&
+      (contextFilter === 'all' ||
+        update.businessUnitId === contextFilter ||
+        update.projectId === contextFilter) &&
+      (statusFilter === 'all' || update.status === statusFilter),
+  );
+  const methodLabels: Record<string, string> = {
+    structured_form: 'Structured form',
+    xlsx_upload: 'Spreadsheet upload',
+    document_upload: 'Report upload',
+    paste_email_or_transcript: 'Manual entry or pasted transcript',
+  };
+  const methodName = (method: string) => methodLabels[method] ?? method.replaceAll('_', ' ');
   return (
     <>
       <PageHeader
@@ -111,16 +129,65 @@ export function ReviewsPage() {
         description="Validate Weekly Execution Updates before they affect executive insights or Outputs."
         controls={<ContextControls />}
       />
+      <div className="filter-bar section" aria-label="Review filters">
+        <Select
+          label="Reporting period filter"
+          value={periodFilter}
+          onChange={setPeriodFilter}
+          options={[
+            { value: 'all', label: 'All reporting periods' },
+            ...atlas.reportingCycles.map((period) => ({ value: period.id, label: period.label })),
+          ]}
+        />
+        <Select
+          label="Business unit or project filter"
+          value={contextFilter}
+          onChange={setContextFilter}
+          options={[
+            { value: 'all', label: 'All business units and projects' },
+            ...atlas.businessUnits.map((unit) => ({ value: unit.id, label: unit.name })),
+            ...atlas.projects.map((project) => ({ value: project.id, label: project.name })),
+          ]}
+        />
+        <Select
+          label="Review status filter"
+          value={statusFilter}
+          onChange={setStatusFilter}
+          options={[
+            { value: 'all', label: 'All review statuses' },
+            { value: 'submitted', label: 'Submitted' },
+            { value: 'resubmitted', label: 'Resubmitted' },
+            { value: 'needs_clarification', label: 'Clarification requested' },
+            { value: 'approved', label: 'Approved' },
+            { value: 'rejected', label: 'Rejected' },
+          ]}
+        />
+      </div>
       <Panel title="Weekly Execution Update review queue" className="section">
         <DataTable
           caption="Weekly Execution Update review queue"
-          headers={['Department', 'Owner', 'Reporting period', 'Method', 'Status', 'Action']}
+          headers={[
+            'Department',
+            'Manager',
+            'Business unit or project',
+            'Reporting period',
+            'Submission method',
+            'Status',
+            'Material change',
+            'Action',
+          ]}
           rows={queue.map((update) => [
             reportDepartmentName(update),
             getUser(update.managerId ?? '')?.name ?? 'Unassigned',
+            update.projectId
+              ? (atlas.projects.find((project) => project.id === update.projectId)?.name ??
+                'Project')
+              : (atlas.businessUnits.find((unit) => unit.id === update.businessUnitId)?.name ??
+                '—'),
             atlas.reportingCycles.find((period) => period.id === update.cycleId)?.label ?? '—',
-            update.methods.join(' · '),
+            update.methods.map(methodName).join(' · '),
             <StatusBadge status={update.status} />,
+            update.weekly.materialChange,
             'Review update',
           ])}
           onRowClick={(index) => navigate(`/reviews/${queue[index].id}`)}
