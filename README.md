@@ -7,6 +7,7 @@ Atlas is the completed front-end prototype for synthetic OML 30 executive report
 ## Completed scope
 
 - Strict TypeScript React/Vite application with role-aware Department, Commercial/module, and CEO shells.
+- Phase 1 decision-intelligence foundation: approved business plan, linked execution entities, Weekly Execution Updates, CFO persona, Outputs, Decision Support, evidence, and revision history.
 - All ten specified routes and their locked desktop/responsive structures, plus the approved Commercial Projects and Recommendations workspaces.
 - Exactly four Department input methods, repeatable multi-source entry, deterministic extraction states, conflicts, source lineage, corrections, certification, clarification, resubmission, override, and approval.
 - Commercial readiness, executive-narrative preview, controlled publication exceptions, publication gate, CEO notification simulation, immutable published cycles, and separate post-publication revisions.
@@ -16,7 +17,7 @@ Atlas is the completed front-end prototype for synthetic OML 30 executive report
 - Loading, empty, recoverable error, no-access, processing, conflict, read-only, and locked states through deterministic scenarios and route permissions.
 - Device-local persistence and a confirmation-protected canonical reset.
 
-See [FINAL_ACCEPTANCE.md](./FINAL_ACCEPTANCE.md) for the final traceability and acceptance record and [BUILD_AUDIT.md](./BUILD_AUDIT.md) for the concise engineering audit.
+See [PHASE_1_AUDIT.md](./PHASE_1_AUDIT.md) for the current IA-refinement audit. [FINAL_ACCEPTANCE.md](./FINAL_ACCEPTANCE.md) and [BUILD_AUDIT.md](./BUILD_AUDIT.md) retain the pre-refinement prototype acceptance record.
 
 ## Run locally
 
@@ -37,28 +38,36 @@ Use the Vite framework preset with `npm run build` and the `dist` output directo
 
 Use the persona selector to switch among:
 
-- Commercial Manager — overview, review, publication, modules, and action verification.
-- CEO — full-width published executive workspace with no sidebar.
+- Commercial Manager — Business Overview, Execution, Projects, Reviews, Decisions, Outputs, and configuration.
+- CEO — validated CEO View, Decisions, Outputs, and existing executive actions.
+- CFO — shared-data CFO View, Decisions, and Outputs.
 - Department Managers — select any of the eight reporting departments and use department-matched structured fields, extracted fixtures, returned actions, locked reports, and revisions.
 
 Scenarios include canonical, empty, processing, conflict, and ready-to-publish states. The ready-to-publish scenario deterministically supplies approved mandatory reports. Reset demo asks for confirmation before clearing all device-local changes.
 
 ## Routes
 
-| Route                     | Workspace                                    |
-| ------------------------- | -------------------------------------------- |
-| `/department`             | Department Manager dashboard                 |
-| `/department/reports/new` | Create Weekly Report                         |
-| `/department/reports/:id` | Department report review/revision            |
-| `/commercial`             | Commercial Manager dashboard and publication |
-| `/commercial/review/:id`  | Commercial submission review                 |
-| `/projects`               | Commercial project portfolio                 |
-| `/recommendations`        | Commercial recommendation management         |
-| `/executive`              | CEO Executive Overview                       |
-| `/production`             | Production performance                       |
-| `/finance`                | Finance performance                          |
-| `/hse`                    | HSE performance                              |
-| `/legal`                  | Legal & Regulatory performance               |
+| Route                     | Workspace                                 |
+| ------------------------- | ----------------------------------------- |
+| `/commercial`             | Commercial Business Overview              |
+| `/execution`              | Business-plan objective execution         |
+| `/projects`               | Projects                                  |
+| `/reviews`                | Weekly Execution Update review queue      |
+| `/reviews/:id`            | Update Review                             |
+| `/decisions`              | Commercial Decisions and Decision Support |
+| `/outputs`                | Commercial Outputs                        |
+| `/kpi-library`            | KPI Library                               |
+| `/reporting-templates`    | Reporting Templates                       |
+| `/settings`               | Prototype Settings                        |
+| `/department`             | Contributor My Updates                    |
+| `/department/reports/new` | Contributor Submit Update                 |
+| `/department/reports/:id` | Weekly Execution Update review/revision   |
+| `/executive`              | CEO View                                  |
+| `/executive/cfo`          | CFO View                                  |
+| `/executive/decisions`    | Executive Decisions                       |
+| `/executive/outputs`      | Executive Outputs                         |
+
+The legacy `/commercial/review/:id`, `/recommendations`, `/production`, `/finance`, `/hse`, and `/legal` routes remain available while later phases migrate their detailed content.
 
 ## Verification
 
@@ -71,16 +80,17 @@ npm run build
 npm audit --omit=dev
 ```
 
-The final suite passes formatting, lint, strict typecheck, 37 tests, and production build. The audit reports a React Router RSC/server-action advisory; Atlas is a client-only `BrowserRouter` application and implements neither affected feature, while the proposed forced remediation is a breaking downgrade. See the acceptance record for the risk disposition.
+The Phase 1 suite passes formatting, lint, strict typecheck, 41 tests, and production build. See the current audit for the remaining detailed IA work.
 
 ## Architecture
 
-- `src/data/atlas.ts` — typed fixture access, selectors, status semantics, and formatters.
+- `src/data/types.ts` — explicit planning, execution, decision, evidence, output, and history domain contracts.
+- `src/data/atlas.ts` — typed fixture graph, selectors, status semantics, and formatters.
 - `src/state/AtlasContext.tsx` — shared persona, context, scenarios, persistence, and reset.
 - `src/state/workflow.ts` — reporting, publication, lock, revision, and audit state machine.
 - `src/state/executive.ts` — decisions, assignments, progress, persistence, and audit state.
 - `src/components/` — shells, design-system primitives, accessible charts, drawers, and dialogs.
-- `src/pages/` — reporting, executive, and performance route implementations.
+- `src/pages/` — architecture, contributor, review, executive, and performance route implementations.
 - `src/styles.css` — Atlas design tokens and locked desktop/responsive layout rules.
 
 No backend, live authentication, live AI/OCR, regulator submission, external-system integration, or deployment is included.

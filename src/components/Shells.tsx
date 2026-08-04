@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   Lightbulb,
   RefreshCw,
-  ShieldCheck,
 } from 'lucide-react';
 import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -16,15 +15,26 @@ import { atlas, getAsset, getCycle, getDepartment, getUser } from '../data/atlas
 import { useAtlas } from '../state/AtlasContext';
 import { Button, Drawer, Field, Select, StateView, StatusBadge, useToast } from './Ui';
 
-const navItems = [
-  { to: '/commercial', label: 'Overview', icon: LayoutDashboard },
+const commercialNavItems = [
+  { to: '/commercial', label: 'Business Overview', icon: LayoutDashboard },
+  { to: '/execution', label: 'Execution', icon: Activity },
   { to: '/projects', label: 'Projects', icon: BriefcaseBusiness },
-  { to: '/production', label: 'Production', icon: Activity },
-  { to: '/finance', label: 'Finance', icon: BarChart3 },
-  { to: '/hse', label: 'HSE', icon: ShieldCheck },
-  { to: '/legal', label: 'Legal & Regulatory', icon: Gavel },
-  { to: '/recommendations', label: 'Recommendations', icon: Lightbulb },
-  { to: '/commercial/review/rpt_fin_w30', label: 'Reports / Review Queue', icon: ClipboardCheck },
+  { to: '/reviews', label: 'Reviews', icon: ClipboardCheck },
+  { to: '/decisions', label: 'Decisions', icon: Lightbulb },
+  { to: '/outputs', label: 'Outputs', icon: FileText },
+];
+
+const commercialConfigurationItems = [
+  { to: '/kpi-library', label: 'KPI Library', icon: BarChart3 },
+  { to: '/reporting-templates', label: 'Reporting Templates', icon: FileText },
+  { to: '/settings', label: 'Settings', icon: Gavel },
+];
+
+const executiveNavItems = [
+  { to: '/executive', label: 'CEO View', icon: LayoutDashboard },
+  { to: '/executive/cfo', label: 'CFO View', icon: BarChart3 },
+  { to: '/executive/decisions', label: 'Decisions', icon: Lightbulb },
+  { to: '/executive/outputs', label: 'Outputs', icon: FileText },
 ];
 
 export function Brand() {
@@ -49,12 +59,18 @@ function PersonaControl() {
     const selectedUser = getUser(id);
     if (selectedUser?.departmentId) setDepartmentId(selectedUser.departmentId);
     setCycleId(
-      role === 'ceo'
+      ['ceo', 'cfo'].includes(role ?? '')
         ? atlas.demoStates.defaultPublishedCycleId
         : atlas.demoStates.defaultOpenCycleId,
     );
     navigate(
-      role === 'ceo' ? '/executive' : role === 'department_manager' ? '/department' : '/commercial',
+      role === 'ceo'
+        ? '/executive'
+        : role === 'cfo'
+          ? '/executive/cfo'
+          : role === 'department_manager'
+            ? '/department'
+            : '/commercial',
     );
   };
   return (
@@ -178,7 +194,7 @@ function ScenarioOutlet() {
     return (
       <StateView
         type="loading"
-        title="Loading reporting data"
+        title="Loading execution data"
         message="Atlas is applying the selected asset and reporting-period context."
         action={<Button onClick={resetDemo}>Restore canonical data</Button>}
       />
@@ -188,8 +204,8 @@ function ScenarioOutlet() {
     return (
       <StateView
         type="empty"
-        title="No reporting data"
-        message="No submissions are available for this synthetic scenario. Start a report or restore the canonical demo."
+        title="No execution data"
+        message="No updates are available for this synthetic scenario. Submit an update or restore the canonical demo."
         action={<Button onClick={resetDemo}>Restore canonical data</Button>}
       />
     );
@@ -199,7 +215,7 @@ function ScenarioOutlet() {
       <StateView
         type="error"
         title="Conflicting sources require review"
-        message="The document and XLSX fixture disagree. Open the report review or restore the canonical demo."
+        message="The document and XLSX fixture disagree. Open the update review or restore the canonical demo."
         action={<Button onClick={resetDemo}>Restore canonical data</Button>}
       />
     );
@@ -231,6 +247,8 @@ export function ContextControls({ allowOpenCycle = true }: { allowOpenCycle?: bo
   const {
     assetId,
     setAssetId,
+    businessUnitId,
+    setBusinessUnitId,
     cycleId,
     setCycleId,
     scenarioId,
@@ -251,6 +269,12 @@ export function ContextControls({ allowOpenCycle = true }: { allowOpenCycle?: bo
       );
   return (
     <>
+      <Select
+        label="Business unit"
+        value={businessUnitId}
+        onChange={setBusinessUnitId}
+        options={atlas.businessUnits.map((unit) => ({ value: unit.id, label: unit.name }))}
+      />
       <Select
         label="Asset context"
         value={assetId}
@@ -289,7 +313,7 @@ export function ContextControls({ allowOpenCycle = true }: { allowOpenCycle?: bo
 
 export function SidebarShell() {
   const { role, activeUserId } = useAtlas();
-  if (!['commercial_manager', 'ceo'].includes(role)) {
+  if (!['commercial_manager', 'ceo', 'cfo'].includes(role)) {
     return (
       <StateView
         type="no-access"
@@ -303,18 +327,30 @@ export function SidebarShell() {
       />
     );
   }
+  const primaryItems = role === 'commercial_manager' ? commercialNavItems : executiveNavItems;
   return (
     <div className="shell shell--sidebar">
       <aside className="sidebar">
         <Brand />
         <nav aria-label="Primary navigation">
-          {navItems.map(({ to, label, icon: Icon }) => (
+          {primaryItems.map(({ to, label, icon: Icon }) => (
             <NavLink key={to} to={to} className={({ isActive }) => (isActive ? 'is-active' : '')}>
               <Icon aria-hidden="true" />
               {label}
             </NavLink>
           ))}
         </nav>
+        {role === 'commercial_manager' && (
+          <nav aria-label="Configuration navigation" className="sidebar__configuration">
+            <span className="sidebar__section-label">Configuration</span>
+            {commercialConfigurationItems.map(({ to, label, icon: Icon }) => (
+              <NavLink key={to} to={to} className={({ isActive }) => (isActive ? 'is-active' : '')}>
+                <Icon aria-hidden="true" />
+                {label}
+              </NavLink>
+            ))}
+          </nav>
+        )}
         <div className="sidebar__footer">
           <AssignedActionInbox />
           <PersonaControl />
@@ -338,7 +374,7 @@ export function DepartmentShell() {
       <StateView
         type="no-access"
         title="Department workspace restricted"
-        message="Switch to a Department Manager persona to access reporting."
+        message="Switch to a Department Manager persona to access Weekly Execution Updates."
         action={<PersonaControl />}
       />
     );
@@ -349,16 +385,17 @@ export function DepartmentShell() {
         <Brand />
         <span className="module-label">
           <FileText aria-hidden="true" />
-          Reporting · {department.name}
+          Weekly Execution Updates · {department.name}
         </span>
         <span className="last-updated">Last updated 1 Aug 2026 · 09:00 WAT</span>
         <div className="department-header__actions">
+          <nav className="contributor-nav" aria-label="Contributor navigation">
+            <NavLink to="/department/reports/new">Submit Update</NavLink>
+            <NavLink to="/department">My Updates</NavLink>
+          </nav>
           <PersonaControl />
           <DepartmentControl />
           <AssignedActionInbox responsibleOnly responsibleUserId={department.managerId} />
-          <NavLink to="/department/reports/new" className="button button--primary">
-            New Report
-          </NavLink>
           <div className="profile">
             <span className="avatar">
               {(manager?.name ?? department.name)
@@ -383,12 +420,12 @@ export function DepartmentShell() {
 
 export function ExecutiveShell() {
   const { role } = useAtlas();
-  if (role !== 'ceo') {
+  if (!['ceo', 'cfo'].includes(role)) {
     return (
       <StateView
         type="no-access"
         title="Executive workspace restricted"
-        message="Only the CEO persona can view published executive updates."
+        message="Only an Executive persona can view validated executive information."
         action={<PersonaControl />}
       />
     );
@@ -397,6 +434,13 @@ export function ExecutiveShell() {
     <div className="shell shell--executive">
       <header className="executive-header">
         <Brand />
+        <nav className="executive-nav" aria-label="Executive navigation">
+          {executiveNavItems.map(({ to, label }) => (
+            <NavLink key={to} to={to} end={to === '/executive'}>
+              {label}
+            </NavLink>
+          ))}
+        </nav>
         <div className="executive-header__actions">
           <PersonaControl />
           <Profile />
@@ -425,7 +469,13 @@ export function RouteIndex() {
   const { role } = useAtlas();
   const navigate = useNavigate();
   const target =
-    role === 'ceo' ? '/executive' : role === 'department_manager' ? '/department' : '/commercial';
+    role === 'ceo'
+      ? '/executive'
+      : role === 'cfo'
+        ? '/executive/cfo'
+        : role === 'department_manager'
+          ? '/department'
+          : '/commercial';
   queueMicrotask(() => navigate(target, { replace: true }));
   return (
     <StateView

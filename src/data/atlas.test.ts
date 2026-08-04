@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   atlas,
   format,
+  getBusinessPlan,
+  getBusinessPlanDelivery,
   getDepartmentReports,
   getExecutiveMetrics,
   getLiquidity,
@@ -9,6 +11,8 @@ import {
   getProductionScope,
   getReadiness,
   getSourceReference,
+  hasCompleteTraceability,
+  phase1Domain,
   toneForStatus,
 } from './atlas';
 
@@ -69,5 +73,36 @@ describe('Atlas data selectors', () => {
     expect(getExecutiveMetrics().legal.estimatedExposureUsd).toBe(
       atlas.executiveSummary.legal.estimatedExposureUsd,
     );
+  });
+
+  it('links the approved business plan to objectives, KPIs, budgets and execution records', () => {
+    const plan = getBusinessPlan('bu_oml30', 'period_2026');
+    expect(plan?.status).toBe('approved');
+    expect(plan?.strategicThemeIds).toHaveLength(4);
+    expect(getBusinessPlanDelivery('bu_oml30').objectives).toHaveLength(4);
+    expect(phase1Domain.kpiDefinitions).toHaveLength(7);
+    expect(phase1Domain.approvedBudgets[0].budgetLineIds).toHaveLength(4);
+    expect(phase1Domain.outputs).toHaveLength(4);
+    expect(phase1Domain.kpiTargets.find((target) => target.id === 'target_trir')).toMatchObject({
+      approvedBaseline: atlas.hse.kpis.trirTarget,
+      actual: atlas.hse.kpis.trir,
+    });
+  });
+
+  it('preserves baselines and supports traceable updates without a project', () => {
+    const production = phase1Domain.kpiTargets.find(
+      (target) => target.id === 'target_gross_production',
+    );
+    expect(production).toMatchObject({
+      approvedBaseline: 120000,
+      actual: 96800,
+      currentForecast: 104000,
+      priorForecast: 110000,
+    });
+    const businessUnitUpdate = phase1Domain.weeklyExecutionUpdates.find(
+      (update) => update.id === 'update_commercial_w31',
+    );
+    expect(businessUnitUpdate?.projectId).toBeNull();
+    expect(hasCompleteTraceability(businessUnitUpdate ?? {})).toBe(true);
   });
 });

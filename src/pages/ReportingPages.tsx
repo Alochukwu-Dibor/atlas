@@ -15,7 +15,6 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react';
-import { Ring } from '../components/Charts';
 import { ContextControls } from '../components/Shells';
 import {
   Button,
@@ -30,7 +29,15 @@ import {
   StatusBadge,
   useToast,
 } from '../components/Ui';
-import { atlas, format, getCycle, getDepartment, getProductionKpis, getUser } from '../data/atlas';
+import {
+  atlas,
+  format,
+  getBusinessPlanDelivery,
+  getCycle,
+  getDepartment,
+  getProductionKpis,
+  getUser,
+} from '../data/atlas';
 import { useAtlas } from '../state/AtlasContext';
 import {
   reportDepartmentName,
@@ -122,22 +129,22 @@ export function DepartmentDashboard() {
   return (
     <>
       <PageHeader
-        title="Weekly reporting"
-        description="Prepare, certify and track your department’s reporting position. Changes are stored only on this device for the prototype."
+        title="My Updates"
+        description="Prepare, certify and track your department’s Weekly Execution Updates. Changes are stored only on this device for the prototype."
       />
       <div className="grid grid--3">
         <KpiCard
           label="Submissions due"
           value={String(due.length)}
           status={due.length ? 'due_soon' : 'approved'}
-          context={due.length ? activeCycle.label : 'All required reports submitted'}
+          context={due.length ? activeCycle.label : 'All required updates submitted'}
           onClick={due.length ? () => navigate('/department/reports/new') : undefined}
         />
         <KpiCard
           label="Pending Commercial review"
           value={String(pending.length)}
           status={pending.length ? 'submitted' : 'approved'}
-          context={pending.length ? 'Awaiting Commercial review' : 'No reports waiting'}
+          context={pending.length ? 'Awaiting Commercial review' : 'No updates waiting'}
           onClick={pending[0] ? () => navigate(`/department/reports/${pending[0].id}`) : undefined}
         />
         <KpiCard
@@ -150,7 +157,7 @@ export function DepartmentDashboard() {
           }
         />
       </div>
-      <Panel title="Submission history" className="section">
+      <Panel title="Update history" className="section">
         <DataTable
           caption="Department submission history"
           headers={['Project · Period', 'Method', 'Status', 'Submitted']}
@@ -482,8 +489,15 @@ function MethodInputs({ report, method, onAdd }: MethodInputsProps) {
 export function CreateReportPage() {
   const navigate = useNavigate();
   const showToast = useToast();
-  const { activeUserId, departmentId, cycleId, setCycleId, workflow, workflowDispatch } =
-    useAtlas();
+  const {
+    activeUserId,
+    businessUnitId,
+    departmentId,
+    cycleId,
+    setCycleId,
+    workflow,
+    workflowDispatch,
+  } = useAtlas();
   const department = getDepartment(departmentId)!;
   const report =
     workflow.reports.find(
@@ -493,6 +507,16 @@ export function CreateReportPage() {
   const [selected, setSelected] = useState<SourceMethod[]>(report.methods);
   const [step, setStep] = useState<1 | 2>(1);
   const [title, setTitle] = useState(report.title);
+  const [objectiveId, setObjectiveId] = useState(
+    report.strategicObjectiveIds[0] ?? atlas.strategicObjectives[0].id,
+  );
+  const [executionContext, setExecutionContext] = useState(
+    report.projectId
+      ? `project:${report.projectId}`
+      : report.assetId
+        ? `asset:${report.assetId}`
+        : '',
+  );
   const [activeMethods, setActiveMethods] = useState<SourceMethod[]>(report.methods);
   const [viewSource, setViewSource] = useState<WorkflowSource | null>(null);
   const [removeSource, setRemoveSource] = useState<WorkflowSource | null>(null);
@@ -534,10 +558,10 @@ export function CreateReportPage() {
   return (
     <>
       <PageHeader
-        title="Create weekly report"
+        title="Submit Weekly Execution Update"
         description="Deterministic extraction and device-local persistence for synthetic prototype data."
       />
-      <ol className="steps" aria-label="Report creation progress">
+      <ol className="steps" aria-label="Update creation progress">
         <li className={step === 1 ? 'is-active' : 'is-complete'}>
           <span>{step === 1 ? '1' : <Check aria-hidden="true" />}</span>Details & Method
         </li>
@@ -549,9 +573,44 @@ export function CreateReportPage() {
         <>
           <Panel title="Common details" className="section">
             <div className="form-grid">
-              <Field label="Project / Asset">
-                <select aria-label="Project or asset" defaultValue="asset_oml30">
-                  <option value="asset_oml30">OML 30 — All Fields and Projects</option>
+              <Field label="Business unit">
+                <select aria-label="Business unit" value={businessUnitId} disabled>
+                  {atlas.businessUnits.map((unit) => (
+                    <option key={unit.id} value={unit.id}>
+                      {unit.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Strategic objective">
+                <select
+                  value={objectiveId}
+                  onChange={(event) => setObjectiveId(event.target.value)}
+                >
+                  {atlas.strategicObjectives.map((objective) => (
+                    <option key={objective.id} value={objective.id}>
+                      {objective.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Project or asset (optional)">
+                <select
+                  aria-label="Project or asset (optional)"
+                  value={executionContext}
+                  onChange={(event) => setExecutionContext(event.target.value)}
+                >
+                  <option value="">Not project-specific</option>
+                  {atlas.assets.map((asset) => (
+                    <option key={asset.id} value={`asset:${asset.id}`}>
+                      {asset.label}
+                    </option>
+                  ))}
+                  {atlas.projects.map((project) => (
+                    <option key={project.id} value={`project:${project.id}`}>
+                      {project.name}
+                    </option>
+                  ))}
                 </select>
               </Field>
               <Field label="Department">
@@ -605,6 +664,14 @@ export function CreateReportPage() {
                     reportId: report.id,
                     title,
                     methods: selected,
+                    businessUnitId,
+                    strategicObjectiveIds: [objectiveId],
+                    projectId: executionContext.startsWith('project:')
+                      ? executionContext.replace('project:', '')
+                      : null,
+                    assetId: executionContext.startsWith('asset:')
+                      ? executionContext.replace('asset:', '')
+                      : null,
                   });
                   setActiveMethods(selected);
                   setStep(2);
@@ -697,7 +764,7 @@ export function CreateReportPage() {
                 </div>
               )}
             </Panel>
-            <Panel title="Atlas standardised departmental report">
+            <Panel title="Atlas standardised Weekly Execution Update">
               {missingWarnings.map((source) => (
                 <div className="warning-banner" key={source.id}>
                   <CircleAlert />
@@ -841,13 +908,13 @@ export function CreateReportPage() {
                   });
                   showToast(
                     report.status === 'needs_clarification'
-                      ? 'Report resubmitted to Commercial'
-                      : 'Report submitted to Commercial review',
+                      ? 'Update resubmitted to Commercial'
+                      : 'Update submitted to Commercial review',
                   );
                   navigate(`/department/reports/${report.id}`);
                 }}
               >
-                Submit Report
+                Submit Update
               </Button>
             </div>
           </Panel>
@@ -964,7 +1031,7 @@ export function DepartmentReportReview() {
   const [recertified, setRecertified] = useState(false);
   if (!report)
     return (
-      <Panel title="Report unavailable">
+      <Panel title="Update unavailable">
         <p>The requested synthetic report fixture was not found.</p>
       </Panel>
     );
@@ -1004,7 +1071,7 @@ export function DepartmentReportReview() {
                     now: prototypeTime(workflow.auditEvents.length + 1),
                   });
                   navigate(`/department/reports/${report.id}_revision_${revisionNumber}`);
-                  showToast('Auditable revision created; the published report remains unchanged');
+                  showToast('Auditable revision created; the published update remains unchanged');
                 }}
               >
                 Create revision
@@ -1019,12 +1086,12 @@ export function DepartmentReportReview() {
           <span>
             {report.status === 'published_locked'
               ? 'This published snapshot is immutable. Create a revision for any later correction.'
-              : 'This report is locked for the Department Manager while Commercial review is in progress.'}
+              : 'This update is locked for the Department Manager while Commercial review is in progress.'}
           </span>
         </div>
       )}
       <div className="review-layout section">
-        <Panel title="Report and source evidence">
+        <Panel title="Update and source evidence">
           <dl className="metric-review">
             {report.fields.map((field) => (
               <div key={field.key}>
@@ -1161,10 +1228,10 @@ export function DepartmentReportReview() {
                   actorId: activeUserId,
                   now: prototypeTime(workflow.auditEvents.length + 1),
                 });
-                showToast('Report resubmitted with changes highlighted');
+                showToast('Update resubmitted with changes highlighted');
               }}
             >
-              Resubmit Report
+              Resubmit Update
             </Button>
           </div>
         </Panel>
@@ -1179,7 +1246,7 @@ export function CommercialDashboard() {
   const [publishOpen, setPublishOpen] = useState(false);
   const [narrative, setNarrative] = useState('');
   const [exceptionReason, setExceptionReason] = useState('');
-  const { activeUserId, cycleId, workflow, workflowDispatch } = useAtlas();
+  const { activeUserId, businessUnitId, cycleId, workflow, workflowDispatch } = useAtlas();
   const showToast = useToast();
   const readiness = selectReadiness(workflow, cycleId);
   const publication = workflow.publications.find((item) => item.cycleId === cycleId);
@@ -1189,16 +1256,9 @@ export function CommercialDashboard() {
     (readiness.reportingReadinessPercent === 100 ||
       Boolean(publication?.controlledExceptionReason));
   const production = getProductionKpis();
-  const portfolioProgress = Math.round(
-    atlas.projects.reduce((total, project) => total + project.progressPercent, 0) /
-      atlas.projects.length,
-  );
-  const portfolioPlan = Math.round(
-    atlas.projects.reduce((total, project) => total + project.planPercent, 0) /
-      atlas.projects.length,
-  );
-  const portfolioAttention = atlas.projects.filter((project) =>
-    ['at_risk', 'delayed'].includes(project.status),
+  const businessDelivery = getBusinessPlanDelivery(businessUnitId);
+  const objectivesNeedingAttention = businessDelivery.objectives.filter((objective) =>
+    ['critical', 'at_risk', 'needs_attention'].includes(objective.status),
   ).length;
   const queue = selectSubmissionQueue(workflow, cycleId);
   const returned = queue.filter((report) => report.status === 'needs_clarification');
@@ -1206,7 +1266,7 @@ export function CommercialDashboard() {
   return (
     <>
       <PageHeader
-        title="Commercial overview"
+        title="Business Overview"
         description="Resolve reporting exceptions and prepare the next decision-ready executive update."
         controls={
           <>
@@ -1226,13 +1286,16 @@ export function CommercialDashboard() {
         }
       />
       <div className="commercial-top">
-        <Panel title="Portfolio Health">
-          <Ring value={portfolioProgress} label="Average progress" tone="warning" />
-          <p>
-            Plan {portfolioPlan}% · {portfolioAttention} of {atlas.projects.length} projects need
-            attention
-          </p>
-          <StatusBadge status={atlas.executiveSummary.overallStatus} />
+        <Panel title="Business Health">
+          <div className="metric-large">
+            <StatusBadge status={businessDelivery.status} />
+            <strong>{businessDelivery.deliveryPercent}%</strong>
+            <span>Business-plan delivery</span>
+            <small>
+              {objectivesNeedingAttention} of {businessDelivery.objectives.length} objectives need
+              attention
+            </small>
+          </div>
         </Panel>
         <Panel title="Overall project status">
           <div className="metric-large">
@@ -1308,7 +1371,7 @@ export function CommercialDashboard() {
               <button key={report.id} onClick={() => navigate(`/commercial/review/${report.id}`)}>
                 <span>
                   <StatusBadge status={report.status} />
-                  <strong>Review {reportDepartmentName(report)} weekly report</strong>
+                  <strong>Review {reportDepartmentName(report)} Weekly Execution Update</strong>
                 </span>
                 <small>{getCycle(report.cycleId).label}</small>
               </button>
@@ -1331,7 +1394,7 @@ export function CommercialDashboard() {
           </div>
         </Panel>
       </div>
-      <Panel title="Department review queue" className="section">
+      <Panel title="Weekly Execution Update review queue" className="section">
         <DataTable
           caption="Department submission review queue"
           headers={['Department', 'Period', 'Sources', 'Status', 'Submitted']}
@@ -1416,7 +1479,7 @@ export function CommercialDashboard() {
         <Panel title="Publication preview">
           <p>{narrative || 'Add an executive narrative to complete the preview.'}</p>
           <small>
-            {readiness.approvedReports}/{readiness.requiredReports} mandatory reports approved ·{' '}
+            {readiness.approvedReports}/{readiness.requiredReports} mandatory updates approved ·{' '}
             {atlas.meta.disclosure}
           </small>
         </Panel>
@@ -1494,7 +1557,7 @@ export function CommercialReviewPage() {
   return (
     <>
       <PageHeader
-        title="Submission review"
+        title="Update Review"
         description={`${reportDepartmentName(report)} · ${getCycle(report.cycleId).label} · ${report.sourceIds.length} sources`}
         controls={<StatusBadge status={report.status} />}
       />
@@ -1519,7 +1582,7 @@ export function CommercialReviewPage() {
         </Button>
       </div>
       <div className="review-layout section">
-        <Panel title="Standardised report and source lineage">
+        <Panel title="Standardised update and source lineage">
           <dl className="metric-review">
             {report.fields.map((item) => {
               const correction = [...corrections]
@@ -1613,7 +1676,7 @@ export function CommercialReviewPage() {
         <Button
           variant="secondary"
           disabled={!reviewable}
-          title={!reviewable ? 'Only Submitted or Resubmitted reports can be returned.' : undefined}
+          title={!reviewable ? 'Only Submitted or Resubmitted updates can be returned.' : undefined}
           onClick={() => setModal('clarify')}
         >
           Request clarification
@@ -1630,7 +1693,7 @@ export function CommercialReviewPage() {
         </Button>
         <Button
           disabled={!reviewable}
-          title={!reviewable ? 'Only Submitted or Resubmitted reports can be approved.' : undefined}
+          title={!reviewable ? 'Only Submitted or Resubmitted updates can be approved.' : undefined}
           onClick={() => {
             workflowDispatch({
               type: 'APPROVE_REPORT',
@@ -1638,10 +1701,10 @@ export function CommercialReviewPage() {
               actorId: activeUserId,
               now: prototypeTime(workflow.auditEvents.length + 1),
             });
-            showToast('Report approved; reporting readiness recalculated');
+            showToast('Update approved; readiness recalculated');
           }}
         >
-          Approve report
+          Approve update
         </Button>
       </div>
       <Modal
@@ -1690,7 +1753,7 @@ export function CommercialReviewPage() {
                       dueDate,
                     },
                   });
-                  showToast('Report returned to the Department Manager', 'warning');
+                  showToast('Update returned to the Department Manager', 'warning');
                 }
                 setModal(null);
                 setComment('');

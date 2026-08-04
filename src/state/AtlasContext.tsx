@@ -35,6 +35,8 @@ interface AtlasState {
   activeUserId: string;
   role: PersonaRole;
   assetId: string;
+  businessUnitId: string;
+  planningPeriodId: string;
   cycleId: string;
   departmentId: string;
   scenarioId: ScenarioId;
@@ -46,6 +48,8 @@ interface AtlasState {
   recommendationDispatch: Dispatch<RecommendationAction>;
   setActiveUserId: (id: string) => void;
   setAssetId: (id: string) => void;
+  setBusinessUnitId: (id: string) => void;
+  setPlanningPeriodId: (id: string) => void;
   setCycleId: (id: string) => void;
   setDepartmentId: (id: string) => void;
   setScenarioId: (id: ScenarioId) => void;
@@ -58,6 +62,8 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
   const defaults = atlas.demoStates;
   const [activeUserId, setActiveUserId] = useState(defaults.defaultPersonaId);
   const [assetId, setAssetId] = useState(atlas.organisation.defaultAssetId);
+  const [businessUnitId, setBusinessUnitId] = useState(atlas.businessUnits[0].id);
+  const [planningPeriodId, setPlanningPeriodId] = useState(atlas.planningPeriods[0].id);
   const [cycleId, setCycleId] = useState(defaults.defaultOpenCycleId);
   const [departmentId, setDepartmentId] = useState('dept_operations');
   const [scenarioId, setScenarioState] = useState<ScenarioId>('canonical');
@@ -91,6 +97,8 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
       activeUserId,
       role,
       assetId,
+      businessUnitId,
+      planningPeriodId,
       cycleId,
       departmentId,
       scenarioId,
@@ -102,6 +110,8 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
       recommendationDispatch,
       setActiveUserId,
       setAssetId,
+      setBusinessUnitId,
+      setPlanningPeriodId,
       setCycleId,
       setDepartmentId,
       setScenarioId: (id) => {
@@ -119,6 +129,8 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
       resetDemo: () => {
         setActiveUserId(defaults.defaultPersonaId);
         setAssetId(atlas.organisation.defaultAssetId);
+        setBusinessUnitId(atlas.businessUnits[0].id);
+        setPlanningPeriodId(atlas.planningPeriods[0].id);
         setCycleId(defaults.defaultOpenCycleId);
         setDepartmentId('dept_operations');
         setScenarioState('canonical');
@@ -133,6 +145,7 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
     [
       activeUserId,
       assetId,
+      businessUnitId,
       cycleId,
       departmentId,
       defaults.defaultPersonaId,
@@ -142,6 +155,7 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
       workflow,
       executive,
       recommendations,
+      planningPeriodId,
     ],
   );
 

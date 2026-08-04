@@ -1,4 +1,26 @@
 import atlasData from '../../ATLAS_MOCK_DATA.json';
+import type {
+  ApprovedBudget,
+  BudgetLine,
+  BusinessPlan,
+  BusinessUnit,
+  DecisionRecord,
+  DecisionSupportItem,
+  EvidenceRecord,
+  ExecutionRisk,
+  HistoricalRevision,
+  KpiDefinition,
+  KpiTarget,
+  Milestone,
+  OperationalActivity,
+  OutputRecord,
+  PlanningPeriod,
+  StrategicObjective,
+  StrategicTheme,
+  ProjectInitiative,
+  Commitment,
+  WeeklyExecutionUpdate,
+} from './types';
 
 export type AtlasData = typeof atlasData;
 export type PersonaRole = AtlasData['users'][number]['role'];
@@ -32,6 +54,7 @@ export const statusLabels: Record<string, string> = {
   locked: 'Locked',
   low: 'Low',
   medium: 'Medium',
+  missing_inputs: 'Missing inputs',
   manager_draft: 'Manager draft',
   missing_confirmation: 'Missing confirmation',
   partial: 'Partial extraction',
@@ -41,6 +64,7 @@ export const statusLabels: Record<string, string> = {
   uploading: 'Uploading',
   processing: 'Processing',
   needs_clarification: 'Needs clarification',
+  needs_attention: 'Needs attention',
   not_started: 'Not started',
   on_track: 'On track',
   ongoing: 'Ongoing',
@@ -49,16 +73,18 @@ export const statusLabels: Record<string, string> = {
   pending: 'Pending',
   published_locked: 'Published · Locked',
   ready: 'Ready',
+  reviewed: 'Reviewed',
   resubmitted: 'Resubmitted',
   resolved: 'Resolved',
   resolved_for_publication: 'Resolved for publication',
   scheduled: 'Scheduled',
   stalled: 'Stalled',
-  system_draft: 'System recommendation',
+  system_draft: 'System Recommended Action',
   submitted: 'Submitted',
   under_review: 'Under review',
   upcoming: 'Upcoming',
   upcoming_next_month: 'Upcoming next month',
+  validation_issue: 'Validation issue',
 };
 
 export function toneForStatus(status: string): StatusTone {
@@ -96,8 +122,11 @@ export function toneForStatus(status: string): StatusTone {
       'due_soon',
       'high',
       'missing_confirmation',
+      'missing_inputs',
+      'needs_attention',
       'needs_clarification',
       'partial',
+      'validation_issue',
     ].includes(status)
   )
     return 'warning';
@@ -210,4 +239,95 @@ export function buildSyntheticExport(title: string) {
 
 export function getSourceReference(entityPath: string) {
   return atlas.sourceReferences.find((reference) => reference.entityPath === entityPath);
+}
+
+export const phase1Domain = {
+  businessUnits: atlas.businessUnits as BusinessUnit[],
+  planningPeriods: atlas.planningPeriods as PlanningPeriod[],
+  businessPlans: atlas.businessPlans as BusinessPlan[],
+  strategicThemes: atlas.strategicThemes as StrategicTheme[],
+  strategicObjectives: atlas.strategicObjectives as StrategicObjective[],
+  kpiDefinitions: atlas.kpiDefinitions as KpiDefinition[],
+  kpiTargets: atlas.kpiTargets as KpiTarget[],
+  approvedBudgets: atlas.approvedBudgets as ApprovedBudget[],
+  budgetLines: atlas.budgetLines as BudgetLine[],
+  projects: atlas.projects as ProjectInitiative[],
+  initiatives: atlas.initiatives as ProjectInitiative[],
+  milestones: atlas.milestones as Milestone[],
+  operationalActivities: atlas.operationalActivities as OperationalActivity[],
+  commitments: atlas.executionCommitments as Commitment[],
+  weeklyExecutionUpdates: atlas.weeklyExecutionUpdates as WeeklyExecutionUpdate[],
+  risks: atlas.executionRisks as ExecutionRisk[],
+  decisionSupportItems: atlas.decisionSupportItems as DecisionSupportItem[],
+  decisions: atlas.decisions as DecisionRecord[],
+  evidenceRecords: atlas.evidenceRecords as EvidenceRecord[],
+  outputs: atlas.outputs as OutputRecord[],
+  historicalRevisions: atlas.historicalRevisions as HistoricalRevision[],
+};
+
+export function getBusinessUnit(businessUnitId: string) {
+  return phase1Domain.businessUnits.find((item) => item.id === businessUnitId);
+}
+
+export function getBusinessPlan(businessUnitId: string, planningPeriodId?: string) {
+  return phase1Domain.businessPlans.find(
+    (item) =>
+      item.businessUnitId === businessUnitId &&
+      (!planningPeriodId || item.planningPeriodId === planningPeriodId),
+  );
+}
+
+export function getStrategicObjective(objectiveId: string) {
+  return phase1Domain.strategicObjectives.find((item) => item.id === objectiveId);
+}
+
+export function getObjectiveKpis(objectiveId: string) {
+  const definitions = phase1Domain.kpiDefinitions.filter(
+    (item) => item.strategicObjectiveId === objectiveId,
+  );
+  return definitions.map((definition) => ({
+    definition,
+    target: phase1Domain.kpiTargets.find((target) => target.kpiId === definition.id),
+  }));
+}
+
+export function getBusinessPlanDelivery(businessUnitId: string) {
+  const objectives = phase1Domain.strategicObjectives.filter(
+    (item) => item.businessUnitId === businessUnitId,
+  );
+  const deliveryPercent = objectives.length
+    ? Math.round(
+        objectives.reduce((total, objective) => total + objective.progressPercent, 0) /
+          objectives.length,
+      )
+    : 0;
+  return {
+    deliveryPercent,
+    status: objectives.some((item) => ['critical', 'at_risk'].includes(item.status))
+      ? 'at_risk'
+      : 'on_track',
+    objectives,
+  };
+}
+
+export function getLinkedRevisions(entityId: string) {
+  return phase1Domain.historicalRevisions.filter((item) => item.entityId === entityId);
+}
+
+export function hasCompleteTraceability(record: {
+  businessUnitId?: string;
+  strategicObjectiveIds?: string[];
+  ownerId?: string | null;
+  reportingPeriodId?: string | null;
+  evidenceIds?: string[];
+  historicalRevisionIds?: string[];
+}) {
+  return Boolean(
+    record.businessUnitId &&
+    record.strategicObjectiveIds?.length &&
+    record.ownerId &&
+    record.reportingPeriodId &&
+    record.evidenceIds &&
+    record.historicalRevisionIds,
+  );
 }

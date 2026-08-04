@@ -41,7 +41,7 @@ export function ProjectsPage() {
       />
       <div className="grid grid--4">
         <KpiCard
-          label="Portfolio Health"
+          label="Business Plan Delivery"
           value="At risk"
           status="at_risk"
           context={`${atRisk + delayed} of ${atlas.projects.length} projects need attention`}
@@ -147,14 +147,14 @@ export function RecommendationsPage() {
   return (
     <>
       <PageHeader
-        title="Recommendations"
-        description="Review Atlas recommendations and shape the actions proposed for executive decision."
+        title="Decision Support"
+        description="Review Recommended Actions and shape the items proposed for executive decision."
         controls={<ContextControls />}
       />
-      <Panel title="Write a Commercial recommendation" className="recommendation-compose">
+      <Panel title="Write a Commercial Recommended Action" className="recommendation-compose">
         <p>
-          Add your judgement prominently before consolidation. Every recommendation remains editable
-          and auditable in this device-local prototype.
+          Add your judgement prominently before consolidation. Every Recommended Action remains
+          editable and auditable in this device-local prototype.
         </p>
         <div className="form-grid">
           <Field label="Category">
@@ -166,7 +166,7 @@ export function RecommendationsPage() {
               ))}
             </select>
           </Field>
-          <Field label="Recommendation title">
+          <Field label="Recommended Action title">
             <input value={title} onChange={(event) => setTitle(event.target.value)} />
           </Field>
         </div>
@@ -199,15 +199,15 @@ export function RecommendationsPage() {
               setTitle('');
               setRationale('');
               setImpact('');
-              showToast('Commercial recommendation added');
+              showToast('Commercial Recommended Action added');
             }}
           >
-            Add recommendation
+            Add Recommended Action
           </Button>
         </div>
       </Panel>
 
-      <Panel title="System and Commercial recommendations" className="section recommendations">
+      <Panel title="System and Commercial Recommended Actions" className="section recommendations">
         {recommendations.items.map((item) => (
           <article className="recommendation" key={item.id}>
             <div>
@@ -234,7 +234,7 @@ export function RecommendationsPage() {
                     actorId: activeUserId,
                     now: prototypeTime(recommendations.auditEvents.length + 1),
                   });
-                  showToast('Recommendation approved by Commercial');
+                  showToast('Recommended Action approved by Commercial');
                 }}
               >
                 {item.status === 'approved' ? 'Approved' : 'Approve'}
@@ -245,7 +245,7 @@ export function RecommendationsPage() {
       </Panel>
 
       <Modal
-        title={`Edit recommendation${editing ? ` · ${editing.title}` : ''}`}
+        title={`Edit Recommended Action${editing ? ` · ${editing.title}` : ''}`}
         open={Boolean(editing)}
         onClose={() => setEditing(null)}
         footer={
@@ -268,7 +268,7 @@ export function RecommendationsPage() {
                   now: prototypeTime(recommendations.auditEvents.length + 1),
                 });
                 setEditing(null);
-                showToast('Recommendation edits saved with an audit event');
+                showToast('Recommended Action edits saved with an audit event');
               }}
             >
               Save changes
@@ -285,7 +285,7 @@ export function RecommendationsPage() {
             ))}
           </select>
         </Field>
-        <Field label="Recommendation title">
+        <Field label="Recommended Action title">
           <input value={editTitle} onChange={(event) => setEditTitle(event.target.value)} />
         </Field>
         <Field label="Rationale">

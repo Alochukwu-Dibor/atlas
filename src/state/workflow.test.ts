@@ -54,6 +54,11 @@ describe('Atlas reporting workflow', () => {
     expect(fieldsForDepartment('dept_finance')[0].label).toBe('Available liquidity');
     expect(fieldsForDepartment('dept_hse')[0].label).toBe('Total recordable incident rate');
     expect(fieldsForDepartment('dept_projects')[0].label).toContain('restoration progress');
+    expect(
+      state.reports.some(
+        (report) => report.cycleId === 'cycle_2026_w31' && report.projectId === null,
+      ),
+    ).toBe(true);
   });
 
   it('preserves the published fixture readiness and controlled-exception snapshot', () => {
@@ -245,7 +250,7 @@ describe('Atlas reporting workflow', () => {
       actorId: 'usr_commercial',
       now,
     });
-    expect(blocked.lastError).toMatch(/approve every mandatory report/i);
+    expect(blocked.lastError).toMatch(/approve every mandatory update/i);
     const excepted = workflowReducer(initial, {
       type: 'RECORD_CYCLE_EXCEPTION',
       cycleId: 'cycle_2026_w31',

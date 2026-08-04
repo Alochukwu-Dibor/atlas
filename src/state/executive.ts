@@ -108,7 +108,7 @@ export function executiveReducer(state: ExecutiveState, action: ExecutiveAction)
     };
   }
   if (!atlas.recommendations.some((item) => item.id === action.recommendationId)) {
-    return { ...state, error: 'The selected recommendation is unavailable.' };
+    return { ...state, error: 'The selected Decision Support item is unavailable.' };
   }
   if (!action.rationale.trim()) {
     return { ...state, error: 'Add a rationale before recording the decision.' };
@@ -137,7 +137,7 @@ export function executiveReducer(state: ExecutiveState, action: ExecutiveAction)
         id: `audit_phase3_${state.auditEvents.length + 1}`,
         recommendationId: action.recommendationId,
         decisionId: id,
-        summary: `CEO recorded ${label} for recommendation ${action.recommendationId}.`,
+        summary: `CEO recorded ${label} for Decision Support item ${action.recommendationId}.`,
         timestamp: prototypeTimestamp,
       },
     ],

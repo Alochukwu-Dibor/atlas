@@ -91,7 +91,7 @@ export function recommendationReducer(
   if (action.type === 'CLEAR_ERROR') return { ...state, error: undefined };
 
   if (action.type === 'CREATE_RECOMMENDATION') {
-    if (!valid(action)) return { ...state, error: 'Complete every recommendation field.' };
+    if (!valid(action)) return { ...state, error: 'Complete every Recommended Action field.' };
     const id = `rec_commercial_${state.items.filter((item) => item.source === 'commercial_manager').length + 1}`;
     const item: CommercialRecommendation = {
       id,
@@ -115,14 +115,14 @@ export function recommendationReducer(
           action: 'created',
           actorId: action.actorId,
           timestamp: action.now,
-          summary: 'Commercial Manager created a recommendation.',
+          summary: 'Commercial Manager created a Recommended Action.',
         },
       ],
     };
   }
 
   const item = state.items.find((entry) => entry.id === action.id);
-  if (!item) return { ...state, error: 'The recommendation is unavailable.' };
+  if (!item) return { ...state, error: 'The Recommended Action is unavailable.' };
 
   if (action.type === 'APPROVE_RECOMMENDATION') {
     return {
@@ -138,13 +138,13 @@ export function recommendationReducer(
           action: 'approved',
           actorId: action.actorId,
           timestamp: action.now,
-          summary: 'Commercial Manager approved the recommendation.',
+          summary: 'Commercial Manager approved the Recommended Action.',
         },
       ],
     };
   }
 
-  if (!valid(action)) return { ...state, error: 'Complete every recommendation field.' };
+  if (!valid(action)) return { ...state, error: 'Complete every Recommended Action field.' };
   return {
     version: 1,
     items: state.items.map((entry) =>
@@ -167,7 +167,7 @@ export function recommendationReducer(
         action: 'edited',
         actorId: action.actorId,
         timestamp: action.now,
-        summary: 'Commercial Manager edited the recommendation while retaining its source.',
+        summary: 'Commercial Manager edited the Recommended Action while retaining its source.',
       },
     ],
   };

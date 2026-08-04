@@ -95,7 +95,7 @@ export function ExecutiveDashboard() {
   return (
     <>
       <PageHeader
-        title="Executive Overview"
+        title="CEO View"
         description={selectedPublication?.executiveNarrative || atlas.executiveSummary.headline}
         controls={
           <>
@@ -104,7 +104,7 @@ export function ExecutiveDashboard() {
           </>
         }
       />
-      <p className="export-disclosure">{buildSyntheticExport('Atlas Executive Overview')}</p>
+      <p className="export-disclosure">{buildSyntheticExport('Atlas CEO View')}</p>
 
       <div className="executive-top">
         <Panel title="Overall project status">
@@ -312,7 +312,7 @@ export function ExecutiveDashboard() {
         </Panel>
       </div>
 
-      <Panel title="Recommendations and decisions" className="section recommendations">
+      <Panel title="Recommended Actions and decisions" className="section recommendations">
         {atlas.recommendations.map((item) => {
           const decisions = executive.decisions.filter(
             (decision) => decision.recommendationId === item.id,

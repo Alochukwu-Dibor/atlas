@@ -96,7 +96,12 @@ export interface WorkflowReport {
   cycleId: string;
   departmentId: string;
   managerId: string | null;
-  projectId: string;
+  businessUnitId: string;
+  strategicObjectiveIds: string[];
+  projectId: string | null;
+  assetId: string | null;
+  evidenceIds: string[];
+  historicalRevisionIds: string[];
   title: string;
   methods: SourceMethod[];
   status: ReportStatus;
@@ -415,7 +420,14 @@ export function createInitialWorkflowState(): WorkflowState {
     cycleId: report.cycleId,
     departmentId: report.departmentId,
     managerId: report.managerId,
+    businessUnitId: atlas.businessUnits[0].id,
+    strategicObjectiveIds:
+      atlas.strategicObjectives.find((objective) => objective.departmentId === report.departmentId)
+        ?.strategicObjectiveIds ?? [],
     projectId: report.projectId,
+    assetId: atlas.organisation.defaultAssetId,
+    evidenceIds: report.sourceIds,
+    historicalRevisionIds: [],
     title: report.title,
     methods: report.methods as SourceMethod[],
     status:
@@ -444,8 +456,15 @@ export function createInitialWorkflowState(): WorkflowState {
         cycleId: atlas.demoStates.defaultOpenCycleId,
         departmentId: department.id,
         managerId: department.managerId,
-        projectId: atlas.organisation.defaultAssetId,
-        title: `${department.name} Weekly Report · 27 Jul–2 Aug 2026`,
+        businessUnitId: atlas.businessUnits[0].id,
+        strategicObjectiveIds:
+          atlas.strategicObjectives.find((objective) => objective.departmentId === department.id)
+            ?.strategicObjectiveIds ?? [],
+        projectId: null,
+        assetId: atlas.organisation.defaultAssetId,
+        evidenceIds: [],
+        historicalRevisionIds: [],
+        title: `${department.name} Weekly Execution Update · 27 Jul–2 Aug 2026`,
         methods: ['structured_form'],
         status: 'draft',
         submittedAt: null,
@@ -516,7 +535,7 @@ export function createInitialWorkflowState(): WorkflowState {
       publishedBy: cycle.publishedBy ?? undefined,
       controlledExceptionReason:
         cycle.status === 'published_locked'
-          ? 'Published fixture retained six approved reports and two controlled exceptions.'
+          ? 'Published fixture retained six approved updates and two controlled exceptions.'
           : undefined,
     })),
     lastError: null,
@@ -540,7 +559,16 @@ function audit(
 export type WorkflowAction =
   | { type: 'CLEAR_ERROR' }
   | { type: 'RESET' }
-  | { type: 'UPDATE_REPORT_DETAILS'; reportId: string; title: string; methods: SourceMethod[] }
+  | {
+      type: 'UPDATE_REPORT_DETAILS';
+      reportId: string;
+      title: string;
+      methods: SourceMethod[];
+      businessUnitId?: string;
+      strategicObjectiveIds?: string[];
+      projectId?: string | null;
+      assetId?: string | null;
+    }
   | { type: 'ADD_SOURCE'; source: WorkflowSource; actorId: string }
   | {
       type: 'REPLACE_SOURCE';
@@ -651,7 +679,7 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
       return {
         ...state,
         lastError:
-          'Approve every mandatory report or record a controlled exception before publishing.',
+          'Approve every mandatory update or record a controlled exception before publishing.',
       };
     }
     return {
@@ -686,7 +714,7 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
   if (action.type === 'CREATE_REVISION') {
     const original = state.reports.find((report) => report.id === action.reportId);
     if (!original || original.status !== 'published_locked') {
-      return { ...state, lastError: 'Only a published, locked report can start a revision.' };
+      return { ...state, lastError: 'Only a published, locked update can start a revision.' };
     }
     const revisionNumber =
       state.reports.filter((report) => report.supersedesReportId === original.id).length + 1;
@@ -711,7 +739,7 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
         entityType: 'department_report',
         entityId: revision.id,
         timestamp: action.now,
-        summary: `Revision ${revisionNumber} created without modifying published report ${original.id}.`,
+        summary: `Revision ${revisionNumber} created without modifying published update ${original.id}.`,
         before: original.id,
         after: revision.id,
       }),
@@ -739,8 +767,15 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
           cycleId: action.cycleId,
           departmentId: department.id,
           managerId: department.managerId,
-          projectId: atlas.organisation.defaultAssetId,
-          title: `${department.name} ready-to-publish scenario report`,
+          businessUnitId: atlas.businessUnits[0].id,
+          strategicObjectiveIds:
+            atlas.strategicObjectives.find((objective) => objective.departmentId === department.id)
+              ?.strategicObjectiveIds ?? [],
+          projectId: null,
+          assetId: atlas.organisation.defaultAssetId,
+          evidenceIds: [],
+          historicalRevisionIds: [],
+          title: `${department.name} ready-to-publish scenario update`,
           methods: ['structured_form'],
           status: 'approved',
           submittedAt: action.now,
@@ -784,7 +819,7 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
     reportId &&
     state.reports.find((report) => report.id === reportId)?.status === 'published_locked'
   ) {
-    return { ...state, lastError: 'Published reports are immutable; create a revision instead.' };
+    return { ...state, lastError: 'Published updates are immutable; create a revision instead.' };
   }
 
   if (action.type === 'UPDATE_REPORT_DETAILS') {
@@ -794,6 +829,10 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
         ...report,
         title: action.title,
         methods: action.methods,
+        businessUnitId: action.businessUnitId ?? report.businessUnitId,
+        strategicObjectiveIds: action.strategicObjectiveIds ?? report.strategicObjectiveIds,
+        projectId: action.projectId === undefined ? report.projectId : action.projectId,
+        assetId: action.assetId === undefined ? report.assetId : action.assetId,
       })),
       lastError: null,
     };
@@ -909,7 +948,7 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
   if (action.type === 'SUBMIT_REPORT') {
     const report = state.reports.find((item) => item.id === action.reportId);
     if (!report || !['draft', 'needs_clarification'].includes(report.status)) {
-      return { ...state, lastError: 'Only Draft or Needs Clarification reports can be submitted.' };
+      return { ...state, lastError: 'Only Draft or Needs Clarification updates can be submitted.' };
     }
     if (report.status === 'needs_clarification' && !report.clarificationAnswered) {
       return { ...state, lastError: 'Respond to every clarification before resubmitting.' };
@@ -942,7 +981,7 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
   if (action.type === 'REQUEST_CLARIFICATION') {
     const report = state.reports.find((item) => item.id === action.comment.reportId);
     if (!report || !['submitted', 'resubmitted'].includes(report.status)) {
-      return { ...state, lastError: 'Clarification can only be requested on submitted reports.' };
+      return { ...state, lastError: 'Clarification can only be requested on submitted updates.' };
     }
     return {
       ...state,
@@ -969,7 +1008,7 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
   if (action.type === 'RESPOND_CLARIFICATION') {
     const report = state.reports.find((item) => item.id === action.reportId);
     if (!report || report.status !== 'needs_clarification' || !action.response.trim()) {
-      return { ...state, lastError: 'A returned report and response are required.' };
+      return { ...state, lastError: 'A returned update and response are required.' };
     }
     const comments = state.comments.map((comment) =>
       comment.id === action.commentId
@@ -1001,7 +1040,7 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
   if (action.type === 'APPROVE_REPORT') {
     const report = state.reports.find((item) => item.id === action.reportId);
     if (!report || !['submitted', 'resubmitted'].includes(report.status)) {
-      return { ...state, lastError: 'Only Submitted or Resubmitted reports can be approved.' };
+      return { ...state, lastError: 'Only Submitted or Resubmitted updates can be approved.' };
     }
     return {
       ...state,
@@ -1016,7 +1055,7 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
         entityType: 'department_report',
         entityId: action.reportId,
         timestamp: action.now,
-        summary: 'Commercial Manager approved the report for consolidation.',
+        summary: 'Commercial Manager approved the update for consolidation.',
         before: report.status,
         after: 'approved',
       }),
@@ -1028,7 +1067,7 @@ export function workflowReducer(state: WorkflowState, action: WorkflowAction): W
     const override = action.override;
     const report = state.reports.find((item) => item.id === override.reportId);
     if (!report || !['submitted', 'resubmitted', 'approved'].includes(report.status)) {
-      return { ...state, lastError: 'Controlled overrides require a reviewable report.' };
+      return { ...state, lastError: 'Controlled overrides require a reviewable update.' };
     }
     if (!override.reason.trim() || !override.revisedValue.trim()) {
       return { ...state, lastError: 'A revised value and reason are required for an override.' };

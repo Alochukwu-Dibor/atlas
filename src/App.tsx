@@ -13,6 +13,7 @@ const executivePage = () => import('./pages/ExecutivePages');
 const reportingPage = () => import('./pages/ReportingPages');
 const modulePage = () => import('./pages/ModulePages');
 const commercialPage = () => import('./pages/CommercialPages');
+const architecturePage = () => import('./pages/ArchitecturePages');
 const CommercialDashboard = lazy(() =>
   reportingPage().then((module) => ({ default: module.CommercialDashboard })),
 );
@@ -43,6 +44,30 @@ const ProjectsPage = lazy(() =>
 const RecommendationsPage = lazy(() =>
   commercialPage().then((module) => ({ default: module.RecommendationsPage })),
 );
+const ExecutionPage = lazy(() =>
+  architecturePage().then((module) => ({ default: module.ExecutionPage })),
+);
+const ReviewsPage = lazy(() =>
+  architecturePage().then((module) => ({ default: module.ReviewsPage })),
+);
+const DecisionsPage = lazy(() =>
+  architecturePage().then((module) => ({ default: module.DecisionsPage })),
+);
+const OutputsPage = lazy(() =>
+  architecturePage().then((module) => ({ default: module.OutputsPage })),
+);
+const KpiLibraryPage = lazy(() =>
+  architecturePage().then((module) => ({ default: module.KpiLibraryPage })),
+);
+const ReportingTemplatesPage = lazy(() =>
+  architecturePage().then((module) => ({ default: module.ReportingTemplatesPage })),
+);
+const SettingsPage = lazy(() =>
+  architecturePage().then((module) => ({ default: module.SettingsPage })),
+);
+const CfoViewPage = lazy(() =>
+  architecturePage().then((module) => ({ default: module.CfoViewPage })),
+);
 
 export function App() {
   return (
@@ -52,7 +77,7 @@ export function App() {
           <StateView
             type="loading"
             title="Loading Atlas"
-            message="Preparing the selected reporting workspace."
+            message="Preparing the selected Atlas workspace."
           />
         }
       >
@@ -66,7 +91,15 @@ export function App() {
           <Route element={<SidebarShell />}>
             <Route path="commercial" element={<CommercialDashboard />} />
             <Route path="commercial/review/:id" element={<CommercialReviewPage />} />
+            <Route path="execution" element={<ExecutionPage />} />
             <Route path="projects" element={<ProjectsPage />} />
+            <Route path="reviews" element={<ReviewsPage />} />
+            <Route path="reviews/:id" element={<CommercialReviewPage />} />
+            <Route path="decisions" element={<DecisionsPage />} />
+            <Route path="outputs" element={<OutputsPage />} />
+            <Route path="kpi-library" element={<KpiLibraryPage />} />
+            <Route path="reporting-templates" element={<ReportingTemplatesPage />} />
+            <Route path="settings" element={<SettingsPage />} />
             <Route path="recommendations" element={<RecommendationsPage />} />
             <Route path="production" element={<ProductionPage />} />
             <Route path="finance" element={<FinancePage />} />
@@ -75,6 +108,9 @@ export function App() {
           </Route>
           <Route element={<ExecutiveShell />}>
             <Route path="executive" element={<ExecutiveDashboard />} />
+            <Route path="executive/cfo" element={<CfoViewPage />} />
+            <Route path="executive/decisions" element={<DecisionsPage />} />
+            <Route path="executive/outputs" element={<OutputsPage />} />
           </Route>
           <Route path="no-access" element={<NotFound />} />
           <Route path="*" element={<NotFound />} />
