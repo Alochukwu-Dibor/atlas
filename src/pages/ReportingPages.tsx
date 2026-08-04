@@ -1875,7 +1875,7 @@ export function CommercialDashboard() {
     <>
       <PageHeader
         title="Business Overview"
-        description="Resolve reporting exceptions and prepare the next decision-ready executive update."
+        description="Is the business delivering against the approved plan, and what requires my attention?"
         controls={
           <>
             <ContextControls />

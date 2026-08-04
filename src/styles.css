@@ -2670,6 +2670,57 @@ tr.is-clickable:hover {
   text-align: center;
 }
 
+.table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.table-actions .button {
+  white-space: nowrap;
+}
+
+.table-link {
+  padding: 0;
+  border: 0;
+  color: var(--atlas-interaction);
+  background: transparent;
+  font: inherit;
+  font-weight: 650;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+}
+
+.table-link:hover,
+.table-link:focus-visible {
+  text-decoration-color: currentColor;
+}
+
+.plain-list,
+.template-structure {
+  margin: 0;
+  padding-left: 22px;
+}
+
+.plain-list li,
+.template-structure li {
+  padding: 7px 0;
+}
+
+.panel-intro {
+  max-width: 760px;
+  margin: 0 0 20px;
+  color: var(--atlas-text-secondary);
+}
+
+.template-structure {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 36px;
+}
+
 @media (max-width: 900px) {
   .business-health-section,
   .project-toolbar {
@@ -2685,6 +2736,10 @@ tr.is-clickable:hover {
 }
 
 @media (max-width: 620px) {
+  .template-structure {
+    grid-template-columns: 1fr;
+  }
+
   .health-category-list {
     grid-template-columns: 1fr;
   }

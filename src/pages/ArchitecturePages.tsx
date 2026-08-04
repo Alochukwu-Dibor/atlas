@@ -1,5 +1,18 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ReferenceLine,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { ChartWrapper } from '../components/Charts';
 import { ContextControls } from '../components/Shells';
 import {
   Button,
@@ -11,6 +24,7 @@ import {
   Panel,
   Select,
   StatusBadge,
+  useToast,
 } from '../components/Ui';
 import { DecisionHistory, EvidenceTable, HistoryTable } from '../components/Traceability';
 import { RecommendationsPage } from './CommercialPages';
@@ -19,10 +33,10 @@ import {
   format,
   getBusinessPlanDelivery,
   getDepartment,
-  getLiquidity,
   getObjectiveKpis,
   getStrategicObjective,
   getUser,
+  getValidatedExecutiveData,
   phase1Domain,
 } from '../data/atlas';
 import { useAtlas } from '../state/AtlasContext';
@@ -426,6 +440,9 @@ export function DecisionsPage() {
   const [detailTab, setDetailTab] = useState<DecisionTab>('summary');
   const [recommendedActionsOpen, setRecommendedActionsOpen] = useState(false);
   const selected = phase1Domain.decisionSupportItems.find((item) => item.id === selectedId);
+  const linkedMeeting = atlas.meetingRecords.find((meeting) =>
+    meeting.decisionIds.includes(selectedId ?? ''),
+  );
   const openDecision = (id: string) => {
     setSelectedId(id);
     setDetailTab('summary');
@@ -530,6 +547,19 @@ export function DecisionsPage() {
                   <dt>Recommended action</dt>
                   <dd>{selected.recommendedAction}</dd>
                 </div>
+                {linkedMeeting && (
+                  <div>
+                    <dt>Governance source</dt>
+                    <dd>
+                      <strong>{linkedMeeting.name}</strong> · {format.date(linkedMeeting.date)}
+                      <br />
+                      {linkedMeeting.summary}
+                      <br />
+                      Owner: {getUser(linkedMeeting.ownerId)?.name ?? 'Unassigned'} · 1 linked
+                      commitment · {linkedMeeting.evidenceIds.length} evidence records
+                    </dd>
+                  </div>
+                )}
               </dl>
             )}
             {detailTab === 'history' && (
@@ -559,40 +589,190 @@ export function DecisionsPage() {
 }
 
 export function OutputsPage() {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detailTab, setDetailTab] = useState<'preview' | 'inputs' | 'evidence'>('preview');
+  const [generatedIds, setGeneratedIds] = useState<string[]>([]);
+  const showToast = useToast();
+  const selected = phase1Domain.outputs.find((output) => output.id === selectedId);
+  const categories = [
+    { id: 'management', label: 'Management' },
+    { id: 'executive_governance', label: 'Executive and Governance' },
+    { id: 'regulatory', label: 'Regulatory' },
+  ] as const;
+  const missingInputName = (id: string) =>
+    phase1Domain.weeklyExecutionUpdates.find((item) => item.id === id)?.title ??
+    phase1Domain.decisionSupportItems.find((item) => item.id === id)?.issue ??
+    phase1Domain.evidenceRecords.find((item) => item.id === id)?.name ??
+    id;
+  const canGenerate = (output: (typeof phase1Domain.outputs)[number]) =>
+    output.readinessStatus === 'ready' && output.missingInputIds.length === 0;
   return (
     <>
       <PageHeader
         title="Outputs"
-        description="Validated management, executive, governance and regulatory deliverables."
+        description="What validated report or structured output should be produced?"
         controls={<ContextControls />}
       />
-      <Panel title="Output readiness" className="section">
-        <DataTable
-          caption="Output readiness"
-          headers={[
-            'Output',
-            'Audience',
-            'Reporting period',
-            'Readiness',
-            'Missing inputs',
-            'Last generated',
-          ]}
-          rows={phase1Domain.outputs.map((output) => [
-            output.name,
-            output.audience.replaceAll('_', ' '),
-            atlas.reportingCycles.find((period) => period.id === output.reportingPeriodId)?.label ??
-              '—',
-            <StatusBadge status={output.readinessStatus} />,
-            String(output.missingInputIds.length),
-            output.lastGeneratedAt ? format.date(output.lastGeneratedAt) : 'Not generated',
-          ])}
-        />
-      </Panel>
+      {categories.map((category, index) => {
+        const outputs = phase1Domain.outputs.filter((output) => output.audience === category.id);
+        return (
+          <Panel key={category.id} title={category.label} className={index === 0 ? '' : 'section'}>
+            <DataTable
+              caption={`${category.label} outputs`}
+              headers={[
+                'Output',
+                'Audience',
+                'Reporting period',
+                'Readiness',
+                'Missing inputs',
+                'Last generated',
+                'Actions',
+              ]}
+              rows={outputs.map((output) => {
+                const generated = generatedIds.includes(output.id);
+                const exportAvailable = generated || Boolean(output.lastGeneratedAt);
+                return [
+                  output.name,
+                  category.label,
+                  atlas.reportingCycles.find((period) => period.id === output.reportingPeriodId)
+                    ?.label ?? '—',
+                  <StatusBadge status={generated ? 'ready' : output.readinessStatus} />,
+                  output.missingInputIds.length
+                    ? output.missingInputIds.map(missingInputName).join(' · ')
+                    : 'None',
+                  generated
+                    ? 'Generated now'
+                    : output.lastGeneratedAt
+                      ? format.date(output.lastGeneratedAt)
+                      : 'Not generated',
+                  <div className="table-actions">
+                    <Button
+                      variant="tertiary"
+                      onClick={() => {
+                        setSelectedId(output.id);
+                        setDetailTab('preview');
+                      }}
+                    >
+                      Preview
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      disabled={!canGenerate(output)}
+                      title={
+                        canGenerate(output)
+                          ? 'Generate from approved and validated data'
+                          : 'Resolve missing or unvalidated inputs before generation'
+                      }
+                      onClick={() => {
+                        setGeneratedIds((ids) => [...new Set([...ids, output.id])]);
+                        showToast(`${output.name} generated from validated data`);
+                      }}
+                    >
+                      Generate
+                    </Button>
+                    <Button
+                      variant="tertiary"
+                      disabled={!exportAvailable}
+                      onClick={() => window.print()}
+                    >
+                      Export
+                    </Button>
+                  </div>,
+                ];
+              })}
+            />
+          </Panel>
+        );
+      })}
+      <Drawer
+        title={selected?.name ?? ''}
+        open={Boolean(selected)}
+        onClose={() => setSelectedId(null)}
+      >
+        {selected && (
+          <div className="detail-workspace">
+            <DetailTabs
+              label="Output detail"
+              value={detailTab}
+              onChange={setDetailTab}
+              tabs={[
+                { id: 'preview', label: 'Preview' },
+                { id: 'inputs', label: 'Validated inputs' },
+                { id: 'evidence', label: 'Evidence' },
+              ]}
+            />
+            {detailTab === 'preview' && (
+              <div className="detail-stack">
+                <div className="detail-lead">
+                  <StatusBadge status={selected.readinessStatus} />
+                  <strong>{selected.name}</strong>
+                  <p>
+                    {selected.missingInputIds.length
+                      ? 'Preview only. Generation is blocked until every required input is validated.'
+                      : 'All required inputs are approved or validated; this output can be generated.'}
+                  </p>
+                </div>
+                <dl className="summary-list">
+                  <div>
+                    <dt>Audience</dt>
+                    <dd>{selected.audience.replaceAll('_', ' ')}</dd>
+                  </div>
+                  <div>
+                    <dt>Reporting period</dt>
+                    <dd>
+                      {atlas.reportingCycles.find(
+                        (period) => period.id === selected.reportingPeriodId,
+                      )?.label ?? '—'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Publisher</dt>
+                    <dd>{selected.authorId ? getUser(selected.authorId)?.name : 'Not assigned'}</dd>
+                  </div>
+                  <div>
+                    <dt>Last generated</dt>
+                    <dd>
+                      {selected.lastGeneratedAt
+                        ? format.date(selected.lastGeneratedAt)
+                        : 'Not generated'}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            )}
+            {detailTab === 'inputs' && (
+              <div className="detail-stack">
+                <h3>Missing or unresolved inputs</h3>
+                {selected.missingInputIds.length ? (
+                  <ul className="plain-list">
+                    {selected.missingInputIds.map((id) => (
+                      <li key={id}>{missingInputName(id)}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="empty-copy">No inputs are missing.</p>
+                )}
+                <h3>Validation rule</h3>
+                <p>
+                  Only approved Weekly Execution Updates, approved project state and published
+                  decisions are included.
+                </p>
+              </div>
+            )}
+            {detailTab === 'evidence' && <EvidenceTable evidenceIds={selected.evidenceIds} />}
+          </div>
+        )}
+      </Drawer>
     </>
   );
 }
 
 export function KpiLibraryPage() {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detailTab, setDetailTab] = useState<'definition' | 'thresholds' | 'history'>('definition');
+  const selected = phase1Domain.kpiDefinitions.find((kpi) => kpi.id === selectedId);
+  const selectedTarget = phase1Domain.kpiTargets.find((target) => target.kpiId === selectedId);
+  const selectedMetadata = atlas.kpiLibraryMetadata.find((item) => item.kpiId === selectedId);
   return (
     <>
       <PageHeader
@@ -602,41 +782,237 @@ export function KpiLibraryPage() {
       <Panel title="Configured KPIs" className="section">
         <DataTable
           caption="KPI Library"
-          headers={['KPI', 'Category', 'Objective', 'Target', 'Actual', 'Forecast', 'Owner']}
+          headers={[
+            'Name',
+            'Category',
+            'Target',
+            'Owner',
+            'Frequency',
+            'Executive visibility',
+            'Business health',
+          ]}
           rows={phase1Domain.kpiDefinitions.map((kpi) => {
             const target = phase1Domain.kpiTargets.find((item) => item.kpiId === kpi.id);
             return [
-              kpi.name,
+              <button
+                className="table-link"
+                onClick={() => {
+                  setSelectedId(kpi.id);
+                  setDetailTab('definition');
+                }}
+              >
+                {kpi.name}
+              </button>,
               kpi.category,
-              getStrategicObjective(kpi.strategicObjectiveId)?.name ?? '—',
               target ? `${target.approvedBaseline} ${kpi.unit}` : '—',
-              target ? `${target.actual} ${kpi.unit}` : '—',
-              target ? `${target.currentForecast} ${kpi.unit}` : '—',
               getUser(kpi.ownerId)?.name ?? 'Unassigned',
+              kpi.frequency,
+              kpi.executiveVisibility.map((role) => role.toUpperCase()).join(', ') || 'None',
+              kpi.contributesToBusinessHealth ? 'Included' : 'Not included',
             ];
           })}
         />
       </Panel>
+      <Drawer
+        title={selected?.name ?? ''}
+        open={Boolean(selected)}
+        onClose={() => setSelectedId(null)}
+      >
+        {selected && (
+          <div className="detail-workspace">
+            <DetailTabs
+              label="KPI detail"
+              value={detailTab}
+              onChange={setDetailTab}
+              tabs={[
+                { id: 'definition', label: 'Definition' },
+                { id: 'thresholds', label: 'Thresholds and target' },
+                { id: 'history', label: 'History and evidence' },
+              ]}
+            />
+            {detailTab === 'definition' && (
+              <dl className="summary-list">
+                <div>
+                  <dt>Formula</dt>
+                  <dd>{selected.formula}</dd>
+                </div>
+                <div>
+                  <dt>Unit</dt>
+                  <dd>{selected.unit}</dd>
+                </div>
+                <div>
+                  <dt>Data source</dt>
+                  <dd>{selectedMetadata?.dataSource ?? 'Not configured'}</dd>
+                </div>
+                <div>
+                  <dt>Owner</dt>
+                  <dd>{getUser(selected.ownerId)?.name ?? 'Unassigned'}</dd>
+                </div>
+                <div>
+                  <dt>Reporting frequency</dt>
+                  <dd>{selected.frequency}</dd>
+                </div>
+                <div>
+                  <dt>Strategic objective</dt>
+                  <dd>{getStrategicObjective(selected.strategicObjectiveId)?.name ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt>Executive visibility</dt>
+                  <dd>
+                    {selected.executiveVisibility.map((role) => role.toUpperCase()).join(', ') ||
+                      'None'}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Business Health contribution</dt>
+                  <dd>{selected.contributesToBusinessHealth ? 'Included' : 'Not included'}</dd>
+                </div>
+              </dl>
+            )}
+            {detailTab === 'thresholds' && (
+              <dl className="summary-list">
+                <div>
+                  <dt>Approved target</dt>
+                  <dd>
+                    {selectedTarget ? `${selectedTarget.approvedBaseline} ${selected.unit}` : '—'}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Healthy</dt>
+                  <dd>{selectedMetadata?.healthyThreshold ?? 'Not configured'}</dd>
+                </div>
+                <div>
+                  <dt>Needs attention</dt>
+                  <dd>{selectedMetadata?.attentionThreshold ?? 'Not configured'}</dd>
+                </div>
+                <div>
+                  <dt>Critical</dt>
+                  <dd>{selectedMetadata?.criticalThreshold ?? 'Not configured'}</dd>
+                </div>
+                <div>
+                  <dt>Current actual</dt>
+                  <dd>{selectedTarget ? `${selectedTarget.actual} ${selected.unit}` : '—'}</dd>
+                </div>
+                <div>
+                  <dt>Current forecast</dt>
+                  <dd>
+                    {selectedTarget ? `${selectedTarget.currentForecast} ${selected.unit}` : '—'}
+                  </dd>
+                </div>
+              </dl>
+            )}
+            {detailTab === 'history' && selectedTarget && (
+              <div className="detail-stack">
+                <HistoryTable
+                  revisionIds={selectedTarget.historicalRevisionIds}
+                  entityId={selectedTarget.id}
+                />
+                <EvidenceTable evidenceIds={selectedTarget.evidenceIds} />
+              </div>
+            )}
+          </div>
+        )}
+      </Drawer>
     </>
   );
 }
 
 export function ReportingTemplatesPage() {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const shared = atlas.reportingTemplates.find((template) => template.departmentId === null);
+  const departmentTemplates = atlas.reportingTemplates.filter(
+    (template) => template.departmentId !== null,
+  );
+  const selected = atlas.reportingTemplates.find((template) => template.id === selectedId);
   return (
     <>
       <PageHeader
         title="Reporting Templates"
         description="Common and department-specific structures for Weekly Execution Updates."
       />
-      <Panel title="Active templates" className="section">
+      <Panel title="Shared Weekly Execution Update structure" className="section">
+        <p className="panel-intro">
+          Every department template inherits this validated structure before adding its specialist
+          fields.
+        </p>
+        <ol className="template-structure">
+          {shared?.sections.map((section) => (
+            <li key={section}>{section}</li>
+          ))}
+        </ol>
+      </Panel>
+      <Panel title="Department-specific fields" className="section">
         <DataTable
-          caption="Reporting templates"
-          headers={['Template', 'Department', 'Sections', 'Status']}
-          rows={atlas.reportingTemplates.map((template) => [
-            template.name,
-            template.departmentId ? getDepartment(template.departmentId)?.name : 'All departments',
-            String(template.sections.length),
+          caption="Department-specific reporting templates"
+          headers={['Department', 'Template', 'Additional fields', 'Status']}
+          rows={departmentTemplates.map((template) => [
+            getDepartment(template.departmentId ?? '')?.name ?? 'Unknown',
+            <button className="table-link" onClick={() => setSelectedId(template.id)}>
+              {template.name}
+            </button>,
+            template.sections.join(' · '),
             <StatusBadge status={template.status} />,
+          ])}
+        />
+      </Panel>
+      <Drawer
+        title={selected?.name ?? ''}
+        open={Boolean(selected)}
+        onClose={() => setSelectedId(null)}
+      >
+        {selected && (
+          <div className="detail-stack">
+            <p>
+              This template inherits all {shared?.sections.length ?? 0} shared Weekly Execution
+              Update sections and adds the following department-specific fields.
+            </p>
+            <ul className="plain-list">
+              {selected.sections.map((section) => (
+                <li key={section}>{section}</li>
+              ))}
+            </ul>
+            <dl className="summary-list">
+              <div>
+                <dt>Department</dt>
+                <dd>{getDepartment(selected.departmentId ?? '')?.name ?? 'All departments'}</dd>
+              </div>
+              <div>
+                <dt>Status</dt>
+                <dd>
+                  <StatusBadge status={selected.status} />
+                </dd>
+              </div>
+            </dl>
+          </div>
+        )}
+      </Drawer>
+    </>
+  );
+}
+
+export function UsersRolesPage() {
+  return (
+    <>
+      <PageHeader
+        title="Users and Roles"
+        description="Configured prototype personas, department ownership and permitted workspaces."
+      />
+      <Panel title="Configured access" className="section">
+        <DataTable
+          caption="Users and role access"
+          headers={['User', 'Role', 'Department', 'Workspace access', 'Status']}
+          rows={atlas.users.map((user) => [
+            user.name,
+            user.title,
+            user.departmentId
+              ? (getDepartment(user.departmentId)?.name ?? 'Unknown')
+              : 'Enterprise',
+            user.role === 'department_manager'
+              ? 'Submit Update · My Updates'
+              : user.role === 'commercial_manager'
+                ? 'Commercial workspace · Configuration'
+                : 'Executive workspace',
+            <StatusBadge status="active" />,
           ])}
         />
       </Panel>
@@ -676,56 +1052,250 @@ export function SettingsPage() {
 }
 
 export function CfoViewPage() {
-  const liquidity = getLiquidity();
-  const budget = atlas.approvedBudgets[0];
-  const forecast = atlas.budgetLines.reduce((total, line) => total + line.currentForecast, 0);
-  const committed = atlas.budgetLines.reduce((total, line) => total + line.committed, 0);
+  const validated = getValidatedExecutiveData();
+  const [cashRange, setCashRange] = useState('6');
+  const cashForecast =
+    cashRange === '6' ? validated.cashPositionForecast.slice(-6) : validated.cashPositionForecast;
+  const costRecovery = validated.costRecovery?.target;
+  const productionRevenueGap =
+    atlas.finance.kpis.revenueYtdUsd - atlas.finance.kpis.revenuePlanYtdUsd;
+  const groupedBudget = (category: 'opex' | 'capex') => {
+    const lines = validated.budget.lines.filter((line) => line.category === category);
+    const sum = (field: 'approvedBaseline' | 'committed' | 'actual' | 'currentForecast') =>
+      lines.reduce((total, line) => total + line[field], 0);
+    const approved = sum('approvedBaseline');
+    const forecast = sum('currentForecast');
+    return {
+      approved,
+      committed: sum('committed'),
+      actual: sum('actual'),
+      forecast,
+      variancePercent: approved ? ((forecast - approved) / approved) * 100 : 0,
+    };
+  };
+  const opex = groupedBudget('opex');
+  const capex = groupedBudget('capex');
   return (
     <>
       <PageHeader
         title="CFO View"
-        description="Funding capacity, approved budget delivery and financial interventions from validated shared data."
+        description="Are we delivering within our funding capacity, and where is cash or value at risk?"
         controls={<ContextControls allowOpenCycle={false} />}
       />
-      <div className="grid grid--4">
+      <div className="grid grid--4 executive-kpis">
         <KpiCard
-          label="Available liquidity"
-          value={format.usd(liquidity.availableLiquidityUsd)}
+          label="Cash position"
+          value={format.usd(validated.liquidity.availableLiquidityUsd)}
           status="at_risk"
-          context={`${liquidity.runwayMonths} months runway`}
+          context={`${validated.liquidity.runwayMonths} months runway · ${format.usd(atlas.finance.kpis.nextRepaymentUsd)} due in September`}
         />
         <KpiCard
-          label="Approved budget"
-          value={format.usd(budget.approvedAmount)}
-          status="approved"
-          context="Immutable approved baseline"
-        />
-        <KpiCard
-          label="Current forecast"
-          value={format.usd(forecast)}
-          status={forecast > budget.approvedAmount ? 'adverse' : 'on_track'}
-          context="Separate from approved baseline"
-        />
-        <KpiCard
-          label="Committed spend"
-          value={format.usd(committed)}
+          label="Approved vs committed"
+          value={`${Math.round((validated.budget.committedSpend / validated.budget.approvedSpend) * 100)}%`}
           status="in_progress"
-          context="Across linked budget lines"
+          context={`${format.usd(validated.budget.committedSpend)} of ${format.usd(validated.budget.approvedSpend)}`}
+        />
+        <KpiCard
+          label="Cost recovery"
+          value={`${costRecovery?.actual ?? 0}%`}
+          status={costRecovery?.status ?? 'needs_attention'}
+          context={`${costRecovery?.approvedBaseline ?? 0}% approved target`}
+        />
+        <KpiCard
+          label="Revenue-impacting production variance"
+          value={format.usd(productionRevenueGap)}
+          status="at_risk"
+          context={`${format.percent(validated.production.variancePercent)} production variance`}
         />
       </div>
-      <Panel title="Financial decisions requiring attention" className="section">
+
+      <Panel
+        title="Cash-flow forecast"
+        className="section"
+        action={
+          <Select
+            label="Cash forecast range"
+            value={cashRange}
+            onChange={setCashRange}
+            options={[
+              { value: '6', label: 'Next 6 periods' },
+              { value: 'all', label: 'All available periods' },
+            ]}
+          />
+        }
+      >
+        <ChartWrapper
+          title="Cash position actual and forecast"
+          summary="Cash falls from actual liquidity of 42.5 million dollars to a 20.5 million dollar base forecast by December; the downside reaches 2 million dollars after the September repayment."
+          tableHeaders={['Month', 'Actual', 'Base forecast', 'Downside forecast', 'Repayment']}
+          tableRows={cashForecast.map((point) => [
+            point.month,
+            point.actualUsd ? format.usd(point.actualUsd) : '—',
+            point.baseForecastUsd ? format.usd(point.baseForecastUsd) : '—',
+            point.downsideForecastUsd ? format.usd(point.downsideForecastUsd) : '—',
+            'repaymentUsd' in point && point.repaymentUsd ? format.usd(point.repaymentUsd) : '—',
+          ])}
+        >
+          <AreaChart data={cashForecast} margin={{ left: 8, right: 8, top: 8, bottom: 0 }}>
+            <CartesianGrid stroke="#e5e7eb" vertical={false} />
+            <XAxis dataKey="month" tickLine={false} axisLine={false} />
+            <YAxis
+              tickFormatter={(value) => `$${value / 1_000_000}m`}
+              tickLine={false}
+              axisLine={false}
+            />
+            <Tooltip formatter={(value) => format.usd(Number(value))} />
+            <Legend />
+            <ReferenceLine x="2026-07" stroke="#98a2b3" strokeDasharray="3 3" />
+            <Area dataKey="actualUsd" name="Actual" stroke="#2563eb" fill="#dbeafe" />
+            <Line
+              dataKey="baseForecastUsd"
+              name="Base forecast"
+              stroke="#2563eb"
+              strokeDasharray="6 4"
+              dot={false}
+            />
+            <Line
+              dataKey="downsideForecastUsd"
+              name="Downside"
+              stroke="#dc2626"
+              strokeDasharray="2 4"
+              dot={false}
+            />
+          </AreaChart>
+        </ChartWrapper>
+      </Panel>
+
+      <Panel title="Opex and Capex position" className="section">
         <DataTable
-          caption="CFO decisions requiring attention"
-          headers={['Issue', 'Impact', 'Due date', 'Status']}
-          rows={phase1Domain.decisionSupportItems
-            .filter((item) => item.ownerId === 'usr_cfo' || item.type.includes('financial'))
-            .map((item) => [
-              item.issue,
-              item.businessImpact,
+          caption="Opex and Capex position"
+          headers={[
+            'Spend type',
+            'Approved',
+            'Committed',
+            'Actual',
+            'Forecast',
+            'Forecast variance',
+          ]}
+          rows={[
+            [
+              'Opex',
+              format.usd(opex.approved),
+              format.usd(opex.committed),
+              format.usd(opex.actual),
+              format.usd(opex.forecast),
+              format.percent(opex.variancePercent),
+            ],
+            [
+              'Capex',
+              format.usd(capex.approved),
+              format.usd(capex.committed),
+              format.usd(capex.actual),
+              format.usd(capex.forecast),
+              format.percent(capex.variancePercent),
+            ],
+          ]}
+        />
+      </Panel>
+
+      <div className="grid grid--2 section">
+        <Panel title="Receivables">
+          <DataTable
+            caption="Receivables"
+            headers={['Reference', 'Source', 'Amount', 'Due date', 'Status']}
+            rows={validated.receivables.map((item) => [
+              item.reference,
+              item.source,
+              format.usd(item.amountUsd),
               format.date(item.dueDate),
               <StatusBadge status={item.status} />,
             ])}
-        />
+          />
+        </Panel>
+        <Panel title="Royalties, obligations and funding requirements">
+          <DataTable
+            caption="Royalties, obligations and funding requirements"
+            headers={['Obligation', 'Remaining', 'Due in 30 days', 'Status']}
+            rows={validated.obligations.map((item) => [
+              item.category,
+              format.usd(item.remainingUsd),
+              format.usd(item.due30DaysUsd),
+              <StatusBadge status={item.status} />,
+            ])}
+          />
+        </Panel>
+      </div>
+
+      <div className="grid grid--2 section">
+        <Panel title="Financial risks">
+          <DataTable
+            caption="Financial risks"
+            headers={['Risk', 'Impact', 'Exposure', 'Mitigation', 'Status']}
+            rows={validated.strategicRisks
+              .filter((risk) => risk.category === 'financial')
+              .map((risk) => [
+                risk.description,
+                risk.impact,
+                format.usd(risk.financialExposure),
+                risk.mitigation,
+                <StatusBadge status={risk.status} />,
+              ])}
+          />
+        </Panel>
+        <Panel title="Decisions requiring CFO approval">
+          <DataTable
+            caption="CFO decisions requiring attention"
+            headers={['Issue', 'Impact', 'Recommended action', 'Due date', 'Status']}
+            rows={validated.decisions
+              .filter((item) => item.ownerId === 'usr_cfo' || item.type.includes('financial'))
+              .map((item) => [
+                item.issue,
+                item.businessImpact,
+                item.recommendedAction,
+                format.date(item.dueDate),
+                <StatusBadge status={item.status} />,
+              ])}
+          />
+        </Panel>
+      </div>
+
+      <Panel title="Historical financial variance" className="section">
+        <ChartWrapper
+          title="Historical actual and forecast budget variance"
+          summary="Actual budget variance moved from 1.2 percent favourable in February to 3.6 percent adverse in July; the current forecast is 4.8 percent adverse."
+          tableHeaders={['Period', 'Actual variance', 'Forecast variance']}
+          tableRows={validated.financialVarianceTrend.map((point) => [
+            point.period,
+            format.percent(point.actualVariancePercent),
+            format.percent(point.forecastVariancePercent),
+          ])}
+        >
+          <LineChart
+            data={validated.financialVarianceTrend}
+            margin={{ left: 8, right: 8, top: 8, bottom: 0 }}
+          >
+            <CartesianGrid stroke="#e5e7eb" vertical={false} />
+            <XAxis dataKey="period" tickLine={false} axisLine={false} />
+            <YAxis unit="%" tickLine={false} axisLine={false} />
+            <Tooltip formatter={(value) => `${value}%`} />
+            <Legend />
+            <ReferenceLine y={0} stroke="#667085" />
+            <Line
+              dataKey="actualVariancePercent"
+              name="Actual variance"
+              stroke="#2563eb"
+              strokeWidth={2}
+              dot={false}
+            />
+            <Line
+              dataKey="forecastVariancePercent"
+              name="Forecast variance"
+              stroke="#7c3aed"
+              strokeDasharray="6 4"
+              dot={false}
+            />
+          </LineChart>
+        </ChartWrapper>
       </Panel>
     </>
   );

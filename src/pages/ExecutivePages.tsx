@@ -1,21 +1,12 @@
 import { useMemo, useState } from 'react';
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  Legend,
-  Line,
-  LineChart,
-  ReferenceLine,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { CartesianGrid, Legend, Line, LineChart, Tooltip, XAxis, YAxis } from 'recharts';
 import { ChartWrapper } from '../components/Charts';
 import { ContextControls } from '../components/Shells';
+import { EvidenceTable, HistoryTable } from '../components/Traceability';
 import {
   Button,
-  DetailLink,
+  DataTable,
+  DetailTabs,
   Drawer,
   Field,
   Modal,
@@ -29,9 +20,9 @@ import {
   atlas,
   buildSyntheticExport,
   format,
-  getExecutiveMetrics,
   getProductionScope,
   getUser,
+  getValidatedExecutiveData,
   statusLabels,
   type ProductionInterest,
 } from '../data/atlas';
@@ -50,35 +41,37 @@ export function ExecutiveDashboard() {
   const { cycleId, executive, executiveDispatch, workflow } = useAtlas();
   const [scopeId, setScopeId] = useState('asset_oml30');
   const [interest, setInterest] = useState<ProductionInterest>('gross');
-  const [detail, setDetail] = useState<string | null>(null);
+  const [trendRange, setTrendRange] = useState('6');
+  const [selectedRiskId, setSelectedRiskId] = useState<string | null>(null);
+  const [riskTab, setRiskTab] = useState<'summary' | 'history' | 'evidence'>('summary');
   const [recommendationId, setRecommendationId] = useState<string | null>(null);
   const [decisionAction, setDecisionAction] = useState<ExecutiveDecisionAction>('approve');
   const [rationale, setRationale] = useState('');
   const [ownerId, setOwnerId] = useState('');
   const [dueDate, setDueDate] = useState('');
   const showToast = useToast();
-  const metrics = getExecutiveMetrics();
+  const validated = getValidatedExecutiveData();
   const selectedPublication = workflow.publications.find((item) => item.cycleId === cycleId);
   const scopedProduction = getProductionScope(scopeId, interest);
   const selectedField = atlas.production.fields.find((field) => field.fieldId === scopeId);
   const interestFactor =
     interest === 'working_interest' ? atlas.organisation.workingInterestPercent / 100 : 1;
-  const productionData = useMemo(
-    () =>
-      selectedField
-        ? selectedField.sparklineBopd.map((actualBopd, index) => ({
-            period: atlas.production.weeklyTrend[index].date,
-            actualBopd: Math.round(actualBopd * interestFactor),
-            planBopd: Math.round(selectedField.planBopd * interestFactor),
-          }))
-        : atlas.production.monthlyTrend.map((point) => ({
-            period: point.month,
-            actualBopd: Math.round(point.actualBopd * interestFactor),
-            planBopd: Math.round(point.planBopd * interestFactor),
-            previousBopd: Math.round(point.previousYearBopd * interestFactor),
-          })),
-    [interestFactor, selectedField],
-  );
+  const productionData = useMemo(() => {
+    const data = selectedField
+      ? selectedField.sparklineBopd.map((actualBopd, index) => ({
+          period: atlas.production.weeklyTrend[index].date,
+          actualBopd: Math.round(actualBopd * interestFactor),
+          planBopd: Math.round(selectedField.planBopd * interestFactor),
+        }))
+      : atlas.production.monthlyTrend.map((point) => ({
+          period: point.month,
+          actualBopd: Math.round(point.actualBopd * interestFactor),
+          planBopd: Math.round(point.planBopd * interestFactor),
+          previousBopd: Math.round(point.previousYearBopd * interestFactor),
+        }));
+    return trendRange === '6' ? data.slice(-6) : data;
+  }, [interestFactor, selectedField, trendRange]);
+  const selectedRisk = validated.strategicRisks.find((risk) => risk.id === selectedRiskId);
   const selectedRecommendation = atlas.recommendations.find((item) => item.id === recommendationId);
   const assignmentValid = decisionAction !== 'assign_action' || Boolean(ownerId && dueDate);
   const canRecord = Boolean(rationale.trim() && assignmentValid);
@@ -96,7 +89,7 @@ export function ExecutiveDashboard() {
     <>
       <PageHeader
         title="CEO View"
-        description={selectedPublication?.executiveNarrative || atlas.executiveSummary.headline}
+        description="Are we delivering the business plan, and where must I intervene?"
         controls={
           <>
             <ContextControls allowOpenCycle={false} />
@@ -106,277 +99,233 @@ export function ExecutiveDashboard() {
       />
       <p className="export-disclosure">{buildSyntheticExport('Atlas CEO View')}</p>
 
-      <div className="executive-top">
-        <Panel title="Overall project status">
-          <StatusBadge status={atlas.executiveSummary.overallStatus} />
-          <strong className="panel-value">At risk</strong>
-          <p>
-            Moved from {statusLabels[atlas.executiveSummary.previousStatus]} ·{' '}
-            {atlas.executiveSummary.projectCounts.onTrack} on track ·{' '}
-            {atlas.executiveSummary.projectCounts.atRisk} at risk ·{' '}
-            {atlas.executiveSummary.projectCounts.delayed} delayed
-          </p>
-          <DetailLink onClick={() => setDetail('Project breakdown')}>Project breakdown</DetailLink>
-        </Panel>
-        <Panel title="HSE performance">
-          <div className="mini-metrics">
-            <span>
-              <strong>{metrics.hse.lostTimeInjuries}</strong>LTIs
-            </span>
-            <span>
-              <strong>{atlas.executiveSummary.hse.fatalities}</strong>Fatalities
-            </span>
-            <span>
-              <strong>{metrics.hse.trir}</strong>TRIR
-            </span>
-            <span>
-              <strong>{metrics.hse.highPotentialIncidents}</strong>High-potential incident
-            </span>
-            <span>
-              <strong>{atlas.executiveSummary.hse.overdueCorrectiveActions}</strong>Overdue actions
-            </span>
-          </div>
-          <StatusBadge status="adverse" />
-          <DetailLink onClick={() => setDetail('HSE performance')}>View HSE evidence</DetailLink>
-        </Panel>
-        <Panel title="Legal issues and exposure">
-          <strong className="panel-value">{format.usd(metrics.legal.estimatedExposureUsd)}</strong>
-          <p>
-            {atlas.executiveSummary.legal.highIssues} high issues ·{' '}
-            {atlas.executiveSummary.legal.deliveryAffectingIssues} affecting delivery
-          </p>
-          <p>Nearest deadline {format.date(atlas.executiveSummary.legal.nearestDeadline)}</p>
-          <DetailLink onClick={() => setDetail('Legal issues and exposure')}>
-            View issue history
-          </DetailLink>
-        </Panel>
+      <div className="grid grid--4 executive-kpis">
+        <article className="panel kpi">
+          <span className="kpi__label">Business-plan delivery</span>
+          <span className="kpi__value">{validated.businessDelivery.deliveryPercent}%</span>
+          <span className="kpi__footer">
+            <StatusBadge status={validated.businessDelivery.status} />
+            <span>Down 3 points from the previous period</span>
+          </span>
+        </article>
+        <article className="panel kpi">
+          <span className="kpi__label">Production</span>
+          <span className="kpi__value">{format.number(scopedProduction.actual)} bopd</span>
+          <span className="kpi__footer">
+            <StatusBadge status="at_risk" />
+            <span>{format.percent(scopedProduction.variancePercent)} vs approved plan</span>
+          </span>
+        </article>
+        <article className="panel kpi">
+          <span className="kpi__label">Budget position</span>
+          <span className="kpi__value">{format.percent(validated.budget.variancePercent)}</span>
+          <span className="kpi__footer">
+            <StatusBadge status="adverse" />
+            <span>{format.usd(validated.budget.forecastSpend)} forecast</span>
+          </span>
+        </article>
+        <article className="panel kpi">
+          <span className="kpi__label">Cash runway</span>
+          <span className="kpi__value">{validated.liquidity.runwayMonths} months</span>
+          <span className="kpi__footer">
+            <StatusBadge status="at_risk" />
+            <span>{format.usd(validated.liquidity.availableLiquidityUsd)} available</span>
+          </span>
+        </article>
       </div>
 
-      <div className="executive-performance section">
-        <Panel
-          title="Production performance"
-          action={
-            <div className="inline-controls">
-              <Select
-                label="Production scope"
-                value={scopeId}
-                onChange={setScopeId}
-                options={[
-                  { value: 'asset_oml30', label: 'Total OML 30' },
-                  ...atlas.assets[0].fields.map((field) => ({
-                    value: field.id,
-                    label: field.name,
-                  })),
-                ]}
-              />
-              <Select
-                label="Production interest"
-                value={interest}
-                onChange={(value) => setInterest(value as ProductionInterest)}
-                options={[
-                  { value: 'gross', label: 'Gross Production' },
-                  { value: 'working_interest', label: 'SNRL Working Interest' },
-                ]}
-              />
-            </div>
-          }
+      <Panel
+        title="Production against plan"
+        className="section"
+        action={
+          <div className="inline-controls">
+            <Select
+              label="Production scope"
+              value={scopeId}
+              onChange={setScopeId}
+              options={[
+                { value: 'asset_oml30', label: 'Total OML 30' },
+                ...atlas.assets[0].fields.map((field) => ({ value: field.id, label: field.name })),
+              ]}
+            />
+            <Select
+              label="Production interest"
+              value={interest}
+              onChange={(value) => setInterest(value as ProductionInterest)}
+              options={[
+                { value: 'gross', label: 'Gross Production' },
+                { value: 'working_interest', label: 'SNRL Working Interest' },
+              ]}
+            />
+            <Select
+              label="Production trend range"
+              value={trendRange}
+              onChange={setTrendRange}
+              options={[
+                { value: '6', label: 'Last 6 periods' },
+                { value: 'all', label: 'All available periods' },
+              ]}
+            />
+          </div>
+        }
+      >
+        <ChartWrapper
+          title="Executive production performance"
+          summary={`Actual production is ${format.number(scopedProduction.actual)} bopd against ${format.number(scopedProduction.plan)} bopd plan, a ${format.percent(scopedProduction.variancePercent)} variance.`}
+          tableHeaders={['Period', 'Actual bopd', 'Plan bopd', 'Historical bopd']}
+          tableRows={productionData.map((point) => [
+            point.period,
+            format.number(point.actualBopd),
+            format.number(point.planBopd),
+            'previousBopd' in point ? format.number(Number(point.previousBopd ?? 0)) : '—',
+          ])}
         >
-          <div className="chart-card-layout">
-            <div className="chart-summary">
-              <strong>{format.number(scopedProduction.actual)}</strong>
-              <span>
-                bopd {interest === 'gross' ? 'gross production' : 'SNRL working interest'}
-              </span>
-              <StatusBadge
-                status={scopedProduction.variancePercent < -10 ? 'at_risk' : 'on_track'}
+          <LineChart data={productionData} margin={{ left: 8, right: 8, top: 8, bottom: 0 }}>
+            <CartesianGrid stroke="#e5e7eb" vertical={false} />
+            <XAxis dataKey="period" tickLine={false} axisLine={false} />
+            <YAxis
+              domain={['dataMin - 5000', 'dataMax + 3000']}
+              tickFormatter={(value) => `${value / 1000}k`}
+              tickLine={false}
+              axisLine={false}
+            />
+            <Tooltip formatter={(value) => `${format.number(Number(value))} bopd`} />
+            <Legend />
+            <Line dataKey="actualBopd" name="Actual" stroke="#2563eb" strokeWidth={2} dot={false} />
+            <Line
+              dataKey="planBopd"
+              name="Plan"
+              stroke="#667085"
+              strokeDasharray="6 5"
+              dot={false}
+            />
+            {!selectedField && (
+              <Line
+                dataKey="previousBopd"
+                name="Previous year"
+                stroke="#98a2b3"
+                strokeDasharray="2 4"
+                dot={false}
               />
-              <small>{format.percent(scopedProduction.variancePercent)} vs plan</small>
-              <DetailLink onClick={() => setDetail('Production performance')}>
-                Production evidence
-              </DetailLink>
-            </div>
-            <ChartWrapper
-              title="Executive production performance"
-              summary={`Actual production is ${format.number(scopedProduction.actual)} bopd against ${format.number(scopedProduction.plan)} bopd plan.`}
-              tableHeaders={['Period', 'Actual bopd', 'Plan bopd', 'Historical bopd']}
-              tableRows={productionData.map((point) => [
-                point.period,
-                format.number(point.actualBopd),
-                format.number(point.planBopd),
-                'previousBopd' in point ? format.number(Number(point.previousBopd ?? 0)) : '—',
-              ])}
-            >
-              <LineChart data={productionData} margin={{ left: 8, right: 8, top: 8, bottom: 0 }}>
-                <CartesianGrid stroke="#EAECF0" vertical={false} />
-                <XAxis dataKey="period" />
-                <YAxis unit=" bopd" tickFormatter={(value) => `${value / 1000}k`} />
-                <Tooltip formatter={(value) => `${format.number(Number(value))} bopd`} />
-                <Legend />
-                <Line
-                  dataKey="actualBopd"
-                  name="Actual"
-                  stroke="#4F46E5"
-                  strokeWidth={2}
-                  dot={false}
-                />
-                <Line
-                  dataKey="planBopd"
-                  name="Plan"
-                  stroke="#667085"
-                  strokeDasharray="6 5"
-                  dot={false}
-                />
-                {!selectedField && (
-                  <Line
-                    dataKey="previousBopd"
-                    name="Historical"
-                    stroke="#1570EF"
-                    opacity={0.65}
-                    dot={false}
-                  />
-                )}
-              </LineChart>
-            </ChartWrapper>
-          </div>
-        </Panel>
-
-        <Panel title="Cashflow and financing position">
-          <div className="chart-card-layout">
-            <div className="chart-summary">
-              <strong>{format.usd(metrics.liquidity.availableLiquidityUsd)}</strong>
-              <span>available liquidity</span>
-              <StatusBadge status="at_risk" />
-              <small>{metrics.liquidity.runwayMonths} months runway</small>
-              <small>
-                {format.usd(atlas.finance.kpis.nextRepaymentUsd)} due{' '}
-                {format.date(atlas.finance.kpis.nextRepaymentDate)}
-              </small>
-              <DetailLink onClick={() => setDetail('Cashflow and financing')}>
-                Financing evidence
-              </DetailLink>
-            </div>
-            <ChartWrapper
-              title="Cash position forecast"
-              summary="Actual liquidity reaches 42.5 million dollars in July; base and downside forecasts diverge after the actual boundary, with a 15 million dollar September repayment."
-              tableHeaders={['Month', 'Actual', 'Base forecast', 'Downside forecast', 'Repayment']}
-              tableRows={atlas.finance.cashPositionForecast.map((point) => [
-                point.month,
-                point.actualUsd ? format.usd(point.actualUsd) : '—',
-                point.baseForecastUsd ? format.usd(point.baseForecastUsd) : '—',
-                point.downsideForecastUsd ? format.usd(point.downsideForecastUsd) : '—',
-                'repaymentUsd' in point && point.repaymentUsd
-                  ? format.usd(point.repaymentUsd)
-                  : '—',
-              ])}
-            >
-              <AreaChart
-                data={atlas.finance.cashPositionForecast}
-                margin={{ left: 8, right: 8, top: 8, bottom: 0 }}
-              >
-                <CartesianGrid stroke="#EAECF0" vertical={false} />
-                <XAxis dataKey="month" />
-                <YAxis unit=" USD" tickFormatter={(value) => `$${value / 1_000_000}m`} />
-                <Tooltip formatter={(value) => format.usd(Number(value))} />
-                <Legend />
-                <ReferenceLine
-                  x="2026-07"
-                  stroke="#98A2B3"
-                  strokeDasharray="3 3"
-                  label="Actual / forecast"
-                />
-                <Area
-                  dataKey="actualUsd"
-                  name="Actual cash"
-                  stroke="#4F46E5"
-                  fill="#EEF2FF"
-                  connectNulls={false}
-                />
-                <Line
-                  dataKey="baseForecastUsd"
-                  name="Base forecast"
-                  stroke="#4F46E5"
-                  strokeDasharray="5 4"
-                  dot={false}
-                />
-                <Line
-                  dataKey="downsideForecastUsd"
-                  name="Downside forecast"
-                  stroke="#D92D20"
-                  strokeDasharray="2 4"
-                  dot={false}
-                />
-                <ReferenceLine x="2026-09" stroke="#D92D20" label="Repayment $15m" />
-              </AreaChart>
-            </ChartWrapper>
-          </div>
-        </Panel>
-      </div>
-
-      <Panel title="Recommended Actions and decisions" className="section recommendations">
-        {atlas.recommendations.map((item) => {
-          const decisions = executive.decisions.filter(
-            (decision) => decision.recommendationId === item.id,
-          );
-          const latest = decisions.at(-1);
-          return (
-            <article className="recommendation" key={item.id}>
-              <div>
-                <StatusBadge status={item.priority} />
-                <small>{statusLabels[item.status]}</small>
-              </div>
-              <div>
-                <h3>{item.title}</h3>
-                <p>{item.explanation}</p>
-                <small>{item.impact}</small>
-                {latest && (
-                  <p className="decision-summary">
-                    <strong>{decisionLabels[latest.action]}</strong> · {latest.rationale}
-                    {latest.ownerId && ` · ${getUser(latest.ownerId)?.name}`}
-                    {latest.dueDate && ` · due ${format.date(latest.dueDate)}`}
-                  </p>
-                )}
-              </div>
-              <Button variant="secondary" onClick={() => setRecommendationId(item.id)}>
-                Review action
-              </Button>
-            </article>
-          );
-        })}
+            )}
+          </LineChart>
+        </ChartWrapper>
       </Panel>
 
-      <Drawer title={detail ?? ''} open={Boolean(detail)} onClose={() => setDetail(null)}>
-        <p>{atlas.meta.disclosure}</p>
-        <dl className="summary-list">
-          <div>
-            <dt>Source cycle</dt>
-            <dd>{atlas.reportingCycles.find((cycle) => cycle.id === cycleId)?.label}</dd>
+      <div className="grid grid--2 section executive-attention-grid">
+        <Panel title="Strategic risks">
+          <DataTable
+            caption="Strategic risks requiring executive attention"
+            headers={['Risk', 'Impact', 'Trend', 'Exposure', 'Owner', 'Status']}
+            rows={validated.strategicRisks.map((risk) => [
+              risk.description,
+              risk.impact,
+              risk.trend,
+              format.usd(risk.financialExposure),
+              getUser(risk.ownerId ?? '')?.name ?? 'Unassigned',
+              <StatusBadge status={risk.status} />,
+            ])}
+            onRowClick={(index) => {
+              setSelectedRiskId(validated.strategicRisks[index].id);
+              setRiskTab('summary');
+            }}
+          />
+        </Panel>
+
+        <Panel title="Critical decisions" className="recommendations">
+          {atlas.recommendations
+            .filter((item) => item.status !== 'decision_recorded')
+            .map((item) => {
+              const decisions = executive.decisions.filter(
+                (decision) => decision.recommendationId === item.id,
+              );
+              const latest = decisions.at(-1);
+              return (
+                <article className="recommendation" key={item.id}>
+                  <div>
+                    <StatusBadge status={item.priority} />
+                    <small>{statusLabels[item.status]}</small>
+                  </div>
+                  <div>
+                    <h3>{item.title}</h3>
+                    <p>{item.explanation}</p>
+                    <small>{item.impact}</small>
+                    {latest && (
+                      <p className="decision-summary">
+                        <strong>{decisionLabels[latest.action]}</strong> · {latest.rationale}
+                        {latest.ownerId && ` · ${getUser(latest.ownerId)?.name}`}
+                        {latest.dueDate && ` · due ${format.date(latest.dueDate)}`}
+                      </p>
+                    )}
+                  </div>
+                  <Button variant="secondary" onClick={() => setRecommendationId(item.id)}>
+                    Review action
+                  </Button>
+                </article>
+              );
+            })}
+        </Panel>
+      </div>
+
+      <Panel title="Executive summary" className="section executive-summary">
+        <p>{selectedPublication?.executiveNarrative || atlas.executiveSummary.headline}</p>
+        <p>
+          Business-plan delivery is at {validated.businessDelivery.deliveryPercent}%. Production is{' '}
+          {format.percent(validated.production.variancePercent)} below plan, the current budget
+          forecast is {format.percent(validated.budget.variancePercent)} adverse, and cash runway is{' '}
+          {validated.liquidity.runwayMonths} months. Executive intervention should remain focused on
+          compressor restoration, integrity access and liquidity protection.
+        </p>
+      </Panel>
+
+      <Drawer
+        title={selectedRisk?.description ?? ''}
+        open={Boolean(selectedRisk)}
+        onClose={() => setSelectedRiskId(null)}
+      >
+        {selectedRisk && (
+          <div className="detail-workspace">
+            <DetailTabs
+              label="Strategic risk detail"
+              value={riskTab}
+              onChange={setRiskTab}
+              tabs={[
+                { id: 'summary', label: 'Summary' },
+                { id: 'history', label: 'History' },
+                { id: 'evidence', label: 'Evidence' },
+              ]}
+            />
+            {riskTab === 'summary' && (
+              <dl className="context-list">
+                <div>
+                  <dt>Business impact</dt>
+                  <dd>{selectedRisk.impact}</dd>
+                </div>
+                <div>
+                  <dt>Likelihood and trend</dt>
+                  <dd>
+                    {selectedRisk.likelihood} · {selectedRisk.trend}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Financial exposure</dt>
+                  <dd>{format.usd(selectedRisk.financialExposure)}</dd>
+                </div>
+                <div>
+                  <dt>Mitigation</dt>
+                  <dd>{selectedRisk.mitigation}</dd>
+                </div>
+              </dl>
+            )}
+            {riskTab === 'history' && (
+              <HistoryTable
+                revisionIds={selectedRisk.historicalRevisionIds}
+                entityId={selectedRisk.id}
+              />
+            )}
+            {riskTab === 'evidence' && <EvidenceTable evidenceIds={selectedRisk.evidenceIds} />}
           </div>
-          <div>
-            <dt>Production evidence</dt>
-            <dd>Operations approved report</dd>
-          </div>
-          <div>
-            <dt>Finance evidence</dt>
-            <dd>Treasury fixture workbook</dd>
-          </div>
-          <div>
-            <dt>HSE evidence</dt>
-            <dd>HSE approved report</dd>
-          </div>
-          <div>
-            <dt>Legal evidence</dt>
-            <dd>Legal approved report</dd>
-          </div>
-        </dl>
-        <h3>Decision audit</h3>
-        <div className="audit-list">
-          {executive.auditEvents.map((event) => (
-            <article key={event.id}>
-              <strong>{event.summary}</strong>
-              <small>{format.date(event.timestamp)}</small>
-            </article>
-          ))}
-        </div>
+        )}
       </Drawer>
 
       <Modal

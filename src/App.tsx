@@ -59,6 +59,9 @@ const KpiLibraryPage = lazy(() =>
 const ReportingTemplatesPage = lazy(() =>
   architecturePage().then((module) => ({ default: module.ReportingTemplatesPage })),
 );
+const UsersRolesPage = lazy(() =>
+  architecturePage().then((module) => ({ default: module.UsersRolesPage })),
+);
 const SettingsPage = lazy(() =>
   architecturePage().then((module) => ({ default: module.SettingsPage })),
 );
@@ -96,6 +99,7 @@ export function App() {
             <Route path="outputs" element={<OutputsPage />} />
             <Route path="kpi-library" element={<KpiLibraryPage />} />
             <Route path="reporting-templates" element={<ReportingTemplatesPage />} />
+            <Route path="users-roles" element={<UsersRolesPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="recommendations" element={<Navigate to="/decisions" replace />} />
             <Route path="production" element={<ProductionPage />} />

@@ -35,7 +35,7 @@ describe('route architecture', () => {
     ).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Projects' })).toHaveAttribute('href', '/projects');
     expect(screen.getByRole('navigation', { name: 'Configuration navigation' })).toHaveTextContent(
-      'KPI LibraryReporting TemplatesSettings',
+      'KPI LibraryReporting TemplatesUsers and RolesSettings',
     );
   });
 
@@ -176,6 +176,28 @@ describe('route architecture', () => {
     expect(within(drawer).getByRole('tab', { name: 'Comments' })).toBeVisible();
   });
 
+  it('exposes meeting governance context through its related decision', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={['/decisions']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    await user.click(
+      await screen.findByRole('row', {
+        name: /Urgent integrity expenditure requires approval/,
+      }),
+    );
+    const drawer = screen.getByRole('dialog', {
+      name: 'Urgent integrity expenditure requires approval',
+    });
+    await user.click(within(drawer).getByRole('tab', { name: 'Context' }));
+    expect(within(drawer).getByText('Commercial Review')).toBeVisible();
+    expect(within(drawer).getByText(/1 linked commitment/)).toBeVisible();
+  });
+
   it('preserves recommendation authoring inside Decisions and redirects the legacy route', async () => {
     const user = userEvent.setup();
     render(
@@ -219,6 +241,92 @@ describe('route architecture', () => {
     expect(screen.getByRole('navigation', { name: 'Executive navigation' })).toHaveTextContent(
       'CEO ViewCFO ViewDecisionsOutputs',
     );
+    expect(screen.getByRole('heading', { name: 'Cash-flow forecast' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Historical financial variance' })).toBeVisible();
+  });
+
+  it('keeps the CEO View focused on delivery, risk and intervention', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={['/commercial']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    await user.selectOptions(screen.getByLabelText('Active demo persona'), 'usr_ceo');
+    expect(await screen.findByRole('heading', { name: 'CEO View' })).toBeVisible();
+    expect(screen.getByText('Business-plan delivery')).toBeVisible();
+    expect(screen.getByText('Budget position')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Strategic risks' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Critical decisions' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Executive summary' })).toBeVisible();
+    expect(screen.queryByText(/submission queue/i)).not.toBeInTheDocument();
+  });
+
+  it('groups Outputs and blocks generation until inputs are validated', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={['/outputs']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole('heading', { name: 'Outputs' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Management' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Executive and Governance' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Regulatory' })).toBeVisible();
+    const blockedRow = screen.getByRole('row', { name: /Weekly Management Pack/ });
+    expect(within(blockedRow).getByRole('button', { name: 'Generate' })).toBeDisabled();
+    const readyRow = screen.getByRole('row', { name: /Monthly Business Performance Report/ });
+    await user.click(within(readyRow).getByRole('button', { name: 'Generate' }));
+    expect(readyRow).toHaveTextContent('Generated now');
+  });
+
+  it('reveals KPI definitions and thresholds contextually', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={['/kpi-library']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    await user.click(await screen.findByRole('button', { name: 'Gross oil production' }));
+    const drawer = screen.getByRole('dialog', { name: 'Gross oil production' });
+    expect(within(drawer).getByText('Sum of daily field production')).toBeVisible();
+    await user.click(within(drawer).getByRole('tab', { name: 'Thresholds and target' }));
+    expect(within(drawer).getByText('>= 95% of plan')).toBeVisible();
+  });
+
+  it('uses one shared Weekly Execution Update structure with department-specific fields', async () => {
+    render(
+      <MemoryRouter initialEntries={['/reporting-templates']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    expect(
+      await screen.findByRole('heading', { name: 'Shared Weekly Execution Update structure' }),
+    ).toBeVisible();
+    expect(screen.getByText('Executive highlight')).toBeVisible();
+    expect(
+      screen.getByRole('table', { name: 'Department-specific reporting templates' }),
+    ).toHaveTextContent('Community Relations');
+  });
+
+  it('exposes Users and Roles as commercial configuration', async () => {
+    render(
+      <MemoryRouter initialEntries={['/users-roles']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole('heading', { name: 'Users and Roles' })).toBeVisible();
+    expect(screen.getByRole('table', { name: 'Users and role access' })).toBeVisible();
   });
 
   it('lets a Department Manager choose any department and loads matching structured fields', async () => {

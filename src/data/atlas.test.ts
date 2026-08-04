@@ -82,7 +82,10 @@ describe('Atlas data selectors', () => {
     expect(getBusinessPlanDelivery('bu_oml30').objectives).toHaveLength(4);
     expect(phase1Domain.kpiDefinitions).toHaveLength(7);
     expect(phase1Domain.approvedBudgets[0].budgetLineIds).toHaveLength(4);
-    expect(phase1Domain.outputs).toHaveLength(4);
+    expect(phase1Domain.outputs).toHaveLength(11);
+    expect(new Set(phase1Domain.outputs.map((output) => output.audience))).toEqual(
+      new Set(['management', 'executive_governance', 'regulatory']),
+    );
     expect(phase1Domain.kpiTargets.find((target) => target.id === 'target_trir')).toMatchObject({
       approvedBaseline: atlas.hse.kpis.trirTarget,
       actual: atlas.hse.kpis.trir,

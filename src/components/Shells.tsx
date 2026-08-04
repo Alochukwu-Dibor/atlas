@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Lightbulb,
   RefreshCw,
+  Users,
 } from 'lucide-react';
 import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -28,6 +29,7 @@ const commercialNavItems = [
 const commercialConfigurationItems = [
   { to: '/kpi-library', label: 'KPI Library', icon: BarChart3 },
   { to: '/reporting-templates', label: 'Reporting Templates', icon: FileText },
+  { to: '/users-roles', label: 'Users and Roles', icon: Users },
   { to: '/settings', label: 'Settings', icon: Gavel },
 ];
 

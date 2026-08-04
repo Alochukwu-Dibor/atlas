@@ -72,6 +72,12 @@ export interface KpiDefinition {
   formula: string;
   unit: string;
   frequency: string;
+  dataSource?: string;
+  thresholds?: {
+    healthy: string;
+    attention: string;
+    critical: string;
+  };
   ownerId: string;
   strategicObjectiveId: string;
   contributesToBusinessHealth: boolean;

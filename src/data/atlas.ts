@@ -312,6 +312,57 @@ export function getBusinessPlanDelivery(businessUnitId: string) {
   };
 }
 
+export function getValidatedExecutiveData(businessUnitId = 'bu_oml30') {
+  const businessDelivery = getBusinessPlanDelivery(businessUnitId);
+  const production = getProductionKpis();
+  const liquidity = getLiquidity();
+  const approvedBudget = phase1Domain.approvedBudgets.find(
+    (item) => item.businessUnitId === businessUnitId,
+  )!;
+  const budgetLines = phase1Domain.budgetLines.filter(
+    (item) => item.businessUnitId === businessUnitId,
+  );
+  const total = (field: 'approvedBaseline' | 'committed' | 'actual' | 'currentForecast') =>
+    budgetLines.reduce((sum, line) => sum + line[field], 0);
+  const approvedSpend = total('approvedBaseline');
+  const committedSpend = total('committed');
+  const actualSpend = total('actual');
+  const forecastSpend = total('currentForecast');
+  const costRecoveryKpi = getObjectiveKpis('obj_capital_discipline').find(
+    ({ definition }) => definition.id === 'kpi_cost_recovery',
+  );
+  return {
+    businessDelivery,
+    production,
+    liquidity,
+    approvedBudget,
+    budget: {
+      lines: budgetLines,
+      approvedSpend,
+      committedSpend,
+      actualSpend,
+      forecastSpend,
+      variancePercent: approvedSpend ? ((forecastSpend - approvedSpend) / approvedSpend) * 100 : 0,
+      opex: budgetLines.filter((line) => line.category === 'opex'),
+      capex: budgetLines.filter((line) => line.category === 'capex'),
+    },
+    costRecovery: costRecoveryKpi,
+    strategicRisks: phase1Domain.risks.filter((risk) => risk.businessUnitId === businessUnitId),
+    decisions: phase1Domain.decisionSupportItems.filter(
+      (decision) => decision.businessUnitId === businessUnitId,
+    ),
+    evidence: phase1Domain.evidenceRecords.filter(
+      (record) => record.businessUnitId === businessUnitId,
+    ),
+    productionTrend: atlas.production.monthlyTrend,
+    cashPositionForecast: atlas.finance.cashPositionForecast,
+    cashflow: atlas.finance.cashflow,
+    receivables: atlas.finance.receivables,
+    obligations: atlas.finance.commitments,
+    financialVarianceTrend: atlas.financialVarianceTrend,
+  };
+}
+
 export function getLinkedRevisions(entityId: string) {
   return phase1Domain.historicalRevisions.filter((item) => item.entityId === entityId);
 }
