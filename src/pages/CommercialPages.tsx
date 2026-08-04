@@ -3,16 +3,17 @@ import { ContextControls } from '../components/Shells';
 import {
   Button,
   DataTable,
+  DetailTabs,
   Drawer,
   Field,
-  KpiCard,
   Modal,
   PageHeader,
   Panel,
   StatusBadge,
   useToast,
 } from '../components/Ui';
-import { atlas, format, getDepartment } from '../data/atlas';
+import { EvidenceTable, HistoryTable } from '../components/Traceability';
+import { format, getStrategicObjective, getUser, phase1Domain } from '../data/atlas';
 import { useAtlas } from '../state/AtlasContext';
 import type { CommercialRecommendation } from '../state/recommendations';
 
@@ -22,66 +23,122 @@ function prototypeTime(sequence: number) {
   return `2026-08-01T11:${String(sequence % 60).padStart(2, '0')}:00+01:00`;
 }
 
+type ProjectTab =
+  | 'overview'
+  | 'activities'
+  | 'updates'
+  | 'commitments'
+  | 'risks'
+  | 'decisions'
+  | 'history'
+  | 'evidence';
+
+const projectTabs: readonly { id: ProjectTab; label: string }[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'activities', label: 'Activities' },
+  { id: 'updates', label: 'Weekly Updates' },
+  { id: 'commitments', label: 'Commitments' },
+  { id: 'risks', label: 'Risks' },
+  { id: 'decisions', label: 'Decisions' },
+  { id: 'history', label: 'History' },
+  { id: 'evidence', label: 'Evidence' },
+];
+
 export function ProjectsPage() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const selected = atlas.projects.find((project) => project.id === selectedProjectId);
-  const atRisk = atlas.projects.filter((project) => project.status === 'at_risk').length;
-  const delayed = atlas.projects.filter((project) => project.status === 'delayed').length;
-  const averageProgress = Math.round(
-    atlas.projects.reduce((sum, project) => sum + project.progressPercent, 0) /
-      atlas.projects.length,
+  const [detailTab, setDetailTab] = useState<ProjectTab>('overview');
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [objectiveFilter, setObjectiveFilter] = useState('all');
+  const selected = phase1Domain.projects.find((project) => project.id === selectedProjectId);
+  const filteredProjects = phase1Domain.projects.filter(
+    (project) =>
+      project.name.toLowerCase().includes(search.toLowerCase()) &&
+      (statusFilter === 'all' || project.status === statusFilter) &&
+      (objectiveFilter === 'all' || project.strategicObjectiveIds.includes(objectiveFilter)),
   );
+  const openProject = (id: string) => {
+    setSelectedProjectId(id);
+    setDetailTab('overview');
+  };
 
   return (
     <>
       <PageHeader
         title="Projects"
-        description="Portfolio delivery, milestones, constraints and intervention priorities."
+        description="Which projects are delivering as planned, and which require intervention?"
         controls={<ContextControls />}
       />
-      <div className="grid grid--4">
-        <KpiCard
-          label="Business Plan Delivery"
-          value="At risk"
-          status="at_risk"
-          context={`${atRisk + delayed} of ${atlas.projects.length} projects need attention`}
-        />
-        <KpiCard
-          label="Projects on track"
-          value={String(atlas.projects.filter((project) => project.status === 'on_track').length)}
-          status="on_track"
-          context={`${atlas.projects.length} active projects`}
-        />
-        <KpiCard
-          label="Average progress"
-          value={`${averageProgress}%`}
-          status={averageProgress >= 70 ? 'on_track' : 'at_risk'}
-          context="Across the approved portfolio"
-        />
-        <KpiCard
-          label="Delayed projects"
-          value={String(delayed)}
-          status={delayed ? 'delayed' : 'on_track'}
-          context="Requires Commercial intervention"
-        />
+      <div className="project-toolbar" aria-label="Project filters">
+        <Field label="Search projects">
+          <input
+            type="search"
+            value={search}
+            placeholder="Search projects"
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </Field>
+        <Field label="Project health">
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <option value="all">All health states</option>
+            <option value="on_track">On track</option>
+            <option value="at_risk">At risk</option>
+            <option value="delayed">Delayed</option>
+          </select>
+        </Field>
+        <Field label="Strategic objective">
+          <select
+            value={objectiveFilter}
+            onChange={(event) => setObjectiveFilter(event.target.value)}
+          >
+            <option value="all">All strategic objectives</option>
+            {phase1Domain.strategicObjectives.map((objective) => (
+              <option key={objective.id} value={objective.id}>
+                {objective.name}
+              </option>
+            ))}
+          </select>
+        </Field>
       </div>
       <Panel title="Project portfolio" className="section">
         <DataTable
           caption="Commercial project portfolio"
-          headers={['Project', 'Status', 'Progress', 'Plan', 'Owner', 'Target date', 'Issue']}
-          rows={atlas.projects.map((project) => [
-            project.name,
-            <StatusBadge status={project.status} />,
-            <div className="progress-cell">
-              <progress value={project.progressPercent} max={100} />
-              <span>{project.progressPercent}%</span>
-            </div>,
-            `${project.planPercent}%`,
-            getDepartment(project.ownerDepartmentId)?.name ?? 'Unassigned',
-            format.date(project.targetDate),
-            project.issue ?? 'No material issue',
-          ])}
-          onRowClick={(index) => setSelectedProjectId(atlas.projects[index].id)}
+          headers={[
+            'Project',
+            'Strategic Objective',
+            'Phase',
+            'Health',
+            'Milestone Progress',
+            'Budget Variance',
+            'Key Risk',
+            'Next Milestone',
+          ]}
+          rows={filteredProjects.map((project) => {
+            const budget = phase1Domain.budgetLines.find(
+              (line) => line.id === project.approvedBudgetLineId,
+            );
+            const variance = budget
+              ? ((budget.currentForecast - budget.approvedBaseline) / budget.approvedBaseline) * 100
+              : 0;
+            const risk = phase1Domain.risks.find((item) => project.riskIds.includes(item.id));
+            const milestone = phase1Domain.milestones.find((item) =>
+              project.milestoneIds.includes(item.id),
+            );
+            return [
+              project.name,
+              getStrategicObjective(project.strategicObjectiveIds[0])?.name ?? '—',
+              project.phase ?? 'Execution',
+              <StatusBadge status={project.status} />,
+              <div className="progress-cell">
+                <progress value={project.progressPercent} max={100} />
+                <span>{project.progressPercent}%</span>
+              </div>,
+              budget ? format.percent(variance) : '—',
+              risk?.description ?? 'No material risk',
+              milestone ? `${milestone.name} · ${format.date(milestone.dueDate)}` : '—',
+            ];
+          })}
+          onRowClick={(index) => openProject(filteredProjects[index].id)}
         />
       </Panel>
       <Drawer
@@ -90,40 +147,162 @@ export function ProjectsPage() {
         onClose={() => setSelectedProjectId(null)}
       >
         {selected && (
-          <>
-            <StatusBadge status={selected.status} />
-            <dl className="summary-list">
-              <div>
-                <dt>Progress</dt>
-                <dd>{selected.progressPercent}%</dd>
-              </div>
-              <div>
-                <dt>Approved plan</dt>
-                <dd>{selected.planPercent}%</dd>
-              </div>
-              <div>
-                <dt>Target date</dt>
-                <dd>{format.date(selected.targetDate)}</dd>
-              </div>
-              <div>
-                <dt>Owner</dt>
-                <dd>{getDepartment(selected.ownerDepartmentId)?.name}</dd>
-              </div>
-            </dl>
-            <h3>Current issue</h3>
-            <p>{selected.issue ?? 'No material issue reported.'}</p>
-            <div className="info-panel">
-              <strong>Synthetic evidence</strong>
-              <span>{atlas.meta.disclosure}</span>
-            </div>
-          </>
+          <div className="detail-workspace">
+            <DetailTabs
+              label="Project detail"
+              value={detailTab}
+              onChange={setDetailTab}
+              tabs={projectTabs}
+            />
+            {detailTab === 'overview' && <ProjectOverview projectId={selected.id} />}
+            {detailTab === 'activities' && <ProjectActivities projectId={selected.id} />}
+            {detailTab === 'updates' && <ProjectUpdates projectId={selected.id} />}
+            {detailTab === 'commitments' && <ProjectCommitments projectId={selected.id} />}
+            {detailTab === 'risks' && <ProjectRisks projectId={selected.id} />}
+            {detailTab === 'decisions' && <ProjectDecisions projectId={selected.id} />}
+            {detailTab === 'history' && (
+              <HistoryTable revisionIds={selected.historicalRevisionIds} entityId={selected.id} />
+            )}
+            {detailTab === 'evidence' && <EvidenceTable evidenceIds={selected.evidenceIds} />}
+          </div>
         )}
       </Drawer>
     </>
   );
 }
 
-export function RecommendationsPage() {
+function ProjectOverview({ projectId }: { projectId: string }) {
+  const project = phase1Domain.projects.find((record) => record.id === projectId)!;
+  const budget = phase1Domain.budgetLines.find((line) => line.id === project.approvedBudgetLineId);
+  const milestone = phase1Domain.milestones.find((item) => project.milestoneIds.includes(item.id));
+  const variance = budget
+    ? ((budget.currentForecast - budget.approvedBaseline) / budget.approvedBaseline) * 100
+    : 0;
+  return (
+    <div className="detail-stack">
+      <div className="detail-lead">
+        <StatusBadge status={project.status} />
+        <strong>{project.progressPercent}% complete</strong>
+        <p>{project.issue ?? 'No material variance requires intervention.'}</p>
+      </div>
+      <dl className="summary-list">
+        <div>
+          <dt>Performance against plan</dt>
+          <dd>
+            {project.progressPercent}% actual · {project.planPercent ?? project.progressPercent}%
+            plan
+          </dd>
+        </div>
+        <div>
+          <dt>Budget variance</dt>
+          <dd>{budget ? format.percent(variance) : 'No linked budget line'}</dd>
+        </div>
+        <div>
+          <dt>Next milestone</dt>
+          <dd>{milestone ? `${milestone.name} · ${format.date(milestone.dueDate)}` : '—'}</dd>
+        </div>
+        <div>
+          <dt>Required action</dt>
+          <dd>
+            {project.decisionIds.length ? 'Resolve linked decision before milestone' : 'Monitor'}
+          </dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
+function ProjectActivities({ projectId }: { projectId: string }) {
+  const records = phase1Domain.operationalActivities.filter(
+    (record) => record.projectId === projectId,
+  );
+  return (
+    <DataTable
+      caption="Project activities"
+      headers={['Activity', 'Owner', 'Progress', 'Blocker', 'Expected completion']}
+      rows={records.map((record) => [
+        record.title,
+        getUser(record.ownerId ?? '')?.name ?? 'Unassigned',
+        `${record.progressPercent}%`,
+        record.blocker ?? 'No blocker',
+        format.date(record.expectedCompletion),
+      ])}
+    />
+  );
+}
+
+function ProjectUpdates({ projectId }: { projectId: string }) {
+  const records = phase1Domain.weeklyExecutionUpdates.filter(
+    (record) => record.projectId === projectId,
+  );
+  return (
+    <DataTable
+      caption="Project weekly updates"
+      headers={['Update', 'Executive highlight', 'Forecast change', 'Status']}
+      rows={records.map((record) => [
+        record.title,
+        record.executiveHighlight,
+        record.forecastChanges,
+        <StatusBadge status={record.status} />,
+      ])}
+    />
+  );
+}
+
+function ProjectCommitments({ projectId }: { projectId: string }) {
+  const records = phase1Domain.commitments.filter((record) => record.projectId === projectId);
+  return (
+    <DataTable
+      caption="Project commitments"
+      headers={['Commitment', 'Owner', 'Due date', 'Expected result', 'Status']}
+      rows={records.map((record) => [
+        record.description,
+        getUser(record.ownerId ?? '')?.name ?? 'Unassigned',
+        format.date(record.dueDate),
+        record.expectedResult,
+        <StatusBadge status={record.status} />,
+      ])}
+    />
+  );
+}
+
+function ProjectRisks({ projectId }: { projectId: string }) {
+  const records = phase1Domain.risks.filter((record) => record.projectId === projectId);
+  return (
+    <DataTable
+      caption="Project risks"
+      headers={['Risk', 'Impact', 'Trend', 'Mitigation', 'Status']}
+      rows={records.map((record) => [
+        record.description,
+        record.impact,
+        record.trend,
+        record.mitigation,
+        <StatusBadge status={record.status} />,
+      ])}
+    />
+  );
+}
+
+function ProjectDecisions({ projectId }: { projectId: string }) {
+  const records = phase1Domain.decisionSupportItems.filter(
+    (record) => record.projectId === projectId,
+  );
+  return (
+    <DataTable
+      caption="Project decisions"
+      headers={['Issue', 'Business impact', 'Recommended action', 'Due date', 'Status']}
+      rows={records.map((record) => [
+        record.issue,
+        record.businessImpact,
+        record.recommendedAction,
+        format.date(record.dueDate),
+        <StatusBadge status={record.status} />,
+      ])}
+    />
+  );
+}
+
+export function RecommendationsPage({ embedded = false }: { embedded?: boolean }) {
   const { activeUserId, recommendations, recommendationDispatch } = useAtlas();
   const showToast = useToast();
   const [category, setCategory] = useState('production');
@@ -146,11 +325,13 @@ export function RecommendationsPage() {
 
   return (
     <>
-      <PageHeader
-        title="Decision Support"
-        description="Review Recommended Actions and shape the items proposed for executive decision."
-        controls={<ContextControls />}
-      />
+      {!embedded && (
+        <PageHeader
+          title="Decision Support"
+          description="Review Recommended Actions and shape the items proposed for executive decision."
+          controls={<ContextControls />}
+        />
+      )}
       <Panel title="Write a Commercial Recommended Action" className="recommendation-compose">
         <p>
           Add your judgement prominently before consolidation. Every Recommended Action remains

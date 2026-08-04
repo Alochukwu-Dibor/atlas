@@ -205,6 +205,35 @@ export function SegmentedControl({
   );
 }
 
+export function DetailTabs<T extends string>({
+  label,
+  value,
+  onChange,
+  tabs,
+}: {
+  label: string;
+  value: T;
+  onChange: (value: T) => void;
+  tabs: readonly { id: T; label: string }[];
+}) {
+  return (
+    <div className="review-tabs" role="tablist" aria-label={label}>
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          type="button"
+          role="tab"
+          aria-selected={tab.id === value}
+          className={tab.id === value ? 'is-active' : ''}
+          onClick={() => onChange(tab.id)}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function DataTable({
   headers,
   rows,

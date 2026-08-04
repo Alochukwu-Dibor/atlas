@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import {
   DepartmentShell,
   ExecutiveShell,
@@ -40,9 +40,6 @@ const ProductionPage = lazy(() =>
 );
 const ProjectsPage = lazy(() =>
   commercialPage().then((module) => ({ default: module.ProjectsPage })),
-);
-const RecommendationsPage = lazy(() =>
-  commercialPage().then((module) => ({ default: module.RecommendationsPage })),
 );
 const ExecutionPage = lazy(() =>
   architecturePage().then((module) => ({ default: module.ExecutionPage })),
@@ -100,7 +97,7 @@ export function App() {
             <Route path="kpi-library" element={<KpiLibraryPage />} />
             <Route path="reporting-templates" element={<ReportingTemplatesPage />} />
             <Route path="settings" element={<SettingsPage />} />
-            <Route path="recommendations" element={<RecommendationsPage />} />
+            <Route path="recommendations" element={<Navigate to="/decisions" replace />} />
             <Route path="production" element={<ProductionPage />} />
             <Route path="finance" element={<FinancePage />} />
             <Route path="hse" element={<HsePage />} />

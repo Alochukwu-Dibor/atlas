@@ -120,8 +120,13 @@ export interface ProjectInitiative extends EntityLinkage {
   id: string;
   type: 'project' | 'initiative';
   name: string;
+  phase?: string;
   status: string;
   progressPercent: number;
+  planPercent?: number;
+  ownerDepartmentId?: string;
+  targetDate?: string;
+  issue?: string | null;
   approvedBudgetLineId?: string;
   milestoneIds: string[];
   activityIds: string[];

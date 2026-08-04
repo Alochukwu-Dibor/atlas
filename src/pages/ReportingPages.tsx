@@ -16,10 +16,12 @@ import {
   Upload,
 } from 'lucide-react';
 import { ContextControls } from '../components/Shells';
+import { ChartWrapper } from '../components/Charts';
+import { EvidenceTable, HistoryTable } from '../components/Traceability';
 import {
   Button,
   DataTable,
-  DetailLink,
+  DetailTabs,
   Drawer,
   Field,
   Modal,
@@ -36,7 +38,9 @@ import {
   getDepartment,
   getProductionKpis,
   getUser,
+  phase1Domain,
 } from '../data/atlas';
+import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from 'recharts';
 import { useAtlas } from '../state/AtlasContext';
 import {
   reportDepartmentName,
@@ -1741,7 +1745,10 @@ export function DepartmentReportReview() {
 
 export function CommercialDashboard() {
   const navigate = useNavigate();
-  const [detail, setDetail] = useState<string | null>(null);
+  const [healthDetail, setHealthDetail] = useState<string | null>(null);
+  const [healthDetailTab, setHealthDetailTab] = useState<'summary' | 'history' | 'evidence'>(
+    'summary',
+  );
   const [publishOpen, setPublishOpen] = useState(false);
   const [narrative, setNarrative] = useState('');
   const [exceptionReason, setExceptionReason] = useState('');
@@ -1756,12 +1763,114 @@ export function CommercialDashboard() {
       Boolean(publication?.controlledExceptionReason));
   const production = getProductionKpis();
   const businessDelivery = getBusinessPlanDelivery(businessUnitId);
-  const objectivesNeedingAttention = businessDelivery.objectives.filter((objective) =>
-    ['critical', 'at_risk', 'needs_attention'].includes(objective.status),
-  ).length;
   const queue = selectSubmissionQueue(workflow, cycleId);
   const returned = queue.filter((report) => report.status === 'needs_clarification');
-  const submitted = queue.filter((report) => ['submitted', 'resubmitted'].includes(report.status));
+  const budgetBaseline = phase1Domain.approvedBudgets[0].approvedAmount;
+  const budgetForecast = phase1Domain.budgetLines.reduce(
+    (total, line) => total + line.currentForecast,
+    0,
+  );
+  const budgetVariance = ((budgetForecast - budgetBaseline) / budgetBaseline) * 100;
+  const previousDelivery = atlas.businessPlanDeliveryTrend.at(-2)?.deliveryPercent ?? 0;
+  const deliveryChange = businessDelivery.deliveryPercent - previousDelivery;
+  const healthCategories = [
+    {
+      name: 'Production',
+      position: `${format.number(production.actual)} bopd`,
+      status: production.status,
+      kpiId: 'kpi_gross_production',
+    },
+    {
+      name: 'Budget',
+      position: `${format.percent(budgetVariance)} forecast variance`,
+      status: budgetVariance > 0 ? 'adverse' : 'on_track',
+      kpiId: 'kpi_budget_variance',
+    },
+    {
+      name: 'Cost Recovery',
+      position: '87% against 92% plan',
+      status: 'needs_attention',
+      kpiId: 'kpi_cost_recovery',
+    },
+    {
+      name: 'Cash Position',
+      position: `${format.usd(atlas.finance.kpis.availableLiquidityUsd)} · ${atlas.finance.kpis.runwayMonths} months`,
+      status: atlas.finance.kpis.status,
+      kpiId: 'kpi_liquidity',
+    },
+    {
+      name: 'Schedule',
+      position: '2 projects require intervention',
+      status: 'at_risk',
+      kpiId: null,
+    },
+    {
+      name: 'HSE',
+      position: `TRIR ${atlas.hse.kpis.trir} against ${atlas.hse.kpis.trirTarget}`,
+      status: 'at_risk',
+      kpiId: 'kpi_trir',
+    },
+    {
+      name: 'Regulatory',
+      position: '86% obligations on time',
+      status: 'needs_attention',
+      kpiId: 'kpi_regulatory_compliance',
+    },
+  ];
+  const selectedHealth = healthCategories.find((category) => category.name === healthDetail);
+  const selectedHealthKpi = selectedHealth?.kpiId
+    ? phase1Domain.kpiDefinitions.find((kpi) => kpi.id === selectedHealth.kpiId)
+    : undefined;
+  const selectedHealthTarget = selectedHealthKpi
+    ? phase1Domain.kpiTargets.find((target) => target.kpiId === selectedHealthKpi.id)
+    : undefined;
+  const decisionRows = [
+    ...phase1Domain.decisionSupportItems
+      .filter((item) => item.status !== 'approved')
+      .map((item) => ({
+        issue: item.issue,
+        type: item.type.replaceAll('_', ' '),
+        owner:
+          getDepartment(item.departmentId ?? null)?.name ??
+          getUser(item.ownerId ?? '')?.name ??
+          'Unassigned',
+        impact: item.businessImpact,
+        deadline: format.date(item.dueDate),
+        action: 'Review decision',
+        path: '/decisions',
+      })),
+    ...returned.map((report) => ({
+      issue: `${reportDepartmentName(report)} clarification outstanding`,
+      type: 'clarification',
+      owner: reportDepartmentName(report),
+      impact: report.weekly.materialChange,
+      deadline: format.date(getCycle(report.cycleId).dueDate),
+      action: 'Review clarification',
+      path: `/reviews/${report.id}`,
+    })),
+    ...phase1Domain.commitments
+      .filter((commitment) => commitment.status === 'delayed')
+      .map((commitment) => ({
+        issue: commitment.description,
+        type: 'missed commitment',
+        owner: getDepartment(commitment.departmentId ?? null)?.name ?? 'Unassigned',
+        impact: commitment.expectedResult,
+        deadline: format.date(commitment.dueDate),
+        action: 'Follow up',
+        path: '/execution',
+      })),
+  ];
+  const interventionProjects = phase1Domain.projects.filter((project) => {
+    const commitment = phase1Domain.commitments.find((item) =>
+      project.commitmentIds.includes(item.id),
+    );
+    return (
+      project.status !== 'on_track' ||
+      project.riskIds.length > 0 ||
+      project.decisionIds.length > 0 ||
+      Boolean(commitment && ['delayed', 'overdue'].includes(commitment.status))
+    );
+  });
   return (
     <>
       <PageHeader
@@ -1784,140 +1893,185 @@ export function CommercialDashboard() {
           </>
         }
       />
-      <div className="commercial-top">
-        <Panel title="Business Health">
-          <div className="metric-large">
-            <StatusBadge status={businessDelivery.status} />
+      <Panel title="Business Health" className="business-health-section">
+        <div className="business-health-summary">
+          <div>
+            <span>Overall business-plan delivery</span>
             <strong>{businessDelivery.deliveryPercent}%</strong>
-            <span>Business-plan delivery</span>
-            <small>
-              {objectivesNeedingAttention} of {businessDelivery.objectives.length} objectives need
-              attention
-            </small>
           </div>
-        </Panel>
-        <Panel title="Overall project status">
-          <div className="metric-large">
-            <StatusBadge status={atlas.executiveSummary.overallStatus} />
-            <strong>2 on track</strong>
-            <span>1 at risk · 1 delayed</span>
-          </div>
-          <DetailLink onClick={() => navigate('/projects')}>Project breakdown</DetailLink>
-        </Panel>
-        <Panel title="Production performance">
-          <div className="metric-large">
-            <strong>
-              {format.number(production.actual)} <small>bopd</small>
-            </strong>
-            <span>{format.percent(production.variancePercent)} vs plan</span>
-            <StatusBadge status={production.status} />
-          </div>
-          <DetailLink onClick={() => setDetail('Production performance')} />
-        </Panel>
-        <Panel title="Cashflow and financing position">
-          <div className="metric-large">
-            <strong>{format.usd(atlas.finance.kpis.availableLiquidityUsd)}</strong>
-            <span>{atlas.finance.kpis.runwayMonths} months runway</span>
-            <StatusBadge status={atlas.finance.kpis.status} />
-          </div>
-          <DetailLink onClick={() => setDetail('Cashflow and financing')} />
-        </Panel>
-      </div>
-      <div className="commercial-lower section">
-        <div className="commercial-lower__stack">
-          <Panel title="Legal issues and regulatory exposure">
-            <strong className="panel-value">
-              {format.usd(atlas.legalRegulatory.kpis.estimatedExposureUsd)}
-            </strong>
-            <p>{atlas.legalRegulatory.kpis.criticalRisks} critical risks · deadline 5 Aug</p>
-            <StatusBadge status="at_risk" />
-          </Panel>
-          <Panel title="HSE performance">
-            <strong className="panel-value">TRIR {atlas.hse.kpis.trir}</strong>
-            <p>
-              {atlas.hse.kpis.highPotentialIncidents} high-potential incident ·{' '}
-              {atlas.hse.compliance.overdueFindings} overdue actions
-            </p>
-            <StatusBadge status="at_risk" />
-          </Panel>
+          <StatusBadge status={businessDelivery.status} />
+          <p className={deliveryChange < 0 ? 'text-adverse' : 'text-positive'}>
+            {deliveryChange > 0 ? '+' : ''}
+            {deliveryChange} percentage points from the previous period
+          </p>
         </div>
-        <Panel title="Attention required" className="attention-card">
-          <div className="action-list">
-            {submitted.map((report) => (
-              <button key={report.id} onClick={() => navigate(`/commercial/review/${report.id}`)}>
-                <span>
-                  <StatusBadge status={report.status} />
-                  <strong>{reportDepartmentName(report)} submission awaiting review</strong>
-                </span>
-                <small>{report.sourceIds.length} sources</small>
-              </button>
-            ))}
-            {returned.map((report) => (
-              <button key={report.id} onClick={() => navigate(`/commercial/review/${report.id}`)}>
-                <span>
-                  <StatusBadge status={report.status} />
-                  <strong>{reportDepartmentName(report)} clarification outstanding</strong>
-                </span>
-                <small>Returned to department</small>
-              </button>
-            ))}
-            {queue.length === 0 && <p>No submission exceptions for this period.</p>}
-          </div>
-        </Panel>
-        <Panel title="Today’s priorities">
-          <div className="action-list">
-            {queue.slice(0, 4).map((report) => (
-              <button key={report.id} onClick={() => navigate(`/commercial/review/${report.id}`)}>
-                <span>
-                  <StatusBadge status={report.status} />
-                  <strong>Review {reportDepartmentName(report)} Weekly Execution Update</strong>
-                </span>
-                <small>{getCycle(report.cycleId).label}</small>
-              </button>
-            ))}
-            <button disabled={isPublished} onClick={() => setPublishOpen(true)}>
+        <div className="health-category-list">
+          {healthCategories.map((category) => (
+            <button
+              type="button"
+              key={category.name}
+              onClick={() => {
+                setHealthDetail(category.name);
+                setHealthDetailTab('summary');
+              }}
+            >
               <span>
-                <StatusBadge
-                  status={isPublished ? 'published_locked' : canPublish ? 'ready' : 'pending'}
-                />
-                <strong>Publish weekly executive update</strong>
+                <strong>{category.name}</strong>
+                <small>{category.position}</small>
               </span>
-              <small>
-                {isPublished
-                  ? 'Cycle is immutable'
-                  : canPublish
-                    ? 'Ready to publish'
-                    : 'Approval or controlled exception required'}
-              </small>
+              <StatusBadge status={category.status} />
             </button>
-          </div>
-        </Panel>
-      </div>
-      <Panel title="Weekly Execution Update review queue" className="section">
+          ))}
+        </div>
+      </Panel>
+
+      <Panel title="Decisions Required" className="section">
         <DataTable
-          caption="Department submission review queue"
-          headers={['Department', 'Period', 'Sources', 'Status', 'Submitted']}
-          rows={queue.map((report) => [
-            reportDepartmentName(report),
-            getCycle(report.cycleId).label,
-            String(report.sourceIds.length),
-            <StatusBadge status={report.status} />,
-            report.submittedAt ? format.date(report.submittedAt) : '—',
+          caption="Decisions required"
+          headers={['Issue', 'Type', 'Owner / Department', 'Impact', 'Deadline', 'Action']}
+          rows={decisionRows.map((item) => [
+            item.issue,
+            item.type,
+            item.owner,
+            item.impact,
+            item.deadline,
+            item.action,
           ])}
-          onRowClick={(index) => navigate(`/commercial/review/${queue[index].id}`)}
+          onRowClick={(index) => navigate(decisionRows[index].path)}
         />
       </Panel>
-      <Drawer title={detail ?? ''} open={Boolean(detail)} onClose={() => setDetail(null)}>
-        <p>
-          Review the standardised value, source evidence, comments and audit history in context.
-        </p>
-        <div className="info-panel">
-          <strong>Synthetic evidence</strong>
-          <span>
-            This prototype uses deterministic fixture data and does not connect to live operating
-            systems.
-          </span>
-        </div>
+
+      <Panel
+        title="Plan Delivery Trend"
+        className="section"
+        action={
+          <Button variant="secondary" onClick={() => navigate('/execution')}>
+            Explore objectives and KPIs
+          </Button>
+        }
+      >
+        <ChartWrapper
+          title="Business-plan delivery trend"
+          summary={`Business-plan delivery declined from ${atlas.businessPlanDeliveryTrend[0].deliveryPercent}% to ${businessDelivery.deliveryPercent}% across six reporting periods.`}
+          tableHeaders={['Reporting period', 'Delivery']}
+          tableRows={atlas.businessPlanDeliveryTrend.map((point) => [
+            point.period,
+            `${point.deliveryPercent}%`,
+          ])}
+        >
+          <LineChart
+            data={atlas.businessPlanDeliveryTrend}
+            margin={{ top: 18, right: 24, left: 0, bottom: 0 }}
+          >
+            <CartesianGrid stroke="#e5e7eb" vertical={false} />
+            <XAxis dataKey="period" tickLine={false} axisLine={false} />
+            <YAxis domain={[65, 85]} tickLine={false} axisLine={false} unit="%" />
+            <Tooltip formatter={(value) => [`${value}%`, 'Delivery']} />
+            <Line
+              type="monotone"
+              dataKey="deliveryPercent"
+              stroke="#2563eb"
+              strokeWidth={2.5}
+              dot={{ r: 3 }}
+              activeDot={{ r: 5 }}
+            />
+          </LineChart>
+        </ChartWrapper>
+      </Panel>
+
+      <Panel title="Projects Requiring Intervention" className="section">
+        <DataTable
+          caption="Projects requiring intervention"
+          headers={[
+            'Project',
+            'Health',
+            'Plan variance',
+            'Key issue',
+            'Pending decision',
+            'Action',
+          ]}
+          rows={interventionProjects.map((project) => [
+            project.name,
+            <StatusBadge status={project.status} />,
+            `${project.progressPercent - (project.planPercent ?? project.progressPercent)} percentage points`,
+            project.issue ?? 'Material intervention required',
+            project.decisionIds.length ? 'Yes' : 'No',
+            'Open project',
+          ])}
+          onRowClick={() => navigate('/projects')}
+        />
+      </Panel>
+      <Drawer
+        title={selectedHealth?.name ?? ''}
+        open={Boolean(selectedHealth)}
+        onClose={() => setHealthDetail(null)}
+      >
+        {selectedHealth && (
+          <div className="detail-workspace">
+            <DetailTabs
+              label="Business health detail"
+              value={healthDetailTab}
+              onChange={setHealthDetailTab}
+              tabs={[
+                { id: 'summary', label: 'Summary' },
+                { id: 'history', label: 'History' },
+                { id: 'evidence', label: 'Evidence' },
+              ]}
+            />
+            {healthDetailTab === 'summary' && (
+              <div className="detail-stack">
+                <div className="detail-lead">
+                  <StatusBadge status={selectedHealth.status} />
+                  <strong>{selectedHealth.position}</strong>
+                  <p>
+                    {selectedHealthKpi?.name ??
+                      'Schedule position is derived from linked project milestones and commitments.'}
+                  </p>
+                </div>
+                {selectedHealthTarget && (
+                  <dl className="summary-list">
+                    <div>
+                      <dt>Approved baseline</dt>
+                      <dd>
+                        {format.number(selectedHealthTarget.approvedBaseline)}{' '}
+                        {selectedHealthKpi?.unit}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Actual</dt>
+                      <dd>
+                        {format.number(selectedHealthTarget.actual)} {selectedHealthKpi?.unit}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Current forecast</dt>
+                      <dd>
+                        {format.number(selectedHealthTarget.currentForecast)}{' '}
+                        {selectedHealthKpi?.unit}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Prior forecast</dt>
+                      <dd>
+                        {format.number(selectedHealthTarget.priorForecast)}{' '}
+                        {selectedHealthKpi?.unit}
+                      </dd>
+                    </div>
+                  </dl>
+                )}
+              </div>
+            )}
+            {healthDetailTab === 'history' && (
+              <HistoryTable
+                revisionIds={selectedHealthTarget?.historicalRevisionIds ?? []}
+                entityId={selectedHealthTarget?.id}
+              />
+            )}
+            {healthDetailTab === 'evidence' && (
+              <EvidenceTable evidenceIds={selectedHealthTarget?.evidenceIds ?? []} />
+            )}
+          </div>
+        )}
       </Drawer>
       <Modal
         title="Consolidate and publish executive update"

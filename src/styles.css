@@ -2508,3 +2508,188 @@ tr.is-clickable:hover {
     min-height: 150px;
   }
 }
+
+/* Phase 3 information architecture */
+.business-health-section {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 2.2fr);
+  gap: 32px;
+}
+
+.business-health-section > .panel__header {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+}
+
+.business-health-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  padding-right: 32px;
+  border-right: 1px solid var(--atlas-border);
+}
+
+.business-health-summary > div {
+  display: grid;
+  gap: 8px;
+}
+
+.business-health-summary span,
+.health-category-list small {
+  color: var(--atlas-text-secondary);
+}
+
+.business-health-summary strong {
+  font-size: 54px;
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.business-health-summary p {
+  margin: auto 0 0;
+  font-size: 14px;
+}
+
+.text-adverse {
+  color: var(--atlas-critical);
+}
+
+.text-positive {
+  color: var(--atlas-success);
+}
+
+.health-category-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.health-category-list button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 74px;
+  padding: 14px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--atlas-border);
+  color: inherit;
+  background: transparent;
+  text-align: left;
+}
+
+.health-category-list button:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.health-category-list button:hover,
+.health-category-list button:focus-visible {
+  background: var(--atlas-surface-subtle);
+}
+
+.health-category-list button > span:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.health-category-list small {
+  font-size: 13px;
+}
+
+.project-toolbar {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.5fr) repeat(2, minmax(200px, 1fr));
+  gap: 16px;
+  align-items: end;
+  margin-top: 8px;
+}
+
+.project-toolbar .field {
+  margin: 0;
+}
+
+.detail-workspace {
+  display: grid;
+  gap: 24px;
+}
+
+.detail-workspace .review-tabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.detail-workspace .review-tabs button {
+  flex: 0 0 auto;
+}
+
+.detail-stack,
+.detail-lead,
+.context-list {
+  display: grid;
+  gap: 18px;
+}
+
+.detail-lead {
+  justify-items: start;
+}
+
+.detail-lead > strong {
+  font-size: 28px;
+  line-height: 1.2;
+}
+
+.detail-lead p {
+  margin: 0;
+}
+
+.context-list {
+  margin: 0;
+}
+
+.context-list > div {
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--atlas-border);
+}
+
+.context-list dt {
+  margin-bottom: 6px;
+  color: var(--atlas-text-secondary);
+  font-size: 13px;
+}
+
+.context-list dd {
+  margin: 0;
+}
+
+.empty-copy {
+  margin: 0;
+  padding: 28px;
+  border: 1px dashed var(--atlas-border);
+  border-radius: 10px;
+  color: var(--atlas-text-secondary);
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .business-health-section,
+  .project-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .business-health-summary {
+    padding-right: 0;
+    padding-bottom: 24px;
+    border-right: 0;
+    border-bottom: 1px solid var(--atlas-border);
+  }
+}
+
+@media (max-width: 620px) {
+  .health-category-list {
+    grid-template-columns: 1fr;
+  }
+
+  .health-category-list button:nth-last-child(2) {
+    border-bottom: 1px solid var(--atlas-border);
+  }
+}

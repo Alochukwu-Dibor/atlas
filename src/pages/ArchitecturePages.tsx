@@ -4,6 +4,7 @@ import { ContextControls } from '../components/Shells';
 import {
   Button,
   DataTable,
+  DetailTabs,
   Drawer,
   KpiCard,
   PageHeader,
@@ -11,12 +12,15 @@ import {
   Select,
   StatusBadge,
 } from '../components/Ui';
+import { DecisionHistory, EvidenceTable, HistoryTable } from '../components/Traceability';
+import { RecommendationsPage } from './CommercialPages';
 import {
   atlas,
   format,
   getBusinessPlanDelivery,
   getDepartment,
   getLiquidity,
+  getObjectiveKpis,
   getStrategicObjective,
   getUser,
   phase1Domain,
@@ -24,20 +28,49 @@ import {
 import { useAtlas } from '../state/AtlasContext';
 import { reportDepartmentName, selectSubmissionQueue } from '../state/workflow';
 
+type ObjectiveTab =
+  | 'overview'
+  | 'kpis'
+  | 'projects'
+  | 'activities'
+  | 'updates'
+  | 'commitments'
+  | 'risks'
+  | 'decisions'
+  | 'evidence';
+
+const objectiveTabs: readonly { id: ObjectiveTab; label: string }[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'kpis', label: 'KPIs' },
+  { id: 'projects', label: 'Projects and Initiatives' },
+  { id: 'activities', label: 'Activities' },
+  { id: 'updates', label: 'Weekly Updates' },
+  { id: 'commitments', label: 'Commitments' },
+  { id: 'risks', label: 'Risks' },
+  { id: 'decisions', label: 'Decisions' },
+  { id: 'evidence', label: 'Evidence and History' },
+];
+
 export function ExecutionPage() {
   const { businessUnitId } = useAtlas();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detailTab, setDetailTab] = useState<ObjectiveTab>('overview');
   const delivery = getBusinessPlanDelivery(businessUnitId);
   const selected = selectedId ? getStrategicObjective(selectedId) : undefined;
+
+  const openObjective = (objectiveId: string) => {
+    setSelectedId(objectiveId);
+    setDetailTab('overview');
+  };
 
   return (
     <>
       <PageHeader
         title="Execution"
-        description="How the approved business plan is being delivered across objectives, owners and execution vehicles."
+        description="How is the approved business plan being delivered?"
         controls={<ContextControls />}
       />
-      <Panel title="Business-plan objectives" className="section">
+      <Panel title="Strategic objective delivery">
         <DataTable
           caption="Strategic objective delivery"
           headers={[
@@ -45,22 +78,39 @@ export function ExecutionPage() {
             'Status',
             'Progress',
             'Owner',
-            'KPIs',
-            'Projects / initiatives',
-            'Risks',
-            'Commitments',
+            'Key KPI',
+            'Linked budget',
+            'Material risk',
+            'Outstanding commitment',
           ]}
-          rows={delivery.objectives.map((objective) => [
-            objective.name,
-            <StatusBadge status={objective.status} />,
-            `${objective.progressPercent}%`,
-            getUser(objective.ownerId ?? '')?.name ?? 'Unassigned',
-            String(objective.kpiIds.length),
-            String(objective.projectIds.length + objective.initiativeIds.length),
-            String(objective.riskIds.length),
-            String(objective.commitmentIds.length),
-          ])}
-          onRowClick={(index) => setSelectedId(delivery.objectives[index].id)}
+          rows={delivery.objectives.map((objective) => {
+            const keyKpi = getObjectiveKpis(objective.id)[0];
+            const linkedBudget = phase1Domain.budgetLines
+              .filter((line) => objective.budgetLineIds.includes(line.id))
+              .reduce((sum, line) => sum + line.approvedBaseline, 0);
+            const risk = phase1Domain.risks.find((item) => objective.riskIds.includes(item.id));
+            const commitment = phase1Domain.commitments.find(
+              (item) =>
+                objective.commitmentIds.includes(item.id) &&
+                !['completed', 'closed'].includes(item.status),
+            );
+            return [
+              objective.name,
+              <StatusBadge status={objective.status} />,
+              <div className="progress-cell">
+                <progress value={objective.progressPercent} max={100} />
+                <span>{objective.progressPercent}%</span>
+              </div>,
+              getUser(objective.ownerId ?? '')?.name ?? 'Unassigned',
+              keyKpi?.target
+                ? `${keyKpi.definition.name}: ${format.number(keyKpi.target.actual)} ${keyKpi.definition.unit}`
+                : '—',
+              linkedBudget ? format.usd(linkedBudget) : 'No dedicated line',
+              risk?.description ?? 'No material risk',
+              commitment?.description ?? 'None outstanding',
+            ];
+          })}
+          onRowClick={(index) => openObjective(delivery.objectives[index].id)}
         />
       </Panel>
       <Drawer
@@ -69,35 +119,199 @@ export function ExecutionPage() {
         onClose={() => setSelectedId(null)}
       >
         {selected && (
-          <>
-            <StatusBadge status={selected.status} />
-            <p>{selected.description}</p>
-            <dl className="summary-list">
-              <div>
-                <dt>Progress</dt>
-                <dd>{selected.progressPercent}%</dd>
+          <div className="detail-workspace">
+            <DetailTabs
+              label="Objective detail"
+              value={detailTab}
+              onChange={setDetailTab}
+              tabs={objectiveTabs}
+            />
+            {detailTab === 'overview' && <ObjectiveOverview objectiveId={selected.id} />}
+            {detailTab === 'kpis' && <ObjectiveKpis objectiveId={selected.id} />}
+            {detailTab === 'projects' && <ObjectiveProjects objectiveId={selected.id} />}
+            {detailTab === 'activities' && <ObjectiveActivities objectiveId={selected.id} />}
+            {detailTab === 'updates' && <ObjectiveUpdates objectiveId={selected.id} />}
+            {detailTab === 'commitments' && <ObjectiveCommitments objectiveId={selected.id} />}
+            {detailTab === 'risks' && <ObjectiveRisks objectiveId={selected.id} />}
+            {detailTab === 'decisions' && <ObjectiveDecisions objectiveId={selected.id} />}
+            {detailTab === 'evidence' && (
+              <div className="detail-stack">
+                <h3>Evidence</h3>
+                <EvidenceTable evidenceIds={selected.evidenceIds} />
+                <h3>History</h3>
+                <HistoryTable revisionIds={selected.historicalRevisionIds} entityId={selected.id} />
               </div>
-              <div>
-                <dt>Owner</dt>
-                <dd>{getUser(selected.ownerId ?? '')?.name}</dd>
-              </div>
-              <div>
-                <dt>Linked KPIs</dt>
-                <dd>{selected.kpiIds.length}</dd>
-              </div>
-              <div>
-                <dt>Evidence records</dt>
-                <dd>{selected.evidenceIds.length}</dd>
-              </div>
-            </dl>
-            <p className="info-panel">
-              Phase 1 establishes the linked objective record. Tabbed performance, updates,
-              commitments, risks, decisions and history follow in later phases.
-            </p>
-          </>
+            )}
+          </div>
         )}
       </Drawer>
     </>
+  );
+}
+
+function ObjectiveOverview({ objectiveId }: { objectiveId: string }) {
+  const objective = getStrategicObjective(objectiveId)!;
+  const linkedBudget = phase1Domain.budgetLines
+    .filter((line) => objective.budgetLineIds.includes(line.id))
+    .reduce((sum, line) => sum + line.approvedBaseline, 0);
+  return (
+    <div className="detail-stack">
+      <div className="detail-lead">
+        <StatusBadge status={objective.status} />
+        <strong>{objective.progressPercent}% delivered</strong>
+        <p>{objective.description}</p>
+      </div>
+      <dl className="summary-list">
+        <div>
+          <dt>Owner</dt>
+          <dd>{getUser(objective.ownerId ?? '')?.name ?? 'Unassigned'}</dd>
+        </div>
+        <div>
+          <dt>Linked budget</dt>
+          <dd>{linkedBudget ? format.usd(linkedBudget) : 'No dedicated budget line'}</dd>
+        </div>
+        <div>
+          <dt>Delivery vehicles</dt>
+          <dd>{objective.projectIds.length + objective.initiativeIds.length}</dd>
+        </div>
+        <div>
+          <dt>Current attention</dt>
+          <dd>
+            {objective.riskIds.length} risks · {objective.commitmentIds.length} commitments
+          </dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
+function ObjectiveKpis({ objectiveId }: { objectiveId: string }) {
+  return (
+    <DataTable
+      caption="Objective KPIs"
+      headers={['KPI', 'Approved baseline', 'Actual', 'Forecast', 'Prior forecast', 'Status']}
+      rows={getObjectiveKpis(objectiveId).map(({ definition, target }) => [
+        definition.name,
+        target ? `${format.number(target.approvedBaseline)} ${definition.unit}` : '—',
+        target ? `${format.number(target.actual)} ${definition.unit}` : '—',
+        target ? `${format.number(target.currentForecast)} ${definition.unit}` : '—',
+        target ? `${format.number(target.priorForecast)} ${definition.unit}` : '—',
+        target ? <StatusBadge status={target.status} /> : '—',
+      ])}
+    />
+  );
+}
+
+function ObjectiveProjects({ objectiveId }: { objectiveId: string }) {
+  const records = [...phase1Domain.projects, ...phase1Domain.initiatives].filter((record) =>
+    record.strategicObjectiveIds.includes(objectiveId),
+  );
+  return (
+    <DataTable
+      caption="Objective projects and initiatives"
+      headers={['Project or initiative', 'Type', 'Status', 'Progress']}
+      rows={records.map((record) => [
+        record.name,
+        record.type,
+        <StatusBadge status={record.status} />,
+        `${record.progressPercent}%`,
+      ])}
+    />
+  );
+}
+
+function ObjectiveActivities({ objectiveId }: { objectiveId: string }) {
+  const records = phase1Domain.operationalActivities.filter((record) =>
+    record.strategicObjectiveIds.includes(objectiveId),
+  );
+  return (
+    <DataTable
+      caption="Objective activities"
+      headers={['Activity', 'Owner', 'Progress', 'Blocker', 'Expected completion']}
+      rows={records.map((record) => [
+        record.title,
+        getUser(record.ownerId ?? '')?.name ?? 'Unassigned',
+        `${record.progressPercent}%`,
+        record.blocker ?? 'No blocker',
+        format.date(record.expectedCompletion),
+      ])}
+    />
+  );
+}
+
+function ObjectiveUpdates({ objectiveId }: { objectiveId: string }) {
+  const records = phase1Domain.weeklyExecutionUpdates.filter((record) =>
+    record.strategicObjectiveIds.includes(objectiveId),
+  );
+  return (
+    <DataTable
+      caption="Objective weekly updates"
+      headers={['Weekly update', 'Highlight', 'Forecast change', 'Status']}
+      rows={records.map((record) => [
+        record.title,
+        record.executiveHighlight,
+        record.forecastChanges,
+        <StatusBadge status={record.status} />,
+      ])}
+    />
+  );
+}
+
+function ObjectiveCommitments({ objectiveId }: { objectiveId: string }) {
+  const records = phase1Domain.commitments.filter((record) =>
+    record.strategicObjectiveIds.includes(objectiveId),
+  );
+  return (
+    <DataTable
+      caption="Objective commitments"
+      headers={['Commitment', 'Owner', 'Due date', 'Expected result', 'Status', 'Revisions']}
+      rows={records.map((record) => [
+        record.description,
+        getUser(record.ownerId ?? '')?.name ?? 'Unassigned',
+        format.date(record.dueDate),
+        record.expectedResult,
+        <StatusBadge status={record.status} />,
+        String(record.revisionCount),
+      ])}
+    />
+  );
+}
+
+function ObjectiveRisks({ objectiveId }: { objectiveId: string }) {
+  const records = phase1Domain.risks.filter((record) =>
+    record.strategicObjectiveIds.includes(objectiveId),
+  );
+  return (
+    <DataTable
+      caption="Objective risks"
+      headers={['Risk', 'Impact', 'Trend', 'Exposure', 'Status']}
+      rows={records.map((record) => [
+        record.description,
+        record.impact,
+        record.trend,
+        format.usd(record.financialExposure),
+        <StatusBadge status={record.status} />,
+      ])}
+    />
+  );
+}
+
+function ObjectiveDecisions({ objectiveId }: { objectiveId: string }) {
+  const records = phase1Domain.decisionSupportItems.filter((record) =>
+    record.strategicObjectiveIds.includes(objectiveId),
+  );
+  return (
+    <DataTable
+      caption="Objective decisions"
+      headers={['Issue', 'Business impact', 'Recommended action', 'Due date', 'Status']}
+      rows={records.map((record) => [
+        record.issue,
+        record.businessImpact,
+        record.recommendedAction,
+        format.date(record.dueDate),
+        <StatusBadge status={record.status} />,
+      ])}
+    />
   );
 }
 
@@ -197,30 +411,51 @@ export function ReviewsPage() {
   );
 }
 
+type DecisionTab = 'summary' | 'context' | 'history' | 'evidence' | 'comments';
+
+const decisionTabs: readonly { id: DecisionTab; label: string }[] = [
+  { id: 'summary', label: 'Summary' },
+  { id: 'context', label: 'Context' },
+  { id: 'history', label: 'History' },
+  { id: 'evidence', label: 'Evidence' },
+  { id: 'comments', label: 'Comments' },
+];
+
 export function DecisionsPage() {
-  const { role } = useAtlas();
-  const navigate = useNavigate();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detailTab, setDetailTab] = useState<DecisionTab>('summary');
+  const [recommendedActionsOpen, setRecommendedActionsOpen] = useState(false);
+  const selected = phase1Domain.decisionSupportItems.find((item) => item.id === selectedId);
+  const openDecision = (id: string) => {
+    setSelectedId(id);
+    setDetailTab('summary');
+  };
   return (
     <>
       <PageHeader
         title="Decisions"
-        description="Decision Support, approvals, interventions and escalations linked to business-plan delivery."
-        controls={<ContextControls />}
-      />
-      <Panel
-        title="Decision Support"
-        className="section"
-        action={
-          role === 'commercial_manager' ? (
-            <Button variant="secondary" onClick={() => navigate('/recommendations')}>
-              Manage recommended actions
+        description="What requires approval, intervention or escalation?"
+        controls={
+          <>
+            <ContextControls />
+            <Button variant="secondary" onClick={() => setRecommendedActionsOpen(true)}>
+              Draft recommended action
             </Button>
-          ) : undefined
+          </>
         }
-      >
+      />
+      <Panel title="Decision queue">
         <DataTable
           caption="Decision Support items"
-          headers={['Issue', 'Type', 'Business impact', 'Owner', 'Due date', 'Status']}
+          headers={[
+            'Issue',
+            'Type',
+            'Business impact',
+            'Owner',
+            'Due date',
+            'Status',
+            'Final decision',
+          ]}
           rows={phase1Domain.decisionSupportItems.map((item) => [
             item.issue,
             item.type.replaceAll('_', ' '),
@@ -228,9 +463,97 @@ export function DecisionsPage() {
             getUser(item.ownerId ?? '')?.name ?? 'Unassigned',
             format.date(item.dueDate),
             <StatusBadge status={item.status} />,
+            item.finalDecision ?? 'Pending',
           ])}
+          onRowClick={(index) => openDecision(phase1Domain.decisionSupportItems[index].id)}
         />
       </Panel>
+      <Drawer
+        title={selected?.issue ?? ''}
+        open={Boolean(selected)}
+        onClose={() => setSelectedId(null)}
+      >
+        {selected && (
+          <div className="detail-workspace">
+            <DetailTabs
+              label="Decision detail"
+              value={detailTab}
+              onChange={setDetailTab}
+              tabs={decisionTabs}
+            />
+            {detailTab === 'summary' && (
+              <div className="detail-stack">
+                <div className="detail-lead">
+                  <StatusBadge status={selected.status} />
+                  <strong>{selected.recommendedAction}</strong>
+                  <p>{selected.whyItMatters}</p>
+                </div>
+                <dl className="summary-list">
+                  <div>
+                    <dt>Owner</dt>
+                    <dd>{getUser(selected.ownerId ?? '')?.name ?? 'Unassigned'}</dd>
+                  </div>
+                  <div>
+                    <dt>Due date</dt>
+                    <dd>{format.date(selected.dueDate)}</dd>
+                  </div>
+                  <div>
+                    <dt>Final decision</dt>
+                    <dd>{selected.finalDecision ?? 'Not yet recorded'}</dd>
+                  </div>
+                  <div>
+                    <dt>Approved by</dt>
+                    <dd>
+                      {selected.approvedBy
+                        ? (getUser(selected.approvedBy)?.name ?? 'Unknown')
+                        : 'Pending approval'}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            )}
+            {detailTab === 'context' && (
+              <dl className="context-list">
+                <div>
+                  <dt>Why it matters</dt>
+                  <dd>{selected.whyItMatters}</dd>
+                </div>
+                <div>
+                  <dt>Historical context</dt>
+                  <dd>{selected.historicalContext}</dd>
+                </div>
+                <div>
+                  <dt>Business impact</dt>
+                  <dd>{selected.businessImpact}</dd>
+                </div>
+                <div>
+                  <dt>Recommended action</dt>
+                  <dd>{selected.recommendedAction}</dd>
+                </div>
+              </dl>
+            )}
+            {detailTab === 'history' && (
+              <div className="detail-stack">
+                <DecisionHistory decisionId={selected.id} />
+                <HistoryTable revisionIds={selected.historicalRevisionIds} entityId={selected.id} />
+              </div>
+            )}
+            {detailTab === 'evidence' && <EvidenceTable evidenceIds={selected.evidenceIds} />}
+            {detailTab === 'comments' && (
+              <p className="empty-copy">
+                No comments recorded. Clarifications remain linked to the originating review.
+              </p>
+            )}
+          </div>
+        )}
+      </Drawer>
+      <Drawer
+        title="Recommended actions"
+        open={recommendedActionsOpen}
+        onClose={() => setRecommendedActionsOpen(false)}
+      >
+        <RecommendationsPage embedded />
+      </Drawer>
     </>
   );
 }
