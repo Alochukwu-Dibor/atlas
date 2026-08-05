@@ -34,9 +34,9 @@ describe('route architecture', () => {
       screen.queryByRole('heading', { name: 'Weekly Execution Update review queue' }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Projects' })).toHaveAttribute('href', '/projects');
-    expect(screen.getByRole('navigation', { name: 'Configuration navigation' })).toHaveTextContent(
-      'KPI LibraryReporting TemplatesUsers and RolesSettings',
-    );
+    expect(
+      screen.queryByRole('navigation', { name: 'Configuration navigation' }),
+    ).not.toBeInTheDocument();
   });
 
   it('renders the new Commercial Projects workspace', async () => {

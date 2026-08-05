@@ -1920,11 +1920,6 @@ small {
   background: #111214;
 }
 
-.top-nav--configuration {
-  padding-left: 26px;
-  border-left: 1px solid var(--atlas-border);
-}
-
 .synthetic-note {
   position: absolute;
   right: 48px;
@@ -2413,10 +2408,6 @@ tr.is-clickable:hover {
   .executive-nav,
   .contributor-nav {
     gap: 20px;
-  }
-
-  .top-nav--configuration {
-    display: none;
   }
 
   .kpi-strip--5,

@@ -5,11 +5,9 @@ import {
   ClipboardCheck,
   ChevronDown,
   FileText,
-  Gavel,
   LayoutDashboard,
   Lightbulb,
   RefreshCw,
-  Users,
 } from 'lucide-react';
 import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -24,13 +22,6 @@ const commercialNavItems = [
   { to: '/reviews', label: 'Reviews', icon: ClipboardCheck },
   { to: '/decisions', label: 'Decisions', icon: Lightbulb },
   { to: '/outputs', label: 'Outputs', icon: FileText },
-];
-
-const commercialConfigurationItems = [
-  { to: '/kpi-library', label: 'KPI Library', icon: BarChart3 },
-  { to: '/reporting-templates', label: 'Reporting Templates', icon: FileText },
-  { to: '/users-roles', label: 'Users and Roles', icon: Users },
-  { to: '/settings', label: 'Settings', icon: Gavel },
 ];
 
 const executiveNavItems = [
@@ -336,20 +327,6 @@ export function SidebarShell() {
               </NavLink>
             ))}
           </nav>
-          {role === 'commercial_manager' && (
-            <nav aria-label="Configuration navigation" className="top-nav top-nav--configuration">
-              {commercialConfigurationItems.map(({ to, label, icon: Icon }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  className={({ isActive }) => (isActive ? 'is-active' : '')}
-                >
-                  <Icon aria-hidden="true" />
-                  {label}
-                </NavLink>
-              ))}
-            </nav>
-          )}
         </div>
         <span className="synthetic-note">Synthetic prototype data</span>
       </header>
