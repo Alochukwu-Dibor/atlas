@@ -30,6 +30,13 @@ import {
   type RecommendationAction,
   type RecommendationState,
 } from './recommendations';
+import {
+  loadPlanState,
+  planReducer,
+  planStorageKey,
+  type PlanAction,
+  type PlanState,
+} from './plan';
 
 interface AtlasState {
   activeUserId: string;
@@ -46,6 +53,8 @@ interface AtlasState {
   executiveDispatch: Dispatch<ExecutiveAction>;
   recommendations: RecommendationState;
   recommendationDispatch: Dispatch<RecommendationAction>;
+  plan: PlanState;
+  planDispatch: Dispatch<PlanAction>;
   setActiveUserId: (id: string) => void;
   setAssetId: (id: string) => void;
   setBusinessUnitId: (id: string) => void;
@@ -78,6 +87,7 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
     undefined,
     loadRecommendationState,
   );
+  const [plan, planDispatch] = useReducer(planReducer, undefined, loadPlanState);
   const role = atlas.users.find((user) => user.id === activeUserId)?.role ?? 'commercial_manager';
 
   useEffect(() => {
@@ -91,6 +101,10 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     window.localStorage.setItem(recommendationStorageKey, JSON.stringify(recommendations));
   }, [recommendations]);
+
+  useEffect(() => {
+    window.localStorage.setItem(planStorageKey, JSON.stringify(plan));
+  }, [plan]);
 
   const value = useMemo<AtlasState>(
     () => ({
@@ -108,6 +122,8 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
       executiveDispatch,
       recommendations,
       recommendationDispatch,
+      plan,
+      planDispatch,
       setActiveUserId,
       setAssetId,
       setBusinessUnitId,
@@ -137,9 +153,11 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
         window.localStorage.removeItem(workflowStorageKey);
         window.localStorage.removeItem(executiveStorageKey);
         window.localStorage.removeItem(recommendationStorageKey);
+        window.localStorage.removeItem(planStorageKey);
         workflowDispatch({ type: 'RESET' });
         executiveDispatch({ type: 'RESET' });
         recommendationDispatch({ type: 'RESET' });
+        planDispatch({ type: 'RESET' });
       },
     }),
     [
@@ -155,6 +173,7 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
       workflow,
       executive,
       recommendations,
+      plan,
       planningPeriodId,
     ],
   );

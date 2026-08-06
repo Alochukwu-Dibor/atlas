@@ -1752,7 +1752,7 @@ export function CommercialDashboard() {
   const [publishOpen, setPublishOpen] = useState(false);
   const [narrative, setNarrative] = useState('');
   const [exceptionReason, setExceptionReason] = useState('');
-  const { activeUserId, businessUnitId, cycleId, workflow, workflowDispatch } = useAtlas();
+  const { activeUserId, businessUnitId, cycleId, workflow, workflowDispatch, plan } = useAtlas();
   const showToast = useToast();
   const readiness = selectReadiness(workflow, cycleId);
   const publication = workflow.publications.find((item) => item.cycleId === cycleId);
@@ -1765,7 +1765,8 @@ export function CommercialDashboard() {
   const businessDelivery = getBusinessPlanDelivery(businessUnitId);
   const queue = selectSubmissionQueue(workflow, cycleId);
   const returned = queue.filter((report) => report.status === 'needs_clarification');
-  const budgetBaseline = phase1Domain.approvedBudgets[0].approvedAmount;
+  const budgetBaseline =
+    plan.confirmedPlan?.totalApprovedBudget ?? phase1Domain.approvedBudgets[0].approvedAmount;
   const budgetForecast = phase1Domain.budgetLines.reduce(
     (total, line) => total + line.currentForecast,
     0,

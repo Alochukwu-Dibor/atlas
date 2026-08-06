@@ -1,8 +1,6 @@
 import {
-  Activity,
   BarChart3,
   BriefcaseBusiness,
-  ClipboardCheck,
   ChevronDown,
   FileText,
   LayoutDashboard,
@@ -16,12 +14,10 @@ import { useAtlas } from '../state/AtlasContext';
 import { Button, Drawer, Field, Select, StateView, StatusBadge, useToast } from './Ui';
 
 const commercialNavItems = [
-  { to: '/commercial', label: 'Business Overview', icon: LayoutDashboard },
-  { to: '/execution', label: 'Execution', icon: Activity },
+  { to: '/commercial', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/plan', label: 'Plan', icon: FileText },
   { to: '/projects', label: 'Projects', icon: BriefcaseBusiness },
-  { to: '/reviews', label: 'Reviews', icon: ClipboardCheck },
-  { to: '/decisions', label: 'Decisions', icon: Lightbulb },
-  { to: '/outputs', label: 'Outputs', icon: FileText },
+  { to: '/reviews', label: 'Reporting', icon: BarChart3 },
 ];
 
 const executiveNavItems = [

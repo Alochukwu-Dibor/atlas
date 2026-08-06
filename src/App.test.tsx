@@ -5,10 +5,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { App } from './App';
 import { AtlasProvider } from './state/AtlasContext';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  window.localStorage.clear();
+});
 
 describe('route architecture', () => {
-  it('renders Business Overview with the Phase 1 Commercial navigation', async () => {
+  it('renders Business Overview with the approved Commercial navigation', async () => {
     render(
       <MemoryRouter initialEntries={['/commercial']}>
         <AtlasProvider>
@@ -21,9 +24,11 @@ describe('route architecture', () => {
     ).toBeVisible();
     const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
     expect(navigation).toBeVisible();
-    expect(navigation).toHaveTextContent(
-      'Business OverviewExecutionProjectsReviewsDecisionsOutputs',
-    );
+    expect(navigation).toHaveTextContent('DashboardPlanProjectsReporting');
+    expect(within(navigation).getAllByRole('link')).toHaveLength(4);
+    expect(within(navigation).queryByRole('link', { name: 'Execution' })).not.toBeInTheDocument();
+    expect(within(navigation).queryByRole('link', { name: 'Decisions' })).not.toBeInTheDocument();
+    expect(within(navigation).queryByRole('link', { name: 'Outputs' })).not.toBeInTheDocument();
     expect(screen.getByText('Business Health')).toBeVisible();
     expect(screen.getByText('73%')).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Decisions Required' })).toBeVisible();
@@ -37,6 +42,75 @@ describe('route architecture', () => {
     expect(
       screen.queryByRole('navigation', { name: 'Configuration navigation' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('completes the approved Plan extraction and confirmation flow', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={['/plan']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole('heading', { name: 'Plan' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Use synthetic plan fixture' }));
+    expect(screen.getByText('OML30_2026_Approved_Business_Plan.pdf')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Continue and extract' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Extracting approved baseline information' }),
+    ).toBeVisible();
+    expect(
+      await screen.findByText(
+        'All required baseline information is complete.',
+        {},
+        { timeout: 3500 },
+      ),
+    ).toBeVisible();
+    await user.click(screen.getByRole('tab', { name: 'Custom fields' }));
+    await user.click(screen.getByRole('button', { name: 'Add Custom Field' }));
+    const modal = screen.getByRole('dialog', { name: 'Add custom field' });
+    await user.type(within(modal).getByLabelText('Field name'), 'Partner carry basis');
+    await user.type(within(modal).getByLabelText('Value'), 'JV approved');
+    await user.click(within(modal).getByRole('button', { name: 'Add field' }));
+    expect(screen.getByDisplayValue('Partner carry basis')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Review confirmation summary' }));
+    expect(screen.getByRole('heading', { name: 'Confirm tracking baseline' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Confirm as Atlas baseline' }));
+    const warning = screen.getByRole('dialog', {
+      name: 'Confirm approved plan as tracking baseline',
+    });
+    await user.click(within(warning).getByRole('checkbox'));
+    await user.click(within(warning).getByRole('button', { name: 'Confirm baseline' }));
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Approved plan confirmed as the Atlas tracking baseline',
+      }),
+    ).toBeVisible();
+  });
+
+  it('accepts and removes a supported approved-plan file', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={['/plan']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    await screen.findByRole('heading', { name: 'Plan' });
+    const input = screen.getByLabelText('Approved plan file');
+    await user.upload(
+      input,
+      new File(['approved plan'], 'Shoreline_Approved_Plan.xlsx', {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      }),
+    );
+    expect(screen.getByText('Shoreline_Approved_Plan.xlsx')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Continue and extract' })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: 'Remove file' }));
+    expect(screen.queryByText('Shoreline_Approved_Plan.xlsx')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue and extract' })).toBeDisabled();
   });
 
   it('renders the new Commercial Projects workspace', async () => {

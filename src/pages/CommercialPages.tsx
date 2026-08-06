@@ -45,13 +45,19 @@ const projectTabs: readonly { id: ProjectTab; label: string }[] = [
 ];
 
 export function ProjectsPage() {
+  const { plan } = useAtlas();
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<ProjectTab>('overview');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [objectiveFilter, setObjectiveFilter] = useState('all');
-  const selected = phase1Domain.projects.find((project) => project.id === selectedProjectId);
-  const filteredProjects = phase1Domain.projects.filter(
+  const baselineProjects = plan.confirmedPlan?.projects ?? [];
+  const currentProjects = phase1Domain.projects.map((project) => ({
+    ...project,
+    name: baselineProjects.find((baseline) => baseline.id === project.id)?.name ?? project.name,
+  }));
+  const selected = currentProjects.find((project) => project.id === selectedProjectId);
+  const filteredProjects = currentProjects.filter(
     (project) =>
       project.name.toLowerCase().includes(search.toLowerCase()) &&
       (statusFilter === 'all' || project.status === statusFilter) &&
@@ -114,16 +120,20 @@ export function ProjectsPage() {
             'Next Milestone',
           ]}
           rows={filteredProjects.map((project) => {
+            const confirmedBaseline = baselineProjects.find((item) => item.id === project.id);
             const budget = phase1Domain.budgetLines.find(
               (line) => line.id === project.approvedBudgetLineId,
             );
-            const variance = budget
-              ? ((budget.currentForecast - budget.approvedBaseline) / budget.approvedBaseline) * 100
-              : 0;
+            const approvedBaseline =
+              confirmedBaseline?.budget.approvedAmount ?? budget?.approvedBaseline;
+            const variance =
+              budget && approvedBaseline
+                ? ((budget.currentForecast - approvedBaseline) / approvedBaseline) * 100
+                : 0;
             const risk = phase1Domain.risks.find((item) => project.riskIds.includes(item.id));
-            const milestone = phase1Domain.milestones.find((item) =>
-              project.milestoneIds.includes(item.id),
-            );
+            const milestone =
+              confirmedBaseline?.milestones[0] ??
+              phase1Domain.milestones.find((item) => project.milestoneIds.includes(item.id));
             return [
               project.name,
               getStrategicObjective(project.strategicObjectiveIds[0])?.name ?? '—',
@@ -172,12 +182,18 @@ export function ProjectsPage() {
 }
 
 function ProjectOverview({ projectId }: { projectId: string }) {
+  const { plan } = useAtlas();
   const project = phase1Domain.projects.find((record) => record.id === projectId)!;
+  const confirmedBaseline = plan.confirmedPlan?.projects.find((record) => record.id === projectId);
   const budget = phase1Domain.budgetLines.find((line) => line.id === project.approvedBudgetLineId);
-  const milestone = phase1Domain.milestones.find((item) => project.milestoneIds.includes(item.id));
-  const variance = budget
-    ? ((budget.currentForecast - budget.approvedBaseline) / budget.approvedBaseline) * 100
-    : 0;
+  const milestone =
+    confirmedBaseline?.milestones[0] ??
+    phase1Domain.milestones.find((item) => project.milestoneIds.includes(item.id));
+  const approvedBaseline = confirmedBaseline?.budget.approvedAmount ?? budget?.approvedBaseline;
+  const variance =
+    budget && approvedBaseline
+      ? ((budget.currentForecast - approvedBaseline) / approvedBaseline) * 100
+      : 0;
   return (
     <div className="detail-stack">
       <div className="detail-lead">

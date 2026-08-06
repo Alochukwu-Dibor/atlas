@@ -556,6 +556,29 @@
   "meetingRecords": [
     { "id": "meeting_commercial_review_w31", "name": "Commercial Review", "meetingType": "commercial_review", "date": "2026-08-01", "summary": "Reviewed integrity schedule movement, the immediate funding request and the revised inspection commitment.", "ownerId": "usr_commercial", "decisionIds": ["dsi_integrity_budget"], "commitmentIds": ["commit_inspection"], "weeklyUpdateIds": ["update_projects_w31"], "evidenceIds": ["ev_projects_workbook", "ev_commercial_minutes"] }
   ],
+  "approvedPlanExtraction": {
+    "id": "plan_extract_oml30_2026",
+    "businessPlanId": "bp_oml30_2026",
+    "businessUnitId": "bu_oml30",
+    "planningPeriodId": "period_2026",
+    "sourceFile": {
+      "name": "OML30_2026_Approved_Business_Plan.pdf",
+      "size": 6841200,
+      "type": "application/pdf"
+    },
+    "supportedExtensions": ["pdf", "docx", "xlsx"],
+    "projectBaselines": [
+      { "projectId": "prj_compressor", "budgetLineId": "bl_facilities", "approvedBudget": 52000000, "currency": "USD", "startDate": "2026-01-12", "endDate": "2026-08-09", "kpiIds": ["kpi_gross_production"], "targetIds": ["target_gross_production"], "milestoneIds": ["ms_rotor_delivery"] },
+      { "projectId": "prj_integrity", "budgetLineId": "bl_integrity", "approvedBudget": 28000000, "currency": "USD", "startDate": "2026-02-02", "endDate": "2026-08-22", "kpiIds": ["kpi_regulatory_compliance", "kpi_trir"], "targetIds": ["target_regulatory_compliance", "target_trir"], "milestoneIds": ["ms_integrity_inspection"] },
+      { "projectId": "prj_wellwork", "budgetLineId": "bl_wellwork", "approvedBudget": 65000000, "currency": "USD", "startDate": "2026-03-09", "endDate": "2026-09-15", "kpiIds": ["kpi_gross_production"], "targetIds": ["target_gross_production"], "milestoneIds": ["ms_kokori_restart"] },
+      { "projectId": "prj_metering", "budgetLineId": "bl_regulatory", "approvedBudget": 40000000, "currency": "USD", "startDate": "2026-01-26", "endDate": "2026-08-12", "kpiIds": ["kpi_budget_variance", "kpi_regulatory_compliance"], "targetIds": ["target_budget_variance", "target_regulatory_compliance"], "milestoneIds": ["ms_metering_acceptance"] }
+    ],
+    "extractionNotes": [
+      "Four project baselines matched to the approved USD 185m budget.",
+      "Department KPI and target ownership retained from the approved business plan.",
+      "Dates and milestone labels should be verified before confirmation."
+    ]
+  },
   "historicalRevisions": [
     { "id": "rev_business_plan_approval", "entityType": "business_plan", "entityId": "bp_oml30_2026", "reportingPeriodId": "period_2026", "previousValue": "Draft business plan", "currentValue": "Approved baseline", "explanation": "2026 OML 30 business plan approved.", "actorId": "usr_ceo", "reviewerId": "usr_cfo", "evidenceIds": [], "createdAt": "2025-12-18T14:00:00+01:00" },
     { "id": "rev_kpi_production_forecast", "entityType": "kpi_target", "entityId": "target_gross_production", "reportingPeriodId": "cycle_2026_w31", "previousValue": "110000", "currentValue": "104000", "explanation": "Compressor restoration forecast moved; approved baseline remains 120000 bopd.", "actorId": "usr_operations", "reviewerId": "usr_commercial", "evidenceIds": ["ev_ops_update"], "createdAt": "2026-08-01T08:30:00+01:00" },

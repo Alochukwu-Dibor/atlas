@@ -2500,6 +2500,485 @@ tr.is-clickable:hover {
   }
 }
 
+/* Approved-plan baseline workflow */
+.plan-page {
+  display: grid;
+  gap: 28px;
+}
+
+.plan-page > .page-header {
+  margin-bottom: 0;
+}
+
+.plan-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  max-width: 760px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plan-steps li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--atlas-text-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.plan-steps li::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  margin: 0 12px;
+  background: var(--atlas-border);
+}
+
+.plan-steps li:last-child::after {
+  display: none;
+}
+
+.plan-steps li > span {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border: 1px solid var(--atlas-border-strong);
+  border-radius: 50%;
+  background: #fff;
+}
+
+.plan-steps svg {
+  width: 17px;
+}
+
+.plan-steps .is-active {
+  color: var(--atlas-text-primary);
+}
+
+.plan-steps .is-active > span {
+  color: #fff;
+  border-color: #111214;
+  background: #111214;
+}
+
+.plan-steps .is-complete {
+  color: var(--atlas-text-secondary);
+}
+
+.plan-steps .is-complete > span {
+  color: var(--atlas-success);
+  border-color: var(--atlas-success);
+}
+
+.plan-upload-panel {
+  padding: 32px;
+}
+
+.plan-upload-zone {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  min-height: 360px;
+  padding: 52px 32px;
+  border: 1px dashed var(--atlas-border-strong);
+  border-radius: 12px;
+  background: #fafafa;
+  text-align: center;
+}
+
+.plan-upload-zone > svg {
+  width: 34px;
+  height: 34px;
+  color: var(--atlas-text-secondary);
+}
+
+.plan-upload-zone h2,
+.plan-upload-zone p {
+  margin: 0;
+}
+
+.plan-upload-zone p {
+  max-width: 600px;
+  color: var(--atlas-text-secondary);
+}
+
+.plan-upload-zone > small,
+.selected-plan-file small,
+.prototype-note {
+  color: var(--atlas-text-muted);
+}
+
+.plan-upload-actions,
+.selected-plan-file,
+.form-actions--between {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.selected-plan-file {
+  width: min(720px, 100%);
+  padding: 16px;
+  border: 1px solid var(--atlas-border);
+  border-radius: 10px;
+  background: #fff;
+  text-align: left;
+}
+
+.selected-plan-file > svg {
+  color: var(--atlas-success);
+}
+
+.selected-plan-file > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  margin-right: auto;
+}
+
+.selected-plan-file strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.form-actions--end {
+  justify-content: flex-end;
+}
+
+.form-actions--between {
+  justify-content: space-between;
+}
+
+.plan-extraction-panel {
+  display: grid;
+  gap: 22px;
+  max-width: 920px;
+  min-height: 390px;
+  align-content: center;
+  padding: 48px;
+}
+
+.extraction-heading {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.extraction-heading h2,
+.extraction-heading p {
+  margin: 0;
+}
+
+.extraction-heading p {
+  margin-top: 5px;
+  color: var(--atlas-text-secondary);
+}
+
+.loading-ring {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border: 3px solid var(--atlas-border);
+  border-top-color: var(--atlas-interaction);
+  border-radius: 50%;
+  animation: plan-spin 0.9s linear infinite;
+}
+
+@keyframes plan-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.plan-extraction-panel progress {
+  width: 100%;
+  height: 10px;
+  accent-color: var(--atlas-interaction);
+}
+
+.extraction-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 22px;
+  color: var(--atlas-text-secondary);
+}
+
+.prototype-note {
+  margin: 0;
+  font-size: 13px;
+}
+
+.plan-review-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.plan-project-list {
+  position: sticky;
+  top: 24px;
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid var(--atlas-border);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.plan-project-list > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 4px 12px;
+}
+
+.plan-project-list > button:not(.button) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 70px;
+  padding: 12px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+}
+
+.plan-project-list > button:not(.button):hover,
+.plan-project-list > button:not(.button).is-active {
+  border-color: var(--atlas-border);
+  background: var(--atlas-surface-subtle);
+}
+
+.plan-project-list button span {
+  display: grid;
+  gap: 3px;
+}
+
+.plan-project-list button small {
+  color: var(--atlas-text-muted);
+}
+
+.plan-project-list button svg {
+  width: 18px;
+  color: var(--atlas-success);
+}
+
+.plan-project-list button b {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: var(--atlas-critical);
+  background: #fff1f0;
+  font-size: 12px;
+}
+
+.plan-review-content,
+.confirm-plan-stack {
+  display: grid;
+  gap: 22px;
+  min-width: 0;
+}
+
+.validation-summary p {
+  margin: 0;
+  color: var(--atlas-text-secondary);
+}
+
+.validation-summary .panel__header > span {
+  color: var(--atlas-text-muted);
+  font-size: 13px;
+}
+
+.validation-alert,
+.validation-success {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 9px;
+}
+
+.validation-alert {
+  flex-wrap: wrap;
+  color: #8a1c13;
+  background: #fff5f3;
+}
+
+.validation-alert span {
+  color: var(--atlas-text-secondary);
+}
+
+.validation-success {
+  color: var(--atlas-success);
+  background: #f0faf4;
+}
+
+.plan-project-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 20px;
+}
+
+.plan-project-heading small {
+  color: var(--atlas-text-secondary);
+}
+
+.plan-project-heading h2 {
+  margin: 4px 0 0;
+}
+
+.editable-record-list {
+  display: grid;
+  gap: 18px;
+}
+
+.editable-record-list article {
+  padding: 20px;
+  border: 1px solid var(--atlas-border);
+  border-radius: 10px;
+  background: #fafafa;
+}
+
+.editable-record-list article > .button {
+  margin-top: 14px;
+}
+
+.plan-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin: 28px 0;
+  overflow: hidden;
+  border: 1px solid var(--atlas-border);
+  border-radius: 10px;
+  background: var(--atlas-border);
+}
+
+.plan-summary-grid > div {
+  display: grid;
+  gap: 8px;
+  min-height: 108px;
+  align-content: center;
+  padding: 20px;
+  background: #fff;
+}
+
+.plan-summary-grid > div:nth-child(7):last-child {
+  grid-column: 1 / -1;
+}
+
+.plan-summary-grid dt {
+  color: var(--atlas-text-secondary);
+  font-size: 13px;
+}
+
+.plan-summary-grid dd {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 650;
+}
+
+.confirmation-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 22px;
+  padding: 16px;
+  border: 1px solid var(--atlas-border);
+  border-radius: 9px;
+}
+
+.confirmation-check input {
+  margin-top: 3px;
+}
+
+.confirmed-plan-state {
+  display: grid;
+  justify-items: start;
+  gap: 14px;
+  max-width: 980px;
+  padding: 42px;
+}
+
+.confirmed-plan-state > svg {
+  width: 42px;
+  height: 42px;
+  color: var(--atlas-success);
+}
+
+.confirmed-plan-state h2,
+.confirmed-plan-state p {
+  margin: 0;
+}
+
+.confirmed-plan-state p {
+  max-width: 760px;
+  color: var(--atlas-text-secondary);
+}
+
+.confirmed-plan-state .plan-summary-grid {
+  width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-ring {
+    animation: none;
+  }
+}
+
+@media (max-width: 1000px) {
+  .plan-review-layout {
+    grid-template-columns: 1fr;
+  }
+  .plan-project-list {
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .plan-project-list > div {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 700px) {
+  .plan-steps {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .plan-steps li::after {
+    display: none;
+  }
+  .plan-project-list,
+  .plan-summary-grid,
+  .plan-page .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .plan-project-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .plan-upload-panel,
+  .plan-extraction-panel {
+    padding: 22px;
+  }
+}
+
 /* Phase 3 information architecture */
 .business-health-section {
   display: grid;
