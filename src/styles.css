@@ -2042,6 +2042,10 @@ a.button {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.kpi-strip--4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .kpi-strip--5 {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }

@@ -1046,45 +1046,80 @@ function ConfirmPlan() {
 }
 
 function ConfirmedPlan() {
-  const { plan, planDispatch } = useAtlas();
+  const { plan, planDispatch, resetDemo } = useAtlas();
   const navigate = useNavigate();
+  const toast = useToast();
+  const [resetWarningOpen, setResetWarningOpen] = useState(false);
   const confirmed = plan.confirmedPlan;
   if (!confirmed) return null;
   return (
-    <Panel className="confirmed-plan-state">
-      <CheckCircle2 aria-hidden="true" />
-      <StatusBadge status="approved" />
-      <h2>Approved plan confirmed as the Atlas tracking baseline</h2>
-      <p>
-        {confirmed.name} was verified by {getUser(confirmed.confirmedBy)?.name}. Atlas will use this
-        confirmed information for downstream tracking; the original plan remains externally
-        approved.
-      </p>
-      <dl className="plan-summary-grid">
-        <div>
-          <dt>Projects</dt>
-          <dd>{confirmed.projects.length}</dd>
+    <>
+      <Panel className="confirmed-plan-state">
+        <CheckCircle2 aria-hidden="true" />
+        <StatusBadge status="approved" />
+        <h2>Approved plan confirmed as the Atlas tracking baseline</h2>
+        <p>
+          {confirmed.name} was verified by {getUser(confirmed.confirmedBy)?.name}. Atlas will use
+          this confirmed information for downstream tracking; the original plan remains externally
+          approved.
+        </p>
+        <dl className="plan-summary-grid">
+          <div>
+            <dt>Projects</dt>
+            <dd>{confirmed.projects.length}</dd>
+          </div>
+          <div>
+            <dt>Approved budget</dt>
+            <dd>{format.usd(confirmed.totalApprovedBudget)}</dd>
+          </div>
+          <div>
+            <dt>Confirmed</dt>
+            <dd>{format.date(confirmed.confirmedAt)}</dd>
+          </div>
+          <div>
+            <dt>Source</dt>
+            <dd>{confirmed.file.name}</dd>
+          </div>
+        </dl>
+        <div className="form-actions">
+          <Button onClick={() => navigate('/commercial')}>Go to Dashboard</Button>
+          <Button variant="secondary" onClick={() => planDispatch({ type: 'RESTART' })}>
+            Upload replacement plan
+          </Button>
+          <Button variant="destructive" onClick={() => setResetWarningOpen(true)}>
+            Reset Atlas
+          </Button>
         </div>
-        <div>
-          <dt>Approved budget</dt>
-          <dd>{format.usd(confirmed.totalApprovedBudget)}</dd>
-        </div>
-        <div>
-          <dt>Confirmed</dt>
-          <dd>{format.date(confirmed.confirmedAt)}</dd>
-        </div>
-        <div>
-          <dt>Source</dt>
-          <dd>{confirmed.file.name}</dd>
-        </div>
-      </dl>
-      <div className="form-actions">
-        <Button onClick={() => navigate('/commercial')}>Go to Dashboard</Button>
-        <Button variant="secondary" onClick={() => planDispatch({ type: 'RESTART' })}>
-          Upload replacement plan
-        </Button>
-      </div>
-    </Panel>
+      </Panel>
+      <Modal
+        open={resetWarningOpen}
+        title="Reset Atlas and start from scratch?"
+        onClose={() => setResetWarningOpen(false)}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setResetWarningOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                resetDemo();
+                setResetWarningOpen(false);
+                navigate('/plan', { replace: true });
+                toast('Atlas reset. Upload an approved plan to begin.');
+              }}
+            >
+              Reset and start over
+            </Button>
+          </>
+        }
+      >
+        <p>
+          This clears the confirmed plan and all local prototype workflow changes, including review
+          comments and reminders. Atlas will return to the approved-plan upload step.
+        </p>
+      </Modal>
+    </>
   );
 }
 

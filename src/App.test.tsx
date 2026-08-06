@@ -131,6 +131,34 @@ describe('route architecture', () => {
     ).toBeVisible();
   });
 
+  it('resets the complete local walkthrough to the approved-plan upload step', async () => {
+    const user = userEvent.setup();
+    seedConfirmedPlan();
+    render(
+      <MemoryRouter initialEntries={['/plan']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Approved plan confirmed as the Atlas tracking baseline',
+      }),
+    ).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Reset Atlas' }));
+    const warning = screen.getByRole('dialog', { name: 'Reset Atlas and start from scratch?' });
+    expect(within(warning).getByText(/clears the confirmed plan/)).toBeVisible();
+    await user.click(within(warning).getByRole('button', { name: 'Reset and start over' }));
+
+    expect(
+      await screen.findByRole('heading', { name: 'Upload the externally approved business plan' }),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Continue and extract' })).toBeDisabled();
+    expect(window.localStorage.getItem(planStorageKey)).toContain('"confirmedPlan":null');
+  });
+
   it('accepts and removes a supported approved-plan file', async () => {
     const user = userEvent.setup();
     render(
@@ -212,7 +240,7 @@ describe('route architecture', () => {
     expect(screen.getByRole('button', { name: 'Back to Projects' })).toBeVisible();
   });
 
-  it('renders the linked Execution workspace on its canonical route', async () => {
+  it('does not expose superseded Commercial Manager routes', async () => {
     render(
       <MemoryRouter initialEntries={['/execution']}>
         <AtlasProvider>
@@ -220,8 +248,7 @@ describe('route architecture', () => {
         </AtlasProvider>
       </MemoryRouter>,
     );
-    expect(await screen.findByRole('heading', { name: 'Execution' })).toBeVisible();
-    expect(screen.getByRole('table', { name: 'Strategic objective delivery' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeVisible();
   });
 
   it('routes an attention project to its dedicated project workspace', async () => {
@@ -300,31 +327,6 @@ describe('route architecture', () => {
     expect(screen.queryByRole('button', { name: /Assigned actions/ })).not.toBeInTheDocument();
   });
 
-  it('uses contextual tabs for objective delivery details', async () => {
-    const user = userEvent.setup();
-    render(
-      <MemoryRouter initialEntries={['/execution']}>
-        <AtlasProvider>
-          <App />
-        </AtlasProvider>
-      </MemoryRouter>,
-    );
-    const objectiveRow = await screen.findByRole('row', {
-      name: /Restore and sustain planned production/,
-    });
-    await user.click(objectiveRow);
-    const drawer = screen.getByRole('dialog', {
-      name: 'Restore and sustain planned production',
-    });
-    expect(within(drawer).getByRole('tab', { name: 'Overview' })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
-    expect(within(drawer).queryByRole('table', { name: 'Objective KPIs' })).not.toBeInTheDocument();
-    await user.click(within(drawer).getByRole('tab', { name: 'KPIs' }));
-    expect(within(drawer).getByRole('table', { name: 'Objective KPIs' })).toBeVisible();
-  });
-
   it('filters projects and opens the full-page adherence and activity views', async () => {
     const user = userEvent.setup();
     seedConfirmedPlan();
@@ -356,71 +358,6 @@ describe('route architecture', () => {
       screen.getByText('Approved plan confirmed as the Atlas tracking baseline.'),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Back to Projects' })).toBeVisible();
-  });
-
-  it('opens decision details with contextual summary, context, history and evidence tabs', async () => {
-    const user = userEvent.setup();
-    render(
-      <MemoryRouter initialEntries={['/decisions']}>
-        <AtlasProvider>
-          <App />
-        </AtlasProvider>
-      </MemoryRouter>,
-    );
-    await user.click(
-      await screen.findByRole('row', {
-        name: /Compressor restoration is behind the approved plan/,
-      }),
-    );
-    const drawer = screen.getByRole('dialog', {
-      name: 'Compressor restoration is behind the approved plan',
-    });
-    expect(within(drawer).getByText('Proceed with expedited logistics.')).toBeVisible();
-    await user.click(within(drawer).getByRole('tab', { name: 'Context' }));
-    expect(within(drawer).getByText(/main driver of the production shortfall/)).toBeVisible();
-    expect(within(drawer).getByRole('tab', { name: 'History' })).toBeVisible();
-    expect(within(drawer).getByRole('tab', { name: 'Evidence' })).toBeVisible();
-    expect(within(drawer).getByRole('tab', { name: 'Comments' })).toBeVisible();
-  });
-
-  it('exposes meeting governance context through its related decision', async () => {
-    const user = userEvent.setup();
-    render(
-      <MemoryRouter initialEntries={['/decisions']}>
-        <AtlasProvider>
-          <App />
-        </AtlasProvider>
-      </MemoryRouter>,
-    );
-    await user.click(
-      await screen.findByRole('row', {
-        name: /Urgent integrity expenditure requires approval/,
-      }),
-    );
-    const drawer = screen.getByRole('dialog', {
-      name: 'Urgent integrity expenditure requires approval',
-    });
-    await user.click(within(drawer).getByRole('tab', { name: 'Context' }));
-    expect(within(drawer).getByText('Commercial Review')).toBeVisible();
-    expect(within(drawer).getByText(/1 linked commitment/)).toBeVisible();
-  });
-
-  it('preserves recommendation authoring inside Decisions and redirects the legacy route', async () => {
-    const user = userEvent.setup();
-    render(
-      <MemoryRouter initialEntries={['/recommendations']}>
-        <AtlasProvider>
-          <App />
-        </AtlasProvider>
-      </MemoryRouter>,
-    );
-    expect(await screen.findByRole('heading', { name: 'Decisions' })).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'Draft recommended action' }));
-    const drawer = screen.getByRole('dialog', { name: 'Recommended actions' });
-    expect(
-      within(drawer).getByRole('heading', { name: 'Write a Commercial Recommended Action' }),
-    ).toBeVisible();
-    expect(within(drawer).getByRole('button', { name: 'Add Recommended Action' })).toBeDisabled();
   });
 
   it('enforces persona permissions for the executive route', () => {
@@ -471,69 +408,21 @@ describe('route architecture', () => {
     expect(screen.queryByText(/submission queue/i)).not.toBeInTheDocument();
   });
 
-  it('groups Outputs and blocks generation until inputs are validated', async () => {
+  it('preserves shared Decisions and Outputs for the Executive workspace', async () => {
     const user = userEvent.setup();
     render(
-      <MemoryRouter initialEntries={['/outputs']}>
+      <MemoryRouter initialEntries={['/commercial']}>
         <AtlasProvider>
           <App />
         </AtlasProvider>
       </MemoryRouter>,
     );
+    await user.selectOptions(screen.getByLabelText('Active demo persona'), 'usr_ceo');
+    const navigation = await screen.findByRole('navigation', { name: 'Executive navigation' });
+    await user.click(within(navigation).getByRole('link', { name: 'Decisions' }));
+    expect(await screen.findByRole('heading', { name: 'Decisions' })).toBeVisible();
+    await user.click(within(navigation).getByRole('link', { name: 'Outputs' }));
     expect(await screen.findByRole('heading', { name: 'Outputs' })).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Management' })).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Executive and Governance' })).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Regulatory' })).toBeVisible();
-    const blockedRow = screen.getByRole('row', { name: /Weekly Management Pack/ });
-    expect(within(blockedRow).getByRole('button', { name: 'Generate' })).toBeDisabled();
-    const readyRow = screen.getByRole('row', { name: /Monthly Business Performance Report/ });
-    await user.click(within(readyRow).getByRole('button', { name: 'Generate' }));
-    expect(readyRow).toHaveTextContent('Generated now');
-  });
-
-  it('reveals KPI definitions and thresholds contextually', async () => {
-    const user = userEvent.setup();
-    render(
-      <MemoryRouter initialEntries={['/kpi-library']}>
-        <AtlasProvider>
-          <App />
-        </AtlasProvider>
-      </MemoryRouter>,
-    );
-    await user.click(await screen.findByRole('button', { name: 'Gross oil production' }));
-    const drawer = screen.getByRole('dialog', { name: 'Gross oil production' });
-    expect(within(drawer).getByText('Sum of daily field production')).toBeVisible();
-    await user.click(within(drawer).getByRole('tab', { name: 'Thresholds and target' }));
-    expect(within(drawer).getByText('>= 95% of plan')).toBeVisible();
-  });
-
-  it('uses one shared Weekly Execution Update structure with department-specific fields', async () => {
-    render(
-      <MemoryRouter initialEntries={['/reporting-templates']}>
-        <AtlasProvider>
-          <App />
-        </AtlasProvider>
-      </MemoryRouter>,
-    );
-    expect(
-      await screen.findByRole('heading', { name: 'Shared Weekly Execution Update structure' }),
-    ).toBeVisible();
-    expect(screen.getByText('Executive highlight')).toBeVisible();
-    expect(
-      screen.getByRole('table', { name: 'Department-specific reporting templates' }),
-    ).toHaveTextContent('Community Relations');
-  });
-
-  it('exposes Users and Roles as commercial configuration', async () => {
-    render(
-      <MemoryRouter initialEntries={['/users-roles']}>
-        <AtlasProvider>
-          <App />
-        </AtlasProvider>
-      </MemoryRouter>,
-    );
-    expect(await screen.findByRole('heading', { name: 'Users and Roles' })).toBeVisible();
-    expect(screen.getByRole('table', { name: 'Users and role access' })).toBeVisible();
   });
 
   it('lets a Department Manager choose any department and loads matching structured fields', async () => {
