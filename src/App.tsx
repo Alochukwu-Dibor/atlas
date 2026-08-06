@@ -12,10 +12,10 @@ import { StateView, ToastProvider } from './components/Ui';
 const executivePage = () => import('./pages/ExecutivePages');
 const reportingPage = () => import('./pages/ReportingPages');
 const modulePage = () => import('./pages/ModulePages');
-const commercialPage = () => import('./pages/CommercialPages');
 const architecturePage = () => import('./pages/ArchitecturePages');
 const PlanPage = lazy(() => import('./pages/PlanPage'));
 const CommercialDashboard = lazy(() => import('./pages/CommercialDashboardPage'));
+const CommercialProjectsPage = lazy(() => import('./pages/CommercialProjectsPage'));
 const CommercialReviewPage = lazy(() =>
   reportingPage().then((module) => ({ default: module.CommercialReviewPage })),
 );
@@ -36,9 +36,6 @@ const HsePage = lazy(() => modulePage().then((module) => ({ default: module.HseP
 const LegalPage = lazy(() => modulePage().then((module) => ({ default: module.LegalPage })));
 const ProductionPage = lazy(() =>
   modulePage().then((module) => ({ default: module.ProductionPage })),
-);
-const ProjectsPage = lazy(() =>
-  commercialPage().then((module) => ({ default: module.ProjectsPage })),
 );
 const ExecutionPage = lazy(() =>
   architecturePage().then((module) => ({ default: module.ExecutionPage })),
@@ -92,8 +89,8 @@ export function App() {
             <Route path="plan" element={<PlanPage />} />
             <Route path="commercial/review/:id" element={<CommercialReviewPage />} />
             <Route path="execution" element={<ExecutionPage />} />
-            <Route path="projects" element={<ProjectsPage />} />
-            <Route path="projects/:projectId" element={<ProjectsPage />} />
+            <Route path="projects" element={<CommercialProjectsPage />} />
+            <Route path="projects/:projectId" element={<CommercialProjectsPage />} />
             <Route path="reviews" element={<ReviewsPage />} />
             <Route path="reviews/:id" element={<CommercialReviewPage />} />
             <Route path="decisions" element={<DecisionsPage />} />

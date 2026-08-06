@@ -3326,6 +3326,179 @@ tr.is-clickable:hover {
   margin: 0;
 }
 
+.project-list-toolbar {
+  width: min(420px, 100%);
+  margin-top: 8px;
+}
+
+.project-list-toolbar .field {
+  margin: 0;
+}
+
+.project-workspace-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 28px;
+  margin-bottom: 24px;
+  padding: 16px 20px;
+  border: 1px solid var(--atlas-border);
+  border-radius: 10px;
+  background: var(--atlas-surface);
+  color: var(--atlas-text-secondary);
+}
+
+.project-workspace-status span {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.project-workspace-status strong {
+  color: var(--atlas-text);
+}
+
+.project-overview,
+.project-adherence {
+  display: grid;
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.project-kpis {
+  align-items: stretch;
+}
+
+.project-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.project-objective {
+  margin: 0 0 24px;
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.target-adherence-summary {
+  display: grid;
+  gap: 10px;
+}
+
+.target-adherence-summary strong {
+  font-size: 40px;
+  line-height: 1;
+}
+
+.target-adherence-summary span {
+  color: var(--atlas-text-secondary);
+}
+
+.target-adherence-summary progress {
+  width: 100%;
+  height: 9px;
+  accent-color: var(--atlas-primary);
+}
+
+.project-insights {
+  display: grid;
+}
+
+.project-insights > button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 18px;
+  align-items: center;
+  width: 100%;
+  padding: 18px 0;
+  border: 0;
+  border-bottom: 1px solid var(--atlas-border);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.project-insights > button:last-child {
+  border-bottom: 0;
+}
+
+.project-insights > button:hover,
+.project-insights > button:focus-visible {
+  color: var(--atlas-interaction);
+}
+
+.project-insights button > span:first-child {
+  display: grid;
+  gap: 5px;
+}
+
+.project-insights small {
+  color: var(--atlas-text-secondary);
+}
+
+.measure-type {
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--atlas-surface-subtle);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.measure-focus {
+  display: inline-block;
+  padding-left: 10px;
+  border-left: 3px solid var(--atlas-interaction);
+  font-weight: 700;
+}
+
+.adherence-cell {
+  display: grid;
+  min-width: 150px;
+  gap: 5px;
+}
+
+.adherence-cell progress {
+  width: 100%;
+  accent-color: var(--atlas-primary);
+}
+
+.adherence-cell small {
+  color: var(--atlas-text-secondary);
+}
+
+.project-activity-log {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.project-activity-log li {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) auto auto;
+  gap: 20px;
+  align-items: start;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--atlas-border);
+}
+
+.project-activity-log li:last-child {
+  border-bottom: 0;
+}
+
+.project-activity-log time,
+.project-activity-log small {
+  color: var(--atlas-text-secondary);
+  font-size: 13px;
+}
+
+.project-activity-log p {
+  margin: 5px 0;
+}
+
 .detail-workspace {
   display: grid;
   gap: 24px;
@@ -3441,8 +3614,18 @@ tr.is-clickable:hover {
 
 @media (max-width: 900px) {
   .business-health-section,
-  .project-toolbar {
+  .project-toolbar,
+  .project-overview-grid {
     grid-template-columns: 1fr;
+  }
+
+  .project-activity-log li {
+    grid-template-columns: 1fr auto;
+  }
+
+  .project-activity-log li > div,
+  .project-activity-log time {
+    grid-column: 1;
   }
 
   .business-health-summary {

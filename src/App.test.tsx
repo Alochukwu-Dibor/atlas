@@ -156,6 +156,7 @@ describe('route architecture', () => {
   });
 
   it('renders the new Commercial Projects workspace', async () => {
+    seedConfirmedPlan();
     render(
       <MemoryRouter initialEntries={['/projects']}>
         <AtlasProvider>
@@ -164,7 +165,51 @@ describe('route architecture', () => {
       </MemoryRouter>,
     );
     expect(await screen.findByRole('heading', { name: 'Projects' })).toBeVisible();
-    expect(screen.getByRole('table', { name: 'Commercial project portfolio' })).toBeVisible();
+    const table = screen.getByRole('table', { name: 'Commercial project portfolio' });
+    expect(table).toBeVisible();
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent),
+    ).toEqual(['Project name', 'Current phase', 'Health', 'Progress']);
+  });
+
+  it('requires a confirmed plan before showing the project list', async () => {
+    render(
+      <MemoryRouter initialEntries={['/projects']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    expect(
+      await screen.findByRole('heading', { name: 'Confirm an approved plan to activate Projects' }),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Open Plan' })).toBeVisible();
+  });
+
+  it('loads a project workspace directly and handles an unknown project identifier', async () => {
+    seedConfirmedPlan();
+    const { unmount } = render(
+      <MemoryRouter initialEntries={['/projects/prj_integrity']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    expect(
+      await screen.findByRole('heading', { name: 'Ughelli Export Line Integrity Programme' }),
+    ).toBeVisible();
+    unmount();
+    render(
+      <MemoryRouter initialEntries={['/projects/unknown-project']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole('heading', { name: 'Project not found' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Back to Projects' })).toBeVisible();
   });
 
   it('renders the linked Execution workspace on its canonical route', async () => {
@@ -195,8 +240,11 @@ describe('route architecture', () => {
     });
     await user.click(projectRow);
 
-    expect(await screen.findByRole('heading', { name: 'Projects' })).toBeVisible();
-    expect(screen.getByRole('dialog', { name: 'Compressor Station B Restoration' })).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { name: 'Compressor Station B Restoration' }),
+    ).toBeVisible();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('drills the Production KPI into its linked project workspace', async () => {
@@ -210,8 +258,10 @@ describe('route architecture', () => {
       </MemoryRouter>,
     );
     await user.click(await screen.findByRole('button', { name: /Production capacity/ }));
-    expect(await screen.findByRole('heading', { name: 'Projects' })).toBeVisible();
-    expect(screen.getByRole('dialog', { name: 'Compressor Station B Restoration' })).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { name: 'Compressor Station B Restoration' }),
+    ).toBeVisible();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('opens a submission requiring attention in its full review route', async () => {
@@ -275,8 +325,9 @@ describe('route architecture', () => {
     expect(within(drawer).getByRole('table', { name: 'Objective KPIs' })).toBeVisible();
   });
 
-  it('filters projects and progressively reveals project evidence', async () => {
+  it('filters projects and opens the full-page adherence and activity views', async () => {
     const user = userEvent.setup();
+    seedConfirmedPlan();
     render(
       <MemoryRouter initialEntries={['/projects']}>
         <AtlasProvider>
@@ -292,12 +343,19 @@ describe('route architecture', () => {
     );
     expect(screen.queryByText('Fiscal Metering Upgrade')).not.toBeInTheDocument();
     await user.click(screen.getByRole('row', { name: /Compressor Station B Restoration/ }));
-    const drawer = screen.getByRole('dialog', { name: 'Compressor Station B Restoration' });
     expect(
-      within(drawer).queryByText('Operations weekly production fixture'),
-    ).not.toBeInTheDocument();
-    await user.click(within(drawer).getByRole('tab', { name: 'Evidence' }));
-    expect(within(drawer).getByText('Operations weekly production fixture')).toBeVisible();
+      await screen.findByRole('heading', { name: 'Compressor Station B Restoration' }),
+    ).toBeVisible();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'KPI, target and milestone adherence' }));
+    expect(screen.getByRole('table', { name: 'KPI adherence' })).toBeVisible();
+    expect(screen.getByRole('table', { name: 'Target adherence' })).toBeVisible();
+    expect(screen.getByRole('table', { name: 'Milestone adherence' })).toBeVisible();
+    await user.click(screen.getByRole('tab', { name: 'Activity log' }));
+    expect(
+      screen.getByText('Approved plan confirmed as the Atlas tracking baseline.'),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Back to Projects' })).toBeVisible();
   });
 
   it('opens decision details with contextual summary, context, history and evidence tabs', async () => {
