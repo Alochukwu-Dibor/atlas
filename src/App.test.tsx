@@ -425,31 +425,7 @@ describe('route architecture', () => {
     expect(await screen.findByRole('heading', { name: 'Outputs' })).toBeVisible();
   });
 
-  it('lets a Department Manager choose any department and loads matching structured fields', async () => {
-    const user = userEvent.setup();
-    render(
-      <MemoryRouter initialEntries={['/department']}>
-        <AtlasProvider>
-          <App />
-        </AtlasProvider>
-      </MemoryRouter>,
-    );
-    await user.selectOptions(screen.getByLabelText('Active demo persona'), 'usr_operations');
-    expect(await screen.findByRole('heading', { name: 'My Updates' })).toBeVisible();
-    const department = screen.getByLabelText('Department workspace');
-    expect(department).toHaveDisplayValue('Operations');
-    expect(department.querySelectorAll('option')).toHaveLength(8);
-    await user.selectOptions(department, 'dept_finance');
-    await user.click(screen.getByRole('link', { name: 'Submit Update' }));
-    expect(
-      await screen.findByRole('heading', { name: 'Step 1 of 3 — Context & methods' }),
-    ).toBeVisible();
-    expect(screen.getByLabelText('Department')).toHaveValue('Finance');
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(screen.getByLabelText('Available liquidity')).toHaveValue('42500000');
-  });
-
-  it('keeps Contributor navigation limited to Submit Update and My Updates', async () => {
+  it('consolidates department managers into one Manager role and two-item navigation', async () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter initialEntries={['/commercial']}>
@@ -458,11 +434,142 @@ describe('route architecture', () => {
         </AtlasProvider>
       </MemoryRouter>,
     );
-    await user.selectOptions(screen.getByLabelText('Active demo persona'), 'usr_operations');
-    const navigation = await screen.findByRole('navigation', { name: 'Contributor navigation' });
-    expect(navigation).toHaveTextContent('Submit UpdateMy Updates');
-    expect(navigation.querySelectorAll('a')).toHaveLength(2);
-    expect(screen.queryByRole('link', { name: 'Projects' })).not.toBeInTheDocument();
+    const personas = screen.getByLabelText('Active demo persona');
+    expect(
+      Array.from(personas.querySelectorAll('option')).map((option) => option.textContent),
+    ).toEqual([
+      'Chief Executive Officer',
+      'Chief Financial Officer',
+      'Commercial Manager',
+      'Manager',
+    ]);
+    await user.selectOptions(personas, 'manager');
+    expect(await screen.findByRole('heading', { name: 'Weekly Updates' })).toBeVisible();
+    const navigation = screen.getByRole('navigation', { name: 'Manager navigation' });
+    expect(within(navigation).getAllByRole('link')).toHaveLength(2);
+    expect(navigation).toHaveTextContent('Weekly UpdatesSubmissions');
+    const department = screen.getByLabelText('Department workspace');
+    expect(department).toHaveDisplayValue('Operations');
+    expect(department.querySelectorAll('option')).toHaveLength(8);
+    await user.selectOptions(department, 'dept_finance');
+    expect(department).toHaveDisplayValue('Finance');
+    expect(screen.getByLabelText('Assigned project')).toHaveTextContent(
+      'Compressor Station B Restoration',
+    );
+    await user.selectOptions(department, 'dept_supply_chain');
+    expect(department).toHaveDisplayValue('Supply Chain');
+    expect(screen.getByText('Amina Yusuf')).toBeVisible();
+    expect(screen.getByLabelText('Assigned project')).toHaveTextContent('Fiscal Metering Upgrade');
+  });
+
+  it('saves and reopens a partial Manager Weekly Update draft', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={['/commercial']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    await user.selectOptions(screen.getByLabelText('Active demo persona'), 'manager');
+    await user.type(
+      await screen.findByLabelText('Highlights from the Previous Week'),
+      'Production delivery reached 96,800 bopd.',
+    );
+    await user.click(screen.getByRole('button', { name: 'Save as Draft' }));
+    await user.click(screen.getByRole('link', { name: 'Submissions' }));
+    const draft = await screen.findByRole('row', { name: /Draft Continue editing/ });
+    await user.click(draft);
+    await user.click(screen.getByRole('button', { name: 'Continue editing' }));
+    expect(await screen.findByLabelText('Highlights from the Previous Week')).toHaveValue(
+      'Production delivery reached 96,800 bopd.',
+    );
+    expect(screen.getByText('Draft reopened')).toBeVisible();
+  });
+
+  it('validates and submits the exact shared Manager Weekly Update sections with a chart and attachment', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={['/commercial']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    await user.selectOptions(screen.getByLabelText('Active demo persona'), 'manager');
+    await user.click(await screen.findByRole('button', { name: 'Submit Update' }));
+    for (const section of [
+      'Highlights from the Previous Week',
+      'Ongoing Activities',
+      'Risks',
+      'Plans for the Week',
+    ]) {
+      expect(screen.getByText(`${section} is required.`)).toBeVisible();
+    }
+
+    await user.type(
+      screen.getByLabelText('Highlights from the Previous Week'),
+      'Production reached 96,800 bopd against 100,000 bopd plan.',
+    );
+    await user.type(screen.getByLabelText('Ongoing Activities'), 'Rotor installation is active.');
+    await user.type(screen.getByLabelText('Risks'), 'Delivery float is limited to two days.');
+    await user.type(screen.getByLabelText('Plans for the Week'), 'Complete alignment and testing.');
+    await user.click(screen.getByRole('button', { name: 'Generate Chart' }));
+    const dialog = screen.getByRole('dialog', { name: 'Generate chart from Highlights' });
+    await user.selectOptions(within(dialog).getByLabelText('Chart type'), 'line');
+    await user.click(within(dialog).getByRole('button', { name: 'Generate Preview' }));
+    expect(within(dialog).getByLabelText('Highlights chart')).toBeVisible();
+    await user.click(within(dialog).getByRole('button', { name: 'Keep Chart' }));
+
+    await user.upload(
+      screen.getByLabelText('Supporting documents'),
+      new File(['synthetic evidence'], 'compressor-status.pdf', { type: 'application/pdf' }),
+    );
+    expect(screen.getByText('compressor-status.pdf')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Submit Update' }));
+    expect(await screen.findByRole('heading', { name: 'Weekly Update submitted' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'View Submission' }));
+    expect(await screen.findByText('compressor-status.pdf')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Generated Chart' })).toBeVisible();
+  });
+
+  it('blocks creation in a closed Manager reporting period', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={['/commercial']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    await user.selectOptions(screen.getByLabelText('Active demo persona'), 'manager');
+    await user.selectOptions(await screen.findByLabelText('Reporting period'), 'cycle_2026_w30');
+    expect(await screen.findByRole('heading', { name: 'Reporting period closed' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Submit Update' })).not.toBeInTheDocument();
+  });
+
+  it('uses the same Weekly Update component for a Commercial Manager without changing Commercial navigation', async () => {
+    const user = userEvent.setup();
+    seedConfirmedPlan();
+    render(
+      <MemoryRouter initialEntries={['/reviews']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    await user.click(await screen.findByRole('button', { name: 'Create my Weekly Update' }));
+    expect(await screen.findByRole('heading', { name: 'Weekly Updates' })).toBeVisible();
+    expect(
+      screen.getByLabelText('Assigned project').querySelectorAll('option').length,
+    ).toBeGreaterThan(1);
+    const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
+    expect(within(navigation).getAllByRole('link')).toHaveLength(4);
+    expect(navigation).toHaveTextContent('DashboardPlanProjectsReporting');
+    expect(screen.getByLabelText('Highlights from the Previous Week')).toBeVisible();
+    expect(screen.getByLabelText('Ongoing Activities')).toBeVisible();
+    expect(screen.getByLabelText('Risks')).toBeVisible();
+    expect(screen.getByLabelText('Plans for the Week')).toBeVisible();
   });
 
   it('renders Reporting with exactly the Submissions and Reports tabs', async () => {
@@ -541,7 +648,7 @@ describe('route architecture', () => {
     expect(await screen.findByRole('heading', { name: 'Reporting' })).toBeVisible();
   });
 
-  it('denies a Contributor access to Commercial Reviews', async () => {
+  it('prevents a Manager from accessing Commercial Reporting', async () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter initialEntries={['/reviews']}>
@@ -550,7 +657,7 @@ describe('route architecture', () => {
         </AtlasProvider>
       </MemoryRouter>,
     );
-    await user.selectOptions(screen.getByLabelText('Active demo persona'), 'usr_operations');
-    expect(await screen.findByRole('heading', { name: 'My Updates' })).toBeVisible();
+    await user.selectOptions(screen.getByLabelText('Active demo persona'), 'manager');
+    expect(await screen.findByRole('heading', { name: 'Weekly Updates' })).toBeVisible();
   });
 });

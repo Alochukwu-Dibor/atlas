@@ -71,6 +71,20 @@
       "title": "Projects Manager",
       "role": "department_manager",
       "departmentId": "dept_projects"
+    },
+    {
+      "id": "usr_supply_chain",
+      "name": "Amina Yusuf",
+      "title": "Supply Chain Manager",
+      "role": "department_manager",
+      "departmentId": "dept_supply_chain"
+    },
+    {
+      "id": "usr_community",
+      "name": "Ebiere Okon",
+      "title": "Community Relations Manager",
+      "role": "department_manager",
+      "departmentId": "dept_community"
     }
   ],
   "departments": [
@@ -80,8 +94,8 @@
     { "id": "dept_legal", "name": "Legal & Regulatory", "required": true, "managerId": "usr_legal" },
     { "id": "dept_projects", "name": "Projects", "required": true, "managerId": "usr_projects" },
     { "id": "dept_commercial", "name": "Commercial", "required": true, "managerId": "usr_commercial" },
-    { "id": "dept_supply_chain", "name": "Supply Chain", "required": true, "managerId": null },
-    { "id": "dept_community", "name": "Community Relations", "required": true, "managerId": null }
+    { "id": "dept_supply_chain", "name": "Supply Chain", "required": true, "managerId": "usr_supply_chain" },
+    { "id": "dept_community", "name": "Community Relations", "required": true, "managerId": "usr_community" }
   ],
   "reportingCycles": [
     {

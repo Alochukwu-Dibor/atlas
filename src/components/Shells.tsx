@@ -30,46 +30,57 @@ export function Brand() {
 }
 
 function PersonaControl() {
-  const { activeUserId, setActiveUserId, setCycleId, setDepartmentId } = useAtlas();
+  const { activeUserId, role, setActiveUserId, setCycleId, setDepartmentId } = useAtlas();
   const navigate = useNavigate();
-  const roles = atlas.users;
   const onChange = (id: string) => {
-    setActiveUserId(id);
-    const role = getUser(id)?.role;
-    const selectedUser = getUser(id);
+    const resolvedId =
+      id === 'manager'
+        ? (atlas.departments.find((department) => department.managerId)?.managerId ??
+          'usr_projects')
+        : id;
+    setActiveUserId(resolvedId);
+    const nextRole = getUser(resolvedId)?.role;
+    const selectedUser = getUser(resolvedId);
     if (selectedUser?.departmentId) setDepartmentId(selectedUser.departmentId);
     setCycleId(
-      ['ceo', 'cfo'].includes(role ?? '')
+      ['ceo', 'cfo'].includes(nextRole ?? '')
         ? atlas.demoStates.defaultPublishedCycleId
         : atlas.demoStates.defaultOpenCycleId,
     );
     navigate(
-      role === 'ceo'
+      nextRole === 'ceo'
         ? '/executive'
-        : role === 'cfo'
+        : nextRole === 'cfo'
           ? '/executive/cfo'
-          : role === 'department_manager'
-            ? '/department'
+          : nextRole === 'department_manager'
+            ? '/manager/weekly-updates'
             : '/commercial',
     );
   };
   const user = getUser(activeUserId)!;
+  const selectedPersona = role === 'department_manager' ? 'manager' : activeUserId;
+  const personaOptions = [
+    { value: 'usr_ceo', label: 'Chief Executive Officer' },
+    { value: 'usr_cfo', label: 'Chief Financial Officer' },
+    { value: 'usr_commercial', label: 'Commercial Manager' },
+    { value: 'manager', label: 'Manager' },
+  ];
   return (
     <label className="persona-control">
       <span className="avatar" aria-hidden="true" />
       <span className="persona-control__identity">
         <strong>{user.name}</strong>
-        <small>{user.title}</small>
+        <small>{role === 'department_manager' ? 'Manager' : user.title}</small>
       </span>
       <ChevronDown aria-hidden="true" />
       <select
         aria-label="Active demo persona"
-        value={activeUserId}
+        value={selectedPersona}
         onChange={(event) => onChange(event.target.value)}
       >
-        {roles.map((role) => (
-          <option key={role.id} value={role.id}>
-            {role.title}
+        {personaOptions.map((persona) => (
+          <option key={persona.value} value={persona.value}>
+            {persona.label}
           </option>
         ))}
       </select>
@@ -78,12 +89,18 @@ function PersonaControl() {
 }
 
 function DepartmentControl() {
-  const { departmentId, setDepartmentId } = useAtlas();
+  const { role, departmentId, setDepartmentId, setActiveUserId } = useAtlas();
   return (
     <Select
       label="Department workspace"
       value={departmentId}
-      onChange={setDepartmentId}
+      onChange={(nextDepartmentId) => {
+        setDepartmentId(nextDepartmentId);
+        const managerId = atlas.departments.find(
+          (department) => department.id === nextDepartmentId,
+        )?.managerId;
+        if (role === 'department_manager' && managerId) setActiveUserId(managerId);
+      }}
       options={atlas.departments.map((department) => ({
         value: department.id,
         label: department.name,
@@ -137,8 +154,8 @@ export function SidebarShell() {
         title="No access"
         message="Department Managers cannot access the Commercial or executive performance workspace."
         action={
-          <Button onClick={() => window.location.assign('/department')}>
-            Return to Department reporting
+          <Button onClick={() => window.location.assign('/manager/weekly-updates')}>
+            Return to Manager workspace
           </Button>
         }
       />
@@ -173,14 +190,14 @@ export function SidebarShell() {
   );
 }
 
-export function DepartmentShell() {
-  const { role } = useAtlas();
+export function ManagerShell() {
+  const { role, activeUserId } = useAtlas();
   if (role !== 'department_manager') {
     return (
       <StateView
         type="no-access"
-        title="Department workspace restricted"
-        message="Switch to a Department Manager persona to access Weekly Execution Updates."
+        title="Manager workspace restricted"
+        message="Switch to the Manager persona to access this workspace. Commercial Managers create their own update from Reporting."
         action={<PersonaControl />}
       />
     );
@@ -196,16 +213,14 @@ export function DepartmentShell() {
           </div>
         </div>
         <div className="app-header__nav-row">
-          <nav className="contributor-nav" aria-label="Contributor navigation">
-            <NavLink to="/department/reports/new">Submit Update</NavLink>
-            <NavLink to="/department" end>
-              My Updates
-            </NavLink>
+          <nav className="contributor-nav" aria-label="Manager navigation">
+            <NavLink to="/manager/weekly-updates">Weekly Updates</NavLink>
+            <NavLink to="/manager/submissions">Submissions</NavLink>
           </nav>
         </div>
       </header>
       <main className="department-workspace">
-        <ScenarioOutlet />
+        <ScenarioOutlet key={activeUserId} />
       </main>
     </div>
   );
@@ -270,7 +285,7 @@ export function RouteIndex() {
       : role === 'cfo'
         ? '/executive/cfo'
         : role === 'department_manager'
-          ? '/department'
+          ? '/manager/weekly-updates'
           : '/commercial';
   queueMicrotask(() => navigate(target, { replace: true }));
   return (

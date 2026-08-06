@@ -1,8 +1,8 @@
 import { lazy, Suspense } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import {
-  DepartmentShell,
   ExecutiveShell,
+  ManagerShell,
   NotFound,
   RouteIndex,
   SidebarShell,
@@ -16,17 +16,18 @@ const PlanPage = lazy(() => import('./pages/PlanPage'));
 const CommercialDashboard = lazy(() => import('./pages/CommercialDashboardPage'));
 const CommercialProjectsPage = lazy(() => import('./pages/CommercialProjectsPage'));
 const CommercialReportingPage = lazy(() => import('./pages/CommercialReportingPage'));
+const managerUpdatesPage = () => import('./pages/ManagerUpdatesPage');
+const ManagerWeeklyUpdatesPage = lazy(() =>
+  managerUpdatesPage().then((module) => ({ default: module.ManagerWeeklyUpdatesPage })),
+);
+const ManagerSubmissionsPage = lazy(() =>
+  managerUpdatesPage().then((module) => ({ default: module.ManagerSubmissionsPage })),
+);
+const ManagerSubmissionDetailPage = lazy(() =>
+  managerUpdatesPage().then((module) => ({ default: module.ManagerSubmissionDetailPage })),
+);
 const CommercialReviewPage = lazy(() =>
   reportingPage().then((module) => ({ default: module.CommercialReviewPage })),
-);
-const CreateReportPage = lazy(() =>
-  reportingPage().then((module) => ({ default: module.CreateReportPage })),
-);
-const DepartmentDashboard = lazy(() =>
-  reportingPage().then((module) => ({ default: module.DepartmentDashboard })),
-);
-const DepartmentReportReview = lazy(() =>
-  reportingPage().then((module) => ({ default: module.DepartmentReportReview })),
 );
 const ExecutiveDashboard = lazy(() =>
   executivePage().then((module) => ({ default: module.ExecutiveDashboard })),
@@ -55,17 +56,28 @@ export function App() {
       >
         <Routes>
           <Route index element={<RouteIndex />} />
-          <Route element={<DepartmentShell />}>
-            <Route path="department" element={<DepartmentDashboard />} />
-            <Route path="department/reports/new" element={<CreateReportPage />} />
-            <Route path="department/reports/:id" element={<DepartmentReportReview />} />
+          <Route element={<ManagerShell />}>
+            <Route path="manager/weekly-updates" element={<ManagerWeeklyUpdatesPage />} />
+            <Route path="manager/submissions" element={<ManagerSubmissionsPage />} />
+            <Route path="manager/submissions/:id" element={<ManagerSubmissionDetailPage />} />
           </Route>
+          <Route path="department" element={<Navigate to="/manager/submissions" replace />} />
+          <Route
+            path="department/reports/new"
+            element={<Navigate to="/manager/weekly-updates" replace />}
+          />
+          <Route
+            path="department/reports/:id"
+            element={<Navigate to="/manager/submissions" replace />}
+          />
           <Route element={<SidebarShell />}>
             <Route path="commercial" element={<CommercialDashboard />} />
             <Route path="plan" element={<PlanPage />} />
             <Route path="projects" element={<CommercialProjectsPage />} />
             <Route path="projects/:projectId" element={<CommercialProjectsPage />} />
             <Route path="reviews" element={<CommercialReportingPage />} />
+            <Route path="reviews/weekly-update" element={<ManagerWeeklyUpdatesPage />} />
+            <Route path="reviews/weekly-updates/:id" element={<ManagerSubmissionDetailPage />} />
             <Route path="reviews/:id" element={<CommercialReviewPage />} />
           </Route>
           <Route element={<ExecutiveShell />}>
@@ -73,6 +85,7 @@ export function App() {
             <Route path="executive/cfo" element={<CfoViewPage />} />
             <Route path="executive/decisions" element={<DecisionsPage />} />
             <Route path="executive/outputs" element={<OutputsPage />} />
+            <Route path="executive/weekly-updates/:id" element={<ManagerSubmissionDetailPage />} />
           </Route>
           <Route path="no-access" element={<NotFound />} />
           <Route path="*" element={<NotFound />} />

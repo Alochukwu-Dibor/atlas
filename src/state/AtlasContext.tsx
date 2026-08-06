@@ -37,6 +37,13 @@ import {
   type PlanAction,
   type PlanState,
 } from './plan';
+import {
+  loadManagerUpdatesState,
+  managerUpdatesReducer,
+  managerUpdatesStorageKey,
+  type ManagerUpdatesAction,
+  type ManagerUpdatesState,
+} from './managerUpdates';
 
 interface AtlasState {
   activeUserId: string;
@@ -55,6 +62,8 @@ interface AtlasState {
   recommendationDispatch: Dispatch<RecommendationAction>;
   plan: PlanState;
   planDispatch: Dispatch<PlanAction>;
+  managerUpdates: ManagerUpdatesState;
+  managerUpdatesDispatch: Dispatch<ManagerUpdatesAction>;
   setActiveUserId: (id: string) => void;
   setAssetId: (id: string) => void;
   setBusinessUnitId: (id: string) => void;
@@ -88,6 +97,11 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
     loadRecommendationState,
   );
   const [plan, planDispatch] = useReducer(planReducer, undefined, loadPlanState);
+  const [managerUpdates, managerUpdatesDispatch] = useReducer(
+    managerUpdatesReducer,
+    undefined,
+    loadManagerUpdatesState,
+  );
   const role = atlas.users.find((user) => user.id === activeUserId)?.role ?? 'commercial_manager';
 
   useEffect(() => {
@@ -105,6 +119,10 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     window.localStorage.setItem(planStorageKey, JSON.stringify(plan));
   }, [plan]);
+
+  useEffect(() => {
+    window.localStorage.setItem(managerUpdatesStorageKey, JSON.stringify(managerUpdates));
+  }, [managerUpdates]);
 
   const value = useMemo<AtlasState>(
     () => ({
@@ -124,6 +142,8 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
       recommendationDispatch,
       plan,
       planDispatch,
+      managerUpdates,
+      managerUpdatesDispatch,
       setActiveUserId,
       setAssetId,
       setBusinessUnitId,
@@ -154,10 +174,12 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
         window.localStorage.removeItem(executiveStorageKey);
         window.localStorage.removeItem(recommendationStorageKey);
         window.localStorage.removeItem(planStorageKey);
+        window.localStorage.removeItem(managerUpdatesStorageKey);
         workflowDispatch({ type: 'RESET' });
         executiveDispatch({ type: 'RESET' });
         recommendationDispatch({ type: 'RESET' });
         planDispatch({ type: 'RESET' });
+        managerUpdatesDispatch({ type: 'RESET' });
       },
     }),
     [
@@ -174,6 +196,7 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
       executive,
       recommendations,
       plan,
+      managerUpdates,
       planningPeriodId,
     ],
   );

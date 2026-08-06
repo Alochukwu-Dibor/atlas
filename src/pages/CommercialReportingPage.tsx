@@ -13,7 +13,7 @@ import {
   StatusBadge,
   useToast,
 } from '../components/Ui';
-import { format } from '../data/atlas';
+import { format, getCycle, getDepartment, getUser } from '../data/atlas';
 import {
   commercialReportDescriptions,
   generateCommercialReport,
@@ -22,6 +22,7 @@ import {
   type CommercialReportType,
 } from '../data/commercialReporting';
 import { useAtlas } from '../state/AtlasContext';
+import { selectVisibleSubmittedUpdates } from '../state/managerUpdates';
 
 type ReportingTab = 'submissions' | 'reports';
 
@@ -117,7 +118,7 @@ export default function CommercialReportingPage() {
   const navigate = useNavigate();
   const showToast = useToast();
   const [searchParams] = useSearchParams();
-  const { activeUserId, cycleId, plan, workflow, workflowDispatch } = useAtlas();
+  const { activeUserId, cycleId, plan, workflow, workflowDispatch, managerUpdates } = useAtlas();
   const requestedTab = searchParams.get('tab');
   const tab: ReportingTab = requestedTab === 'reports' ? 'reports' : 'submissions';
   const [reportType, setReportType] = useState<CommercialReportType>('performance_report');
@@ -125,6 +126,10 @@ export default function CommercialReportingPage() {
   const [generating, setGenerating] = useState(false);
   const [preview, setPreview] = useState<CommercialReportPreview | null>(null);
   const reporting = selectCommercialReporting(plan.confirmedPlan, workflow, cycleId);
+  const submittedManagerUpdates = selectVisibleSubmittedUpdates(
+    managerUpdates,
+    'commercial_manager',
+  );
 
   if (!plan.confirmedPlan || !reporting) {
     return (
@@ -167,6 +172,11 @@ export default function CommercialReportingPage() {
       <PageHeader
         title="Reporting"
         description="What has been submitted, what needs review, and what report should be generated?"
+        controls={
+          <Button variant="secondary" onClick={() => navigate('/reviews/weekly-update')}>
+            Create my Weekly Update
+          </Button>
+        }
       />
       <DetailTabs
         label="Reporting workspace"
@@ -201,6 +211,30 @@ export default function CommercialReportingPage() {
               </div>
             </Panel>
           </div>
+
+          <Panel title="Submitted Weekly Updates" className="section">
+            {submittedManagerUpdates.length ? (
+              <DataTable
+                caption="Submitted Manager Weekly Updates"
+                headers={['Manager', 'Department', 'Project', 'Reporting period', 'Submitted']}
+                rows={submittedManagerUpdates.map((update) => [
+                  getUser(update.creatorId)?.name ?? 'Manager',
+                  getDepartment(update.departmentId)?.name ?? 'Department',
+                  plan.confirmedPlan?.projects.find((project) => project.id === update.projectId)
+                    ?.name ?? 'Project',
+                  reporting.cycle.id === update.reportingPeriodId
+                    ? reporting.cycle.label
+                    : getCycle(update.reportingPeriodId).label,
+                  update.submittedAt ? format.date(update.submittedAt) : 'Not submitted',
+                ])}
+                onRowClick={(index) =>
+                  navigate(`/reviews/weekly-updates/${submittedManagerUpdates[index].id}`)
+                }
+              />
+            ) : (
+              <p className="empty-copy">No Manager Weekly Updates have been submitted.</p>
+            )}
+          </Panel>
 
           <Panel title="Needs Review" className="section">
             {reporting.needsReview.length ? (
