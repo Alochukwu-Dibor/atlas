@@ -3499,6 +3499,218 @@ tr.is-clickable:hover {
   margin: 5px 0;
 }
 
+.reporting-submissions,
+.reporting-reports,
+.submission-review-summary {
+  display: grid;
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.reporting-summary-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 24px;
+}
+
+.submission-completeness,
+.submission-completeness > div {
+  display: grid;
+  gap: 20px;
+}
+
+.submission-completeness > div {
+  gap: 7px;
+}
+
+.submission-completeness strong {
+  font-size: 44px;
+  line-height: 1;
+}
+
+.submission-completeness span,
+.submission-completeness small {
+  color: var(--atlas-text-secondary);
+}
+
+.submission-completeness progress {
+  width: 100%;
+  height: 10px;
+  accent-color: var(--atlas-primary);
+}
+
+.submission-status-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.submission-status-summary > div {
+  display: grid;
+  gap: 8px;
+  padding: 4px 18px;
+  border-right: 1px solid var(--atlas-border);
+}
+
+.submission-status-summary > div:first-child {
+  padding-left: 0;
+}
+
+.submission-status-summary > div:last-child {
+  padding-right: 0;
+  border-right: 0;
+}
+
+.submission-status-summary span,
+.submission-identity small {
+  color: var(--atlas-text-secondary);
+  font-size: 13px;
+}
+
+.submission-status-summary strong {
+  font-size: 28px;
+}
+
+.submission-identity,
+.follow-up-list article > div {
+  display: grid;
+  gap: 5px;
+}
+
+.follow-up-list {
+  display: grid;
+}
+
+.follow-up-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 18px;
+  align-items: center;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--atlas-border);
+}
+
+.follow-up-list article:last-child {
+  border-bottom: 0;
+}
+
+.follow-up-list article p {
+  margin: 4px 0;
+}
+
+.follow-up-list article span,
+.follow-up-list article small {
+  color: var(--atlas-text-secondary);
+}
+
+.report-type-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.report-type-grid > button {
+  display: grid;
+  gap: 10px;
+  min-height: 180px;
+  padding: 20px;
+  border: 1px solid var(--atlas-border);
+  border-radius: 10px;
+  background: var(--atlas-surface);
+  color: inherit;
+  text-align: left;
+}
+
+.report-type-grid > button:hover,
+.report-type-grid > button:focus-visible,
+.report-type-grid > button.is-active {
+  border-color: var(--atlas-interaction);
+  box-shadow: inset 0 0 0 1px var(--atlas-interaction);
+}
+
+.report-type-grid svg,
+.report-type-grid span {
+  color: var(--atlas-text-secondary);
+}
+
+.report-type-grid span {
+  line-height: 1.5;
+}
+
+.report-scope {
+  width: min(420px, 100%);
+  margin-top: 20px;
+}
+
+.report-scope .select-control select {
+  width: 100%;
+}
+
+.report-generation-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--atlas-border);
+  color: var(--atlas-text-secondary);
+}
+
+.report-preview {
+  display: grid;
+  gap: 24px;
+  padding: 28px;
+  border: 1px solid var(--atlas-border);
+  border-radius: 12px;
+  background: var(--atlas-surface);
+}
+
+.report-preview > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--atlas-border);
+}
+
+.report-preview > header span,
+.report-preview > header p,
+.report-preview > header small {
+  color: var(--atlas-text-secondary);
+}
+
+.report-preview > header h2 {
+  margin: 5px 0;
+}
+
+.report-preview__headline {
+  max-width: 900px;
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.55;
+}
+
+.report-preview__items {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.submission-comments {
+  display: grid;
+  gap: 16px;
+}
+
+.submission-comments .field {
+  max-width: 760px;
+  margin: 0;
+}
+
+.submission-comments > .button {
+  justify-self: start;
+}
+
 .detail-workspace {
   display: grid;
   gap: 24px;
@@ -3615,7 +3827,9 @@ tr.is-clickable:hover {
 @media (max-width: 900px) {
   .business-health-section,
   .project-toolbar,
-  .project-overview-grid {
+  .project-overview-grid,
+  .reporting-summary-grid,
+  .report-type-grid {
     grid-template-columns: 1fr;
   }
 
@@ -3626,6 +3840,14 @@ tr.is-clickable:hover {
   .project-activity-log li > div,
   .project-activity-log time {
     grid-column: 1;
+  }
+
+  .follow-up-list article {
+    grid-template-columns: 1fr auto;
+  }
+
+  .follow-up-list article > div {
+    grid-column: 1 / -1;
   }
 
   .business-health-summary {

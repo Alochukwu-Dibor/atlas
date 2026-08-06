@@ -16,6 +16,7 @@ const architecturePage = () => import('./pages/ArchitecturePages');
 const PlanPage = lazy(() => import('./pages/PlanPage'));
 const CommercialDashboard = lazy(() => import('./pages/CommercialDashboardPage'));
 const CommercialProjectsPage = lazy(() => import('./pages/CommercialProjectsPage'));
+const CommercialReportingPage = lazy(() => import('./pages/CommercialReportingPage'));
 const CommercialReviewPage = lazy(() =>
   reportingPage().then((module) => ({ default: module.CommercialReviewPage })),
 );
@@ -39,9 +40,6 @@ const ProductionPage = lazy(() =>
 );
 const ExecutionPage = lazy(() =>
   architecturePage().then((module) => ({ default: module.ExecutionPage })),
-);
-const ReviewsPage = lazy(() =>
-  architecturePage().then((module) => ({ default: module.ReviewsPage })),
 );
 const DecisionsPage = lazy(() =>
   architecturePage().then((module) => ({ default: module.DecisionsPage })),
@@ -91,7 +89,7 @@ export function App() {
             <Route path="execution" element={<ExecutionPage />} />
             <Route path="projects" element={<CommercialProjectsPage />} />
             <Route path="projects/:projectId" element={<CommercialProjectsPage />} />
-            <Route path="reviews" element={<ReviewsPage />} />
+            <Route path="reviews" element={<CommercialReportingPage />} />
             <Route path="reviews/:id" element={<CommercialReviewPage />} />
             <Route path="decisions" element={<DecisionsPage />} />
             <Route path="outputs" element={<OutputsPage />} />

@@ -84,6 +84,16 @@ export interface WorkflowComment {
   dueDate?: string;
 }
 
+export interface WorkflowReminder {
+  id: string;
+  cycleId: string;
+  departmentId: string;
+  projectId: string | null;
+  recipientId: string | null;
+  sentAt: string;
+  sentBy: string;
+}
+
 export interface WorkflowAuditEvent {
   id: string;
   actorId: string;
@@ -179,6 +189,7 @@ export interface WorkflowState {
   commitments: WorkflowCommitment[];
   sources: WorkflowSource[];
   comments: WorkflowComment[];
+  reminders: WorkflowReminder[];
   corrections: ManagerCorrection[];
   overrides: ControlledOverride[];
   auditEvents: WorkflowAuditEvent[];
@@ -641,6 +652,7 @@ export function createInitialWorkflowState(): WorkflowState {
     commitments: initialCommitments(),
     sources,
     comments,
+    reminders: [],
     corrections: [],
     overrides: [],
     auditEvents,
@@ -713,6 +725,8 @@ export type WorkflowAction =
     }
   | { type: 'ADD_COMMITMENT'; commitment: WorkflowCommitment; actorId: string; now: string }
   | { type: 'SUBMIT_REPORT'; reportId: string; actorId: string; now: string }
+  | { type: 'ADD_REVIEW_COMMENT'; comment: WorkflowComment }
+  | { type: 'SEND_REMINDER'; reminder: WorkflowReminder }
   | { type: 'REQUEST_CLARIFICATION'; comment: WorkflowComment }
   | {
       type: 'RESPOND_CLARIFICATION';
@@ -754,6 +768,51 @@ function updateReport(
 export function workflowReducer(state: WorkflowState, action: WorkflowAction): WorkflowState {
   if (action.type === 'RESET') return createInitialWorkflowState();
   if (action.type === 'CLEAR_ERROR') return { ...state, lastError: null };
+
+  if (action.type === 'ADD_REVIEW_COMMENT') {
+    if (!action.comment.question.trim()) {
+      return { ...state, lastError: 'A review comment is required.' };
+    }
+    if (!state.reports.some((report) => report.id === action.comment.reportId)) {
+      return { ...state, lastError: 'The submission is no longer available.' };
+    }
+    return {
+      ...state,
+      comments: [...state.comments, action.comment],
+      auditEvents: audit(state, {
+        actorId: action.comment.authorId,
+        action: 'review_comment_added',
+        entityType: 'department_report',
+        entityId: action.comment.reportId,
+        timestamp: action.comment.createdAt,
+        summary: `${action.comment.field}: ${action.comment.question}`,
+      }),
+      lastError: null,
+    };
+  }
+
+  if (action.type === 'SEND_REMINDER') {
+    const duplicate = state.reminders.some(
+      (reminder) =>
+        reminder.cycleId === action.reminder.cycleId &&
+        reminder.departmentId === action.reminder.departmentId &&
+        reminder.projectId === action.reminder.projectId,
+    );
+    if (duplicate) return state;
+    return {
+      ...state,
+      reminders: [...state.reminders, action.reminder],
+      auditEvents: audit(state, {
+        actorId: action.reminder.sentBy,
+        action: 'submission_reminder_sent',
+        entityType: 'department_report',
+        entityId: `${action.reminder.cycleId}:${action.reminder.departmentId}`,
+        timestamp: action.reminder.sentAt,
+        summary: `Reminder sent to ${getDepartment(action.reminder.departmentId)?.name ?? 'department'} for the outstanding Weekly Execution Update.`,
+      }),
+      lastError: null,
+    };
+  }
 
   if (action.type === 'SAVE_EXECUTIVE_NARRATIVE') {
     const publication = state.publications.find((item) => item.cycleId === action.cycleId);
@@ -1368,7 +1427,9 @@ export function loadWorkflowState(): WorkflowState {
     const stored = window.localStorage.getItem(workflowStorageKey);
     if (!stored) return createInitialWorkflowState();
     const parsed = JSON.parse(stored) as WorkflowState;
-    return parsed.version === 5 ? parsed : createInitialWorkflowState();
+    return parsed.version === 5
+      ? { ...parsed, reminders: parsed.reminders ?? [] }
+      : createInitialWorkflowState();
   } catch {
     return createInitialWorkflowState();
   }

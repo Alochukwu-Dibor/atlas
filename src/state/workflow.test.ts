@@ -242,6 +242,46 @@ describe('Atlas reporting workflow', () => {
     });
   });
 
+  it('persists review comments without changing submission status', () => {
+    const state = createInitialWorkflowState();
+    const next = workflowReducer(state, {
+      type: 'ADD_REVIEW_COMMENT',
+      comment: {
+        id: 'comment_general_test',
+        reportId: 'rpt_ops_w30',
+        field: 'General review comment',
+        authorId: 'usr_commercial',
+        question: 'Retain the rotor-delivery evidence with the final review.',
+        status: 'open',
+        createdAt: now,
+      },
+    });
+    expect(next.comments.at(-1)?.question).toContain('rotor-delivery evidence');
+    expect(next.reports.find((report) => report.id === 'rpt_ops_w30')?.status).toBe(
+      state.reports.find((report) => report.id === 'rpt_ops_w30')?.status,
+    );
+  });
+
+  it('records a reminder once and creates an audit event', () => {
+    const reminder = {
+      id: 'reminder_test',
+      cycleId: 'cycle_2026_w31',
+      departmentId: 'dept_operations',
+      projectId: 'prj_compressor',
+      recipientId: 'usr_operations',
+      sentAt: now,
+      sentBy: 'usr_commercial',
+    };
+    const sent = workflowReducer(createInitialWorkflowState(), {
+      type: 'SEND_REMINDER',
+      reminder,
+    });
+    const repeated = workflowReducer(sent, { type: 'SEND_REMINDER', reminder });
+    expect(sent.reminders).toEqual([reminder]);
+    expect(repeated.reminders).toHaveLength(1);
+    expect(sent.auditEvents.at(-1)?.action).toBe('submission_reminder_sent');
+  });
+
   it('enforces the publication gate, records an exception, and locks the cycle', () => {
     const initial = createInitialWorkflowState();
     const blocked = workflowReducer(initial, {

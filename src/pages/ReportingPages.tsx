@@ -26,6 +26,7 @@ import {
   Modal,
   PageHeader,
   Panel,
+  StateView,
   StatusBadge,
   useToast,
 } from '../components/Ui';
@@ -2188,6 +2189,7 @@ export function CommercialReviewPage() {
   );
   const [field, setField] = useState('Gross oil production');
   const [comment, setComment] = useState('');
+  const [reviewComment, setReviewComment] = useState('');
   const [dueDate, setDueDate] = useState('2026-08-03');
   const [overrideValue, setOverrideValue] = useState('');
   const [overrideReason, setOverrideReason] = useState('');
@@ -2195,9 +2197,12 @@ export function CommercialReviewPage() {
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   if (!report)
     return (
-      <Panel title="Submission unavailable">
-        <p>The requested report was not found.</p>
-      </Panel>
+      <StateView
+        type="error"
+        title="Submission unavailable"
+        message="The requested submission could not be found in the current reporting cycle."
+        action={<Button onClick={() => navigate('/reviews')}>Back to Reporting</Button>}
+      />
     );
   const sources = selectReportSources(workflow, report.id);
   const comments = workflow.comments.filter((item) => item.reportId === report.id);
@@ -2213,15 +2218,27 @@ export function CommercialReviewPage() {
   return (
     <>
       <PageHeader
-        title="Update Review"
+        title="Submission Review"
         description={`${reportDepartmentName(report)} · ${getCycle(report.cycleId).label} · ${report.sourceIds.length} sources`}
-        controls={<StatusBadge status={report.status} />}
+        controls={
+          <>
+            {report.projectId && (
+              <Button variant="secondary" onClick={() => navigate(`/projects/${report.projectId}`)}>
+                Open related project
+              </Button>
+            )}
+            <Button variant="secondary" onClick={() => navigate('/reviews')}>
+              Back to Reporting
+            </Button>
+            <StatusBadge status={report.status} />
+          </>
+        }
       />
       <div className="queue-nav">
         <Button
           variant="secondary"
           disabled={queueIndex <= 0}
-          onClick={() => navigate(`/commercial/review/${queue[queueIndex - 1].id}`)}
+          onClick={() => navigate(`/reviews/${queue[queueIndex - 1].id}`)}
         >
           Previous
         </Button>
@@ -2232,7 +2249,7 @@ export function CommercialReviewPage() {
         <Button
           variant="secondary"
           disabled={queueIndex < 0 || queueIndex >= queue.length - 1}
-          onClick={() => navigate(`/commercial/review/${queue[queueIndex + 1].id}`)}
+          onClick={() => navigate(`/reviews/${queue[queueIndex + 1].id}`)}
         >
           Next
         </Button>
@@ -2256,33 +2273,136 @@ export function CommercialReviewPage() {
         ))}
       </div>
       {detailTab === 'summary' && (
-        <div className="review-layout section">
-          <Panel title="What was submitted">
-            <p className="review-highlight">{report.weekly.executiveHighlight}</p>
+        <div className="submission-review-summary section">
+          <Panel title="Submission details">
             <dl className="summary-list">
               <div>
-                <dt>Forecast changes</dt>
-                <dd>{report.weekly.forecastChanges}</dd>
+                <dt>Submission</dt>
+                <dd>{report.title}</dd>
               </div>
               <div>
-                <dt>Next week</dt>
-                <dd>{report.weekly.nextWeekPlan}</dd>
+                <dt>Contributor</dt>
+                <dd>{getUser(report.managerId ?? '')?.name ?? 'Unassigned'}</dd>
               </div>
               <div>
-                <dt>Support required</dt>
-                <dd>{report.weekly.supportRequired}</dd>
+                <dt>Department</dt>
+                <dd>{reportDepartmentName(report)}</dd>
+              </div>
+              <div>
+                <dt>Related project</dt>
+                <dd>
+                  {report.projectId
+                    ? (phase1Domain.projects.find((project) => project.id === report.projectId)
+                        ?.name ?? 'Unknown project')
+                    : 'Business unit update'}
+                </dd>
+              </div>
+              <div>
+                <dt>Reporting period</dt>
+                <dd>{getCycle(report.cycleId).label}</dd>
+              </div>
+              <div>
+                <dt>Status</dt>
+                <dd>
+                  <StatusBadge status={report.status} />
+                </dd>
+              </div>
+              <div>
+                <dt>Submitted</dt>
+                <dd>{report.submittedAt ? format.date(report.submittedAt) : 'Not submitted'}</dd>
+              </div>
+              <div>
+                <dt>Submission methods</dt>
+                <dd>{report.methods.map((method) => method.replaceAll('_', ' ')).join(' · ')}</dd>
               </div>
             </dl>
           </Panel>
-          <Panel title="Change from previous period">
-            <p>{report.weekly.materialChange}</p>
-            <small>
-              Previous:{' '}
-              {previousReport?.weekly.executiveHighlight ?? 'No comparable prior update available.'}
-            </small>
-            <Button variant="secondary" onClick={() => setEvidenceOpen(true)}>
-              View evidence ({sources.length})
-            </Button>
+          <div className="review-layout">
+            <Panel title="What was submitted">
+              <p className="review-highlight">{report.weekly.executiveHighlight}</p>
+              <dl className="summary-list">
+                <div>
+                  <dt>KPI updates</dt>
+                  <dd>{report.weekly.kpiUpdates}</dd>
+                </div>
+                <div>
+                  <dt>Risks and constraints</dt>
+                  <dd>{report.weekly.risksAndConstraints}</dd>
+                </div>
+                <div>
+                  <dt>Forecast changes</dt>
+                  <dd>{report.weekly.forecastChanges}</dd>
+                </div>
+                <div>
+                  <dt>Next week</dt>
+                  <dd>{report.weekly.nextWeekPlan}</dd>
+                </div>
+                <div>
+                  <dt>Support required</dt>
+                  <dd>{report.weekly.supportRequired}</dd>
+                </div>
+              </dl>
+            </Panel>
+            <Panel title="Change from previous period">
+              <p>{report.weekly.materialChange}</p>
+              <small>
+                Previous:{' '}
+                {previousReport?.weekly.executiveHighlight ??
+                  'No comparable prior update available.'}
+              </small>
+              <Button variant="secondary" onClick={() => setEvidenceOpen(true)}>
+                View supporting evidence ({sources.length})
+              </Button>
+            </Panel>
+          </div>
+          <Panel title="Comments">
+            <div className="submission-comments">
+              {comments.length ? (
+                comments.map((item) => (
+                  <article className="comment-card" key={item.id}>
+                    <StatusBadge status={item.status} />
+                    <strong>{item.field}</strong>
+                    <p>{item.question}</p>
+                    <small>
+                      {getUser(item.authorId)?.name ?? 'Atlas reviewer'} ·{' '}
+                      {format.date(item.createdAt)}
+                    </small>
+                    {item.response && <p>Response: {item.response}</p>}
+                  </article>
+                ))
+              ) : (
+                <p className="empty-copy">No comments have been added to this submission.</p>
+              )}
+              <Field label="Add a comment">
+                <textarea
+                  rows={4}
+                  value={reviewComment}
+                  onChange={(event) => setReviewComment(event.target.value)}
+                  placeholder="Add review context without changing the submission status"
+                />
+              </Field>
+              <Button
+                disabled={!reviewComment.trim()}
+                onClick={() => {
+                  workflowDispatch({
+                    type: 'ADD_REVIEW_COMMENT',
+                    comment: {
+                      id: `comment_${workflow.comments.length + 1}`,
+                      reportId: report.id,
+                      field: 'General review comment',
+                      authorId: activeUserId,
+                      question: reviewComment,
+                      status: 'open',
+                      createdAt: prototypeTime(workflow.auditEvents.length + 1),
+                    },
+                  });
+                  setReviewComment('');
+                  showToast('Comment added to the submission review');
+                }}
+              >
+                Add comment
+              </Button>
+            </div>
           </Panel>
         </div>
       )}

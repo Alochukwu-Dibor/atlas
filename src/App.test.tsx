@@ -278,7 +278,7 @@ describe('route architecture', () => {
       name: /HSE Weekly Execution Update Clarification remains unresolved/,
     });
     await user.click(submissionRow);
-    expect(await screen.findByRole('heading', { name: 'Update Review' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'Submission Review' })).toBeVisible();
     expect(screen.getByText(/HSE · Weekly Execution Update · 27 Jul–2 Aug 2026/)).toBeVisible();
   });
 
@@ -576,7 +576,8 @@ describe('route architecture', () => {
     expect(screen.queryByRole('link', { name: 'Projects' })).not.toBeInTheDocument();
   });
 
-  it('renders the table-led Commercial Reviews workspace with all required filters', async () => {
+  it('renders Reporting with exactly the Submissions and Reports tabs', async () => {
+    seedConfirmedPlan();
     render(
       <MemoryRouter initialEntries={['/reviews']}>
         <AtlasProvider>
@@ -584,14 +585,71 @@ describe('route architecture', () => {
         </AtlasProvider>
       </MemoryRouter>,
     );
-    expect(await screen.findByRole('heading', { name: 'Reviews' })).toBeVisible();
-    expect(screen.getByLabelText('Reporting period filter')).toBeVisible();
-    expect(screen.getByLabelText('Business unit or project filter')).toBeVisible();
-    expect(screen.getByLabelText('Review status filter')).toBeVisible();
-    const table = screen.getByRole('table', { name: 'Weekly Execution Update review queue' });
-    expect(table).toHaveTextContent('Department');
-    expect(table).toHaveTextContent('Material change');
-    expect(table).toHaveTextContent('Action');
+    expect(await screen.findByRole('heading', { name: 'Reporting' })).toBeVisible();
+    const tabs = screen.getByRole('tablist', { name: 'Reporting workspace' });
+    expect(
+      within(tabs)
+        .getAllByRole('tab')
+        .map((tab) => tab.textContent),
+    ).toEqual(['Submissions', 'Reports']);
+    expect(screen.getByRole('progressbar', { name: 'Submission completeness' })).toBeVisible();
+    expect(screen.getByRole('table', { name: 'Submissions needing review' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Follow Up Required' })).toBeVisible();
+  });
+
+  it('sends one persistent prototype reminder and prevents a repeated send', async () => {
+    const user = userEvent.setup();
+    seedConfirmedPlan();
+    render(
+      <MemoryRouter initialEntries={['/reviews']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    const sendButtons = await screen.findAllByRole('button', { name: 'Send reminder' });
+    await user.click(sendButtons[0]);
+    const sentButton = screen.getByRole('button', { name: 'Reminder sent' });
+    expect(sentButton).toBeDisabled();
+    await user.click(screen.getByRole('tab', { name: 'Reports' }));
+    await user.click(screen.getByRole('tab', { name: 'Submissions' }));
+    expect(screen.getByRole('button', { name: 'Reminder sent' })).toBeDisabled();
+  });
+
+  it('generates previews for all three Commercial report types', async () => {
+    const user = userEvent.setup();
+    seedConfirmedPlan();
+    render(
+      <MemoryRouter initialEntries={['/reviews?tab=reports']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    for (const name of ['Performance Report', 'Executive Summary', 'Project Progress Report']) {
+      await user.click(await screen.findByRole('radio', { name: new RegExp(name) }));
+      await user.click(screen.getByRole('button', { name: 'Generate report' }));
+      expect(await screen.findByRole('heading', { name }, { timeout: 2500 })).toBeVisible();
+    }
+  });
+
+  it('adds and retains a review comment and links a submission to its project', async () => {
+    const user = userEvent.setup();
+    seedConfirmedPlan();
+    render(
+      <MemoryRouter initialEntries={['/reviews/rpt_ops_w30']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole('heading', { name: 'Submission Review' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Open related project' })).toBeVisible();
+    await user.type(screen.getByLabelText('Add a comment'), 'Confirm rotor evidence before close.');
+    await user.click(screen.getByRole('button', { name: 'Add comment' }));
+    expect(screen.getByText('Confirm rotor evidence before close.')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Back to Reporting' }));
+    expect(await screen.findByRole('heading', { name: 'Reporting' })).toBeVisible();
   });
 
   it('denies a Contributor access to Commercial Reviews', async () => {
