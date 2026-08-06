@@ -27,6 +27,7 @@ import {
 } from '../components/Ui';
 import { DecisionHistory, EvidenceTable, HistoryTable } from '../components/Traceability';
 import { RecommendationsPage } from './CommercialPages';
+import { SubmittedWeeklyUpdatesPanel } from './ManagerUpdatesPage';
 import {
   atlas,
   format,
@@ -1289,6 +1290,7 @@ export function CfoViewPage() {
           </LineChart>
         </ChartWrapper>
       </Panel>
+      <SubmittedWeeklyUpdatesPanel detailBasePath="/executive/weekly-updates" />
     </>
   );
 }

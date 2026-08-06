@@ -27,6 +27,7 @@ import {
 } from '../data/atlas';
 import { useAtlas } from '../state/AtlasContext';
 import type { ExecutiveDecisionAction } from '../state/executive';
+import { SubmittedWeeklyUpdatesPanel } from './ManagerUpdatesPage';
 
 const decisionLabels: Record<ExecutiveDecisionAction, string> = {
   approve: 'Approve',
@@ -271,6 +272,8 @@ export function ExecutiveDashboard() {
           compressor restoration, integrity access and liquidity protection.
         </p>
       </Panel>
+
+      <SubmittedWeeklyUpdatesPanel detailBasePath="/executive/weekly-updates" />
 
       <Drawer
         title={selectedRisk?.description ?? ''}

@@ -173,9 +173,14 @@ export default function CommercialReportingPage() {
         title="Reporting"
         description="What has been submitted, what needs review, and what report should be generated?"
         controls={
-          <Button variant="secondary" onClick={() => navigate('/reviews/weekly-update')}>
-            Create my Weekly Update
-          </Button>
+          <div className="form-actions">
+            <Button variant="secondary" onClick={() => navigate('/reviews/my-submissions')}>
+              My submissions
+            </Button>
+            <Button variant="secondary" onClick={() => navigate('/reviews/weekly-update')}>
+              Create my Weekly Update
+            </Button>
+          </div>
         }
       />
       <DetailTabs

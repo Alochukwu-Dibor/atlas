@@ -33,6 +33,14 @@ export interface ManagerAttachment {
   error?: string;
 }
 
+export interface ManagerUpdateComment {
+  id: string;
+  authorId: string;
+  authorRole: 'department_manager' | 'commercial_manager' | 'ceo' | 'cfo';
+  comment: string;
+  timestamp: string;
+}
+
 export interface ManagerWeeklyUpdate {
   id: string;
   creatorId: string;
@@ -47,20 +55,23 @@ export interface ManagerWeeklyUpdate {
   savedAt: string;
   submittedAt: string | null;
   visibleToRoles: ('commercial_manager' | 'ceo' | 'cfo')[];
+  comments: ManagerUpdateComment[];
 }
 
 export interface ManagerUpdatesState {
-  version: 1;
+  version: 2;
   updates: ManagerWeeklyUpdate[];
   lastError: string | null;
 }
 
 export type ManagerUpdatesAction =
   | { type: 'UPSERT_UPDATE'; update: ManagerWeeklyUpdate }
+  | { type: 'ADD_COMMENT'; updateId: string; comment: ManagerUpdateComment }
   | { type: 'RESET' }
   | { type: 'CLEAR_ERROR' };
 
 export const managerUpdatesStorageKey = 'atlas.manager-updates.v1';
+export const managerPrototypeNow = '2026-08-03T12:00:00+01:00';
 
 export const projectAssignments: ProjectAssignment[] = [
   {
@@ -149,12 +160,21 @@ function initialUpdates(): ManagerWeeklyUpdate[] {
       savedAt: '2026-07-28T11:10:00+01:00',
       submittedAt: '2026-07-28T11:10:00+01:00',
       visibleToRoles: ['commercial_manager', 'ceo', 'cfo'],
+      comments: [
+        {
+          id: 'comment_integrity_w30_commercial',
+          authorId: 'usr_commercial',
+          authorRole: 'commercial_manager',
+          comment: 'Please confirm whether the community access date is now firm.',
+          timestamp: '2026-07-29T09:15:00+01:00',
+        },
+      ],
     },
   ];
 }
 
 export function createInitialManagerUpdatesState(): ManagerUpdatesState {
-  return { version: 1, updates: initialUpdates(), lastError: null };
+  return { version: 2, updates: initialUpdates(), lastError: null };
 }
 
 export function loadManagerUpdatesState(): ManagerUpdatesState {
@@ -162,8 +182,17 @@ export function loadManagerUpdatesState(): ManagerUpdatesState {
   try {
     const stored = window.localStorage.getItem(managerUpdatesStorageKey);
     if (!stored) return createInitialManagerUpdatesState();
-    const parsed = JSON.parse(stored) as ManagerUpdatesState;
-    return parsed.version === 1 ? parsed : createInitialManagerUpdatesState();
+    const parsed = JSON.parse(stored) as
+      ManagerUpdatesState | (Omit<ManagerUpdatesState, 'version'> & { version: 1 });
+    if (parsed.version === 2) return parsed;
+    if (parsed.version === 1) {
+      return {
+        ...parsed,
+        version: 2,
+        updates: parsed.updates.map((update) => ({ ...update, comments: [] })),
+      };
+    }
+    return createInitialManagerUpdatesState();
   } catch {
     return createInitialManagerUpdatesState();
   }
@@ -175,6 +204,21 @@ export function managerUpdatesReducer(
 ): ManagerUpdatesState {
   if (action.type === 'RESET') return createInitialManagerUpdatesState();
   if (action.type === 'CLEAR_ERROR') return { ...state, lastError: null };
+  if (action.type === 'ADD_COMMENT') {
+    const update = state.updates.find((item) => item.id === action.updateId);
+    if (!update || update.status !== 'submitted' || !action.comment.comment.trim()) {
+      return { ...state, lastError: 'Comments are available only on submitted updates.' };
+    }
+    return {
+      ...state,
+      updates: state.updates.map((item) =>
+        item.id === action.updateId
+          ? { ...item, comments: [...item.comments, action.comment] }
+          : item,
+      ),
+      lastError: null,
+    };
+  }
   const duplicate = state.updates.find(
     (update) =>
       update.creatorId === action.update.creatorId &&
@@ -205,7 +249,12 @@ export function selectAssignedProjectIds(userId: string) {
 export function selectManagerUpdates(state: ManagerUpdatesState, creatorId: string) {
   return state.updates
     .filter((update) => update.creatorId === creatorId)
-    .sort((a, b) => b.savedAt.localeCompare(a.savedAt));
+    .sort((a, b) => {
+      const periodDifference = getPeriodEnd(b.reportingPeriodId).localeCompare(
+        getPeriodEnd(a.reportingPeriodId),
+      );
+      return periodDifference || b.savedAt.localeCompare(a.savedAt);
+    });
 }
 
 export function selectVisibleSubmittedUpdates(
@@ -222,4 +271,71 @@ export function extractChartValues(highlights: string) {
     label: `Value ${index + 1}`,
     value: Number(value.replaceAll(',', '')),
   }));
+}
+
+function getPeriodEnd(periodId: string) {
+  return atlas.reportingCycles.find((cycle) => cycle.id === periodId)?.endDate ?? '';
+}
+
+export function isUpdatePastDeadline(
+  update: Pick<ManagerWeeklyUpdate, 'reportingDeadline'>,
+  now = managerPrototypeNow,
+) {
+  return now.slice(0, 10) > update.reportingDeadline;
+}
+
+export function canViewDraft(update: ManagerWeeklyUpdate, userId: string) {
+  return (
+    update.status === 'draft' &&
+    update.creatorId === userId &&
+    selectAssignedProjectIds(userId).includes(update.projectId)
+  );
+}
+
+export function canViewUpdate(
+  update: ManagerWeeklyUpdate,
+  userId: string,
+  role: 'department_manager' | 'commercial_manager' | 'ceo' | 'cfo',
+) {
+  if (canViewDraft(update, userId)) return true;
+  if (update.status !== 'submitted') return false;
+  if (update.creatorId === userId && selectAssignedProjectIds(userId).includes(update.projectId)) {
+    return true;
+  }
+  if (!update.visibleToRoles.includes(role as 'commercial_manager' | 'ceo' | 'cfo')) return false;
+  if (role === 'commercial_manager') {
+    return selectAssignedProjectIds(userId).includes(update.projectId);
+  }
+  return role === 'ceo' || role === 'cfo';
+}
+
+export function canEditUpdate(
+  update: ManagerWeeklyUpdate,
+  userId: string,
+  role: 'department_manager' | 'commercial_manager' | 'ceo' | 'cfo',
+  now = managerPrototypeNow,
+) {
+  return (
+    update.creatorId === userId &&
+    (role === 'department_manager' || role === 'commercial_manager') &&
+    selectAssignedProjectIds(userId).includes(update.projectId) &&
+    !isUpdatePastDeadline(update, now)
+  );
+}
+
+export function canResubmitUpdate(
+  update: ManagerWeeklyUpdate,
+  userId: string,
+  role: 'department_manager' | 'commercial_manager' | 'ceo' | 'cfo',
+  now = managerPrototypeNow,
+) {
+  return update.status === 'submitted' && canEditUpdate(update, userId, role, now);
+}
+
+export function canCommentOnUpdate(
+  update: ManagerWeeklyUpdate,
+  userId: string,
+  role: 'department_manager' | 'commercial_manager' | 'ceo' | 'cfo',
+) {
+  return update.status === 'submitted' && canViewUpdate(update, userId, role);
 }

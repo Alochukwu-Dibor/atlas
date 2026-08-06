@@ -3309,6 +3309,74 @@ tr.is-clickable:hover {
   font-style: normal;
 }
 
+.submission-history-tools {
+  max-width: 420px;
+  margin-bottom: 20px;
+}
+
+.submission-status-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.submission-status-cell small {
+  color: var(--atlas-text-secondary);
+}
+
+.table-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 20px;
+  color: var(--atlas-text-secondary);
+}
+
+.manager-comment-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.manager-comment-list li {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--atlas-border);
+}
+
+.manager-comment-list li:first-child {
+  padding-top: 0;
+}
+
+.manager-comment-list li > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: baseline;
+}
+
+.manager-comment-list li > div span,
+.manager-comment-list time {
+  color: var(--atlas-text-secondary);
+  font-size: 13px;
+}
+
+.manager-comment-list p {
+  margin: 8px 0 0;
+}
+
+.manager-comment-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.manager-comment-form .button {
+  justify-self: end;
+}
+
 @media (max-width: 900px) {
   .manager-update-context .form-grid,
   .manager-update-sections,
@@ -3331,6 +3399,11 @@ tr.is-clickable:hover {
   .manager-attachment-list .button {
     grid-column: 2;
     justify-self: start;
+  }
+
+  .table-pagination {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 

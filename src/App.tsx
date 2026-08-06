@@ -76,6 +76,7 @@ export function App() {
             <Route path="projects" element={<CommercialProjectsPage />} />
             <Route path="projects/:projectId" element={<CommercialProjectsPage />} />
             <Route path="reviews" element={<CommercialReportingPage />} />
+            <Route path="reviews/my-submissions" element={<ManagerSubmissionsPage />} />
             <Route path="reviews/weekly-update" element={<ManagerWeeklyUpdatesPage />} />
             <Route path="reviews/weekly-updates/:id" element={<ManagerSubmissionDetailPage />} />
             <Route path="reviews/:id" element={<CommercialReviewPage />} />

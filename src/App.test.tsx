@@ -5,6 +5,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { App } from './App';
 import { AtlasProvider } from './state/AtlasContext';
 import {
+  createInitialManagerUpdatesState,
+  managerUpdatesReducer,
+  managerUpdatesStorageKey,
+  type ManagerWeeklyUpdate,
+} from './state/managerUpdates';
+import {
   getApprovedPlanFixtureFile,
   initialPlanState,
   planReducer,
@@ -25,6 +31,35 @@ function seedConfirmedPlan() {
     now: '2026-08-06T10:00:00+01:00',
   });
   window.localStorage.setItem(planStorageKey, JSON.stringify(state));
+}
+
+function seedPrivateManagerDraft() {
+  const update: ManagerWeeklyUpdate = {
+    id: 'private_manager_draft',
+    creatorId: 'usr_operations',
+    departmentId: 'dept_operations',
+    projectId: 'prj_compressor',
+    reportingPeriodId: 'cycle_2026_w31',
+    reportingDeadline: '2026-08-04',
+    sections: {
+      highlights: 'Private draft highlight.',
+      ongoingActivities: '',
+      risks: '',
+      plansForWeek: '',
+    },
+    chart: null,
+    attachments: [],
+    status: 'draft',
+    savedAt: '2026-08-03T12:01:00+01:00',
+    submittedAt: null,
+    visibleToRoles: [],
+    comments: [],
+  };
+  const state = managerUpdatesReducer(createInitialManagerUpdatesState(), {
+    type: 'UPSERT_UPDATE',
+    update,
+  });
+  window.localStorage.setItem(managerUpdatesStorageKey, JSON.stringify(state));
 }
 
 afterEach(() => {
@@ -478,7 +513,7 @@ describe('route architecture', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Save as Draft' }));
     await user.click(screen.getByRole('link', { name: 'Submissions' }));
-    const draft = await screen.findByRole('row', { name: /Draft Continue editing/ });
+    const draft = await screen.findByRole('row', { name: /Not submitted Draft/ });
     await user.click(draft);
     await user.click(screen.getByRole('button', { name: 'Continue editing' }));
     expect(await screen.findByLabelText('Highlights from the Previous Week')).toHaveValue(
@@ -531,6 +566,19 @@ describe('route architecture', () => {
     await user.click(screen.getByRole('button', { name: 'View Submission' }));
     expect(await screen.findByText('compressor-status.pdf')).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Generated Chart' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Edit and resubmit' }));
+    expect(await screen.findByRole('button', { name: 'Resubmit Update' })).toBeVisible();
+    await user.clear(screen.getByLabelText('Ongoing Activities'));
+    await user.type(
+      screen.getByLabelText('Ongoing Activities'),
+      'Rotor installation and alignment are now complete.',
+    );
+    await user.click(screen.getByRole('button', { name: 'Resubmit Update' }));
+    expect(await screen.findByRole('heading', { name: 'Weekly Update resubmitted' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'View Submission' }));
+    expect(
+      await screen.findByText('Rotor installation and alignment are now complete.'),
+    ).toBeVisible();
   });
 
   it('blocks creation in a closed Manager reporting period', async () => {
@@ -570,6 +618,150 @@ describe('route architecture', () => {
     expect(screen.getByLabelText('Ongoing Activities')).toBeVisible();
     expect(screen.getByLabelText('Risks')).toBeVisible();
     expect(screen.getByLabelText('Plans for the Week')).toBeVisible();
+  });
+
+  it('keeps a Commercial Manager draft private while listing it in My submissions', async () => {
+    const user = userEvent.setup();
+    seedConfirmedPlan();
+    render(
+      <MemoryRouter initialEntries={['/reviews']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    await user.click(await screen.findByRole('button', { name: 'Create my Weekly Update' }));
+    await user.type(
+      await screen.findByLabelText('Highlights from the Previous Week'),
+      'Commercial close-out reached 92% this week.',
+    );
+    await user.click(screen.getByRole('button', { name: 'Save as Draft' }));
+    await user.click(screen.getByRole('link', { name: 'Reporting' }));
+    await user.click(await screen.findByRole('button', { name: 'My submissions' }));
+    const table = await screen.findByRole('table', { name: 'Manager Weekly Update submissions' });
+    expect(within(table).getByText('Not submitted')).toBeVisible();
+    expect(within(table).getByText('Draft')).toBeVisible();
+    await user.click(within(table).getByRole('row', { name: /Not submitted Draft/ }));
+    expect(await screen.findByText('Commercial close-out reached 92% this week.')).toBeVisible();
+    expect(
+      screen.getByText('Discussion becomes available after this draft is submitted.'),
+    ).toBeVisible();
+  });
+
+  it('lets a Commercial Manager view, comment on and open the project for a submitted Manager update', async () => {
+    const user = userEvent.setup();
+    seedConfirmedPlan();
+    render(
+      <MemoryRouter initialEntries={['/reviews']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    const submittedTable = await screen.findByRole('table', {
+      name: 'Submitted Manager Weekly Updates',
+    });
+    await user.click(within(submittedTable).getByRole('row', { name: /Ughelli/ }));
+    expect(await screen.findByRole('heading', { name: 'Comments & Responses' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Open related project' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Post comment' }));
+    expect(screen.getByText('Enter a comment or response.')).toBeVisible();
+    await user.type(screen.getByRole('textbox'), 'Confirm the revised access date.');
+    await user.click(screen.getByRole('button', { name: 'Post comment' }));
+    expect(screen.getByText('Confirm the revised access date.')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Edit and resubmit' })).not.toBeInTheDocument();
+  });
+
+  it('lets CEO and CFO view and discuss the same submitted update without edit access', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={['/commercial']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    await user.selectOptions(screen.getByLabelText('Active demo persona'), 'usr_ceo');
+    const executiveUpdates = await screen.findByRole('table', {
+      name: 'Submitted Weekly Updates available to executives',
+    });
+    await user.click(within(executiveUpdates).getByRole('row', { name: /Ughelli/ }));
+    expect(await screen.findByLabelText('Add a comment')).toBeVisible();
+    await user.type(screen.getByLabelText('Add a comment'), 'CEO: confirm intervention owner.');
+    await user.click(screen.getByRole('button', { name: 'Post comment' }));
+    expect(screen.getByText('CEO: confirm intervention owner.')).toBeVisible();
+    expect(screen.queryByRole('button', { name: /resubmit/i })).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText('Active demo persona'), 'usr_cfo');
+    const cfoUpdates = await screen.findByRole('table', {
+      name: 'Submitted Weekly Updates available to executives',
+    });
+    await user.click(within(cfoUpdates).getByRole('row', { name: /Ughelli/ }));
+    expect(await screen.findByText('CEO: confirm intervention owner.')).toBeVisible();
+    expect(screen.queryByRole('button', { name: /resubmit/i })).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText('Active demo persona'), 'manager');
+    await user.selectOptions(screen.getByLabelText('Department workspace'), 'dept_projects');
+    await user.click(screen.getByRole('link', { name: 'Submissions' }));
+    const managerHistory = await screen.findByRole('table', {
+      name: 'Manager Weekly Update submissions',
+    });
+    await user.click(within(managerHistory).getByRole('row', { name: /Ughelli/ }));
+    expect(await screen.findByText('CEO: confirm intervention owner.')).toBeVisible();
+    await user.type(
+      screen.getByLabelText('Add a response'),
+      'Manager: intervention owner is Chinedu Nwosu.',
+    );
+    await user.click(screen.getByRole('button', { name: 'Post response' }));
+    expect(screen.getByText('Manager: intervention owner is Chinedu Nwosu.')).toBeVisible();
+  });
+
+  it('keeps deadline-locked content read only while allowing the Manager to respond', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={['/commercial']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    await user.selectOptions(screen.getByLabelText('Active demo persona'), 'manager');
+    await user.selectOptions(screen.getByLabelText('Department workspace'), 'dept_projects');
+    await user.click(screen.getByRole('link', { name: 'Submissions' }));
+    const history = await screen.findByRole('table', { name: 'Manager Weekly Update submissions' });
+    await user.click(within(history).getByRole('row', { name: /Ughelli/ }));
+    expect(
+      await screen.findByText('This submission is view only, but its discussion remains open.'),
+    ).toBeVisible();
+    expect(screen.queryByRole('button', { name: /resubmit/i })).not.toBeInTheDocument();
+    await user.type(
+      screen.getByLabelText('Add a response'),
+      'Access meeting is confirmed for Friday.',
+    );
+    await user.click(screen.getByRole('button', { name: 'Post response' }));
+    expect(screen.getByText('Access meeting is confirmed for Friday.')).toBeVisible();
+  });
+
+  it('distinguishes unknown submissions from permission failures and never exposes another Manager draft', async () => {
+    seedPrivateManagerDraft();
+    const { unmount } = render(
+      <MemoryRouter initialEntries={['/reviews/weekly-updates/private_manager_draft']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole('heading', { name: 'Submission unavailable' })).toBeVisible();
+    expect(screen.queryByText('Private draft highlight.')).not.toBeInTheDocument();
+    unmount();
+    render(
+      <MemoryRouter initialEntries={['/reviews/weekly-updates/not-a-submission']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole('heading', { name: 'Submission not found' })).toBeVisible();
   });
 
   it('renders Reporting with exactly the Submissions and Reports tabs', async () => {

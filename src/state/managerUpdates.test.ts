@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
+  canCommentOnUpdate,
+  canEditUpdate,
+  canResubmitUpdate,
+  canViewDraft,
+  canViewUpdate,
   createInitialManagerUpdatesState,
   extractChartValues,
   managerUpdatesReducer,
   selectAssignedProjectIds,
   selectManagerUpdates,
   selectVisibleSubmittedUpdates,
+  isUpdatePastDeadline,
   type ManagerWeeklyUpdate,
 } from './managerUpdates';
 
@@ -30,6 +36,7 @@ function draft(overrides: Partial<ManagerWeeklyUpdate> = {}): ManagerWeeklyUpdat
     submittedAt: null,
     visibleToRoles: [],
     ...overrides,
+    comments: overrides.comments ?? [],
   };
 }
 
@@ -75,6 +82,56 @@ describe('Manager Weekly Update state', () => {
     expect(selectVisibleSubmittedUpdates(state, 'commercial_manager')[0].id).toBe(draft().id);
     expect(selectVisibleSubmittedUpdates(state, 'ceo')[0].id).toBe(draft().id);
     expect(selectVisibleSubmittedUpdates(state, 'cfo')[0].id).toBe(draft().id);
+  });
+
+  it('applies creator, project, role, status and deadline permissions centrally', () => {
+    const privateDraft = draft();
+    expect(canViewDraft(privateDraft, 'usr_operations')).toBe(true);
+    expect(canViewUpdate(privateDraft, 'usr_commercial', 'commercial_manager')).toBe(false);
+    expect(canCommentOnUpdate(privateDraft, 'usr_operations', 'department_manager')).toBe(false);
+
+    const submitted = draft({
+      status: 'submitted',
+      submittedAt: '2026-08-03T12:05:00+01:00',
+      visibleToRoles: ['commercial_manager', 'ceo', 'cfo'],
+    });
+    expect(canViewUpdate(submitted, 'usr_commercial', 'commercial_manager')).toBe(true);
+    expect(canViewUpdate(submitted, 'usr_ceo', 'ceo')).toBe(true);
+    expect(canEditUpdate(submitted, 'usr_ceo', 'ceo')).toBe(false);
+    expect(canResubmitUpdate(submitted, 'usr_operations', 'department_manager')).toBe(true);
+    expect(canCommentOnUpdate(submitted, 'usr_operations', 'department_manager')).toBe(true);
+    expect(isUpdatePastDeadline(submitted)).toBe(false);
+
+    const expired = draft({ reportingDeadline: '2026-08-02', status: 'submitted' });
+    expect(isUpdatePastDeadline(expired)).toBe(true);
+    expect(canEditUpdate(expired, 'usr_operations', 'department_manager')).toBe(false);
+    expect(canCommentOnUpdate(expired, 'usr_operations', 'department_manager')).toBe(true);
+  });
+
+  it('persists non-empty discussion comments without changing submitted content', () => {
+    const submitted = draft({
+      status: 'submitted',
+      submittedAt: '2026-08-03T12:05:00+01:00',
+      visibleToRoles: ['commercial_manager', 'ceo', 'cfo'],
+    });
+    let state = managerUpdatesReducer(createInitialManagerUpdatesState(), {
+      type: 'UPSERT_UPDATE',
+      update: submitted,
+    });
+    state = managerUpdatesReducer(state, {
+      type: 'ADD_COMMENT',
+      updateId: submitted.id,
+      comment: {
+        id: 'comment_1',
+        authorId: 'usr_commercial',
+        authorRole: 'commercial_manager',
+        comment: 'Confirm the revised delivery date.',
+        timestamp: '2026-08-03T12:10:00+01:00',
+      },
+    });
+    const saved = state.updates.find((update) => update.id === submitted.id)!;
+    expect(saved.comments).toHaveLength(1);
+    expect(saved.sections).toEqual(submitted.sections);
   });
 
   it('derives deterministic chart values from numeric Highlights content', () => {
