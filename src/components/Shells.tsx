@@ -110,8 +110,17 @@ function DepartmentControl() {
 }
 
 function ScenarioOutlet() {
-  const { scenarioId, resetDemo } = useAtlas();
+  const { plan, role, scenarioId, resetDemo } = useAtlas();
   const location = useLocation();
+  if (!plan.confirmedPlan && (role === 'ceo' || role === 'cfo')) {
+    return (
+      <StateView
+        type="empty"
+        title="No confirmed plan data"
+        message="A Commercial Manager must confirm an approved plan before executive data is available."
+      />
+    );
+  }
   if (scenarioId === 'processing') {
     return (
       <StateView

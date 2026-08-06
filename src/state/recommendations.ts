@@ -52,7 +52,8 @@ export type RecommendationAction =
     }
   | { type: 'APPROVE_RECOMMENDATION'; id: string; actorId: string; now: string }
   | { type: 'CLEAR_ERROR' }
-  | { type: 'RESET' };
+  | { type: 'RESET' }
+  | { type: 'CLEAR_ALL' };
 
 export const recommendationStorageKey = 'atlas.commercial.recommendations.v1';
 
@@ -88,6 +89,7 @@ export function recommendationReducer(
   action: RecommendationAction,
 ): RecommendationState {
   if (action.type === 'RESET') return createInitialRecommendationState();
+  if (action.type === 'CLEAR_ALL') return { version: 1, items: [], auditEvents: [] };
   if (action.type === 'CLEAR_ERROR') return { ...state, error: undefined };
 
   if (action.type === 'CREATE_RECOMMENDATION') {

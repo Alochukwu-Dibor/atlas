@@ -1,24 +1,21 @@
 # Atlas functional front-end prototype
 
-Atlas is the completed front-end prototype for synthetic OML 30 executive reporting. It connects Department Manager reporting, Commercial review and publication, performance modules, and CEO decisions through one typed, fixture-driven state model.
+Atlas is a functional front-end prototype for synthetic OML 30 plan tracking and weekly reporting. It connects one shared Manager update workflow with Commercial review and CEO/CFO visibility through typed, fixture-driven state.
 
 > All operational, financial, HSE, and legal figures in this repository are synthetic and do not represent Shoreline Natural Resources’ actual performance.
 
 ## Completed scope
 
-- Strict TypeScript React/Vite application with role-aware Department, Commercial/module, and CEO shells.
-- Phase 1 decision-intelligence foundation: approved business plan, linked execution entities, Weekly Execution Updates, CFO persona, Outputs, Decision Support, evidence, and revision history.
-- Phase 2 contributor and review workflow: structured weekly execution content, operational activities, commitment outcomes and revisions, contextual evidence, clarifications, table-led Commercial Reviews, rejection, and approval.
-- All ten specified routes and their locked desktop/responsive structures, plus the approved Commercial Projects and Recommendations workspaces.
-- Exactly four Department input methods, repeatable multi-source entry, deterministic extraction states, conflicts, source lineage, corrections, certification, clarification, resubmission, override, and approval.
-- Commercial readiness, executive-narrative preview, controlled publication exceptions, publication gate, CEO notification simulation, immutable published cycles, and separate post-publication revisions.
-- CEO production, cash, HSE, legal, recommendation, decision, and assignment experiences.
-- Closed-loop assigned-action inboxes with owner, due date, progress status, note, and audit event.
-- Production, Finance, HSE, and Legal & Regulatory charts, accessible data tables, filters, evidence drawers, and synthetic export disclosures.
+- Strict TypeScript React/Vite application with role-aware Manager, Commercial and Executive shells.
+- Commercial Plan upload, deterministic extraction, editable review, validation and confirmed baseline persistence.
+- Commercial Dashboard, Projects and Reporting driven by the confirmed plan and shared reporting records.
+- Shared Manager Weekly Updates with drafts, attachments, deterministic charts, submission, resubmission, creator deletion and deadline locking.
+- Canonical cross-role submissions and discussions visible to authorised Commercial Manager, CEO and CFO personas.
+- CEO and CFO decision views, Outputs, accessible charts, evidence drawers and synthetic export disclosures.
 - Loading, empty, recoverable error, no-access, processing, conflict, read-only, and locked states through deterministic scenarios and route permissions.
-- Device-local persistence and a confirmation-protected canonical reset.
+- Device-local persistence and a confirmation-protected **Reset Atlas** action that clears the plan and cross-role workflow data.
 
-See [PHASE_2_AUDIT.md](./PHASE_2_AUDIT.md) for the current IA-refinement audit. [PHASE_1_AUDIT.md](./PHASE_1_AUDIT.md), [FINAL_ACCEPTANCE.md](./FINAL_ACCEPTANCE.md), and [BUILD_AUDIT.md](./BUILD_AUDIT.md) retain earlier acceptance records.
+See the latest Manager and Commercial build audits for verified route and workflow results. Earlier phase files remain historical acceptance records.
 
 ## Run locally
 
@@ -39,36 +36,38 @@ Use the Vite framework preset with `npm run build` and the `dist` output directo
 
 Use the persona selector to switch among:
 
-- Commercial Manager — Business Overview, Execution, Projects, Reviews, Decisions, Outputs, and configuration.
-- CEO — validated CEO View, Decisions, Outputs, and existing executive actions.
+- Commercial Manager — Dashboard, Plan, Projects and Reporting. Reporting contains Submissions and Reports.
+- Manager — one shared Weekly Updates and Submissions workspace; department changes assignment context without changing the interface.
+- CEO — validated CEO View, Decisions, Outputs and shared submitted-update discussions.
 - CFO — shared-data CFO View, Decisions, and Outputs.
-- Department Managers — select any of the eight reporting departments and use department-matched structured fields, extracted fixtures, returned actions, locked reports, and revisions.
 
-Scenarios include canonical, empty, processing, conflict, and ready-to-publish states. The ready-to-publish scenario deterministically supplies approved mandatory reports. Reset demo asks for confirmation before clearing all device-local changes.
+Managers and Commercial Managers can draft and submit the same Weekly Update structure. Submitted updates use one canonical record across Manager, Commercial Manager, CEO and CFO views; comments share that record, resubmission replaces it, and the creator may delete it. After the reporting deadline, content is read-only while comments remain open.
+
+Scenarios include canonical, empty, processing, conflict, and ready-to-publish states. **Restore canonical data** restores deterministic fixtures for scenario recovery. **Reset Atlas** is available from a confirmed Plan and clears all device-local plan, workflow, submission, discussion, recommendation and decision data so the walkthrough restarts at plan upload.
 
 ## Routes
 
-| Route                     | Workspace                                 |
-| ------------------------- | ----------------------------------------- |
-| `/commercial`             | Commercial Business Overview              |
-| `/execution`              | Business-plan objective execution         |
-| `/projects`               | Projects                                  |
-| `/reviews`                | Weekly Execution Update review queue      |
-| `/reviews/:id`            | Update Review                             |
-| `/decisions`              | Commercial Decisions and Decision Support |
-| `/outputs`                | Commercial Outputs                        |
-| `/kpi-library`            | KPI Library                               |
-| `/reporting-templates`    | Reporting Templates                       |
-| `/settings`               | Prototype Settings                        |
-| `/department`             | Contributor My Updates                    |
-| `/department/reports/new` | Contributor Submit Update                 |
-| `/department/reports/:id` | Weekly Execution Update review/revision   |
-| `/executive`              | CEO View                                  |
-| `/executive/cfo`          | CFO View                                  |
-| `/executive/decisions`    | Executive Decisions                       |
-| `/executive/outputs`      | Executive Outputs                         |
+| Route                           | Workspace                                                 |
+| ------------------------------- | --------------------------------------------------------- |
+| `/commercial`                   | Commercial Dashboard                                      |
+| `/plan`                         | Approved-plan upload, extraction, review and confirmation |
+| `/projects`                     | Commercial Projects                                       |
+| `/projects/:projectId`          | Full-page project workspace                               |
+| `/reviews`                      | Commercial Reporting: Submissions and Reports             |
+| `/reviews/:id`                  | Full-page Commercial review                               |
+| `/reviews/weekly-update`        | Commercial Manager participation in shared Weekly Updates |
+| `/reviews/my-submissions`       | Commercial Manager's own Weekly Updates                   |
+| `/reviews/weekly-updates/:id`   | Full-page submitted Weekly Update and discussion          |
+| `/manager/weekly-updates`       | Shared Manager Weekly Updates                             |
+| `/manager/submissions`          | Shared Manager Submissions                                |
+| `/manager/submissions/:id`      | Full-page Manager submission and discussion               |
+| `/executive`                    | CEO View                                                  |
+| `/executive/cfo`                | CFO View                                                  |
+| `/executive/decisions`          | Executive Decisions                                       |
+| `/executive/outputs`            | Executive Outputs                                         |
+| `/executive/weekly-updates/:id` | Executive submitted-update detail and shared discussion   |
 
-The legacy `/commercial/review/:id`, `/recommendations`, `/production`, `/finance`, `/hse`, and `/legal` routes remain available while later phases migrate their detailed content.
+Legacy `/department` and `/department/reports/*` URLs redirect to the shared Manager routes; they do not render a department-specific Manager interface.
 
 ## Verification
 
@@ -81,17 +80,18 @@ npm run build
 npm audit --omit=dev
 ```
 
-The Phase 2 suite passes formatting, lint, strict typecheck, 45 tests, and production build. See the current audit for deferred detailed IA work.
+Run the commands above after changes; current exact results are recorded in the latest build audit.
 
 ## Architecture
 
 - `src/data/types.ts` — explicit planning, execution, decision, evidence, output, and history domain contracts.
 - `src/data/atlas.ts` — typed fixture graph, selectors, status semantics, and formatters.
-- `src/state/AtlasContext.tsx` — shared persona, context, scenarios, persistence, and reset.
+- `src/state/AtlasContext.tsx` — shared persona, context, scenarios, persistence, fixture restore and destructive reset.
+- `src/state/managerUpdates.ts` — canonical Manager/Commercial Weekly Updates, comments, permissions, deadlines, resubmission and deletion.
 - `src/state/workflow.ts` — Weekly Execution Updates, commitments, clarifications, Commercial review, publication, lock, revision, and audit state machine.
 - `src/state/executive.ts` — decisions, assignments, progress, persistence, and audit state.
 - `src/components/` — shells, design-system primitives, accessible charts, drawers, and dialogs.
-- `src/pages/` — architecture, contributor, review, executive, and performance route implementations.
+- `src/pages/` — plan, Manager, Commercial review, project and Executive route implementations.
 - `src/styles.css` — Atlas design tokens and locked desktop/responsive layout rules.
 
 No backend, live authentication, live AI/OCR, regulator submission, external-system integration, or deployment is included.

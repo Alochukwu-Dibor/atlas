@@ -47,7 +47,8 @@ export type ExecutiveAction =
       actorId: string;
     }
   | { type: 'CLEAR_ERROR' }
-  | { type: 'RESET' };
+  | { type: 'RESET' }
+  | { type: 'CLEAR_ALL' };
 
 export const executiveStorageKey = 'atlas.executive.v2';
 const prototypeTimestamp = '2026-08-01T09:00:00+01:00';
@@ -81,6 +82,7 @@ export function createInitialExecutiveState(): ExecutiveState {
 
 export function executiveReducer(state: ExecutiveState, action: ExecutiveAction): ExecutiveState {
   if (action.type === 'RESET') return createInitialExecutiveState();
+  if (action.type === 'CLEAR_ALL') return { version: 2, decisions: [], auditEvents: [] };
   if (action.type === 'CLEAR_ERROR') return { ...state, error: undefined };
   if (action.type === 'UPDATE_ACTION_PROGRESS') {
     const decision = state.decisions.find((item) => item.id === action.decisionId);

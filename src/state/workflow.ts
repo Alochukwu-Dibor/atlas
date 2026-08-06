@@ -689,6 +689,7 @@ function audit(
 export type WorkflowAction =
   | { type: 'CLEAR_ERROR' }
   | { type: 'RESET' }
+  | { type: 'CLEAR_ALL' }
   | {
       type: 'UPDATE_REPORT_DETAILS';
       reportId: string;
@@ -767,6 +768,21 @@ function updateReport(
 
 export function workflowReducer(state: WorkflowState, action: WorkflowAction): WorkflowState {
   if (action.type === 'RESET') return createInitialWorkflowState();
+  if (action.type === 'CLEAR_ALL') {
+    return {
+      version: 5,
+      reports: [],
+      commitments: [],
+      sources: [],
+      comments: [],
+      reminders: [],
+      corrections: [],
+      overrides: [],
+      auditEvents: [],
+      publications: [],
+      lastError: null,
+    };
+  }
   if (action.type === 'CLEAR_ERROR') return { ...state, lastError: null };
 
   if (action.type === 'ADD_REVIEW_COMMENT') {

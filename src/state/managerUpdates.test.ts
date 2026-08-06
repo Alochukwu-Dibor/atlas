@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   canCommentOnUpdate,
+  canDeleteUpdate,
   canEditUpdate,
   canResubmitUpdate,
   canViewDraft,
@@ -132,6 +133,39 @@ describe('Manager Weekly Update state', () => {
     const saved = state.updates.find((update) => update.id === submitted.id)!;
     expect(saved.comments).toHaveLength(1);
     expect(saved.sections).toEqual(submitted.sections);
+  });
+
+  it('lets only the creator delete a submitted update and removes the canonical record', () => {
+    const submitted = draft({
+      status: 'submitted',
+      submittedAt: '2026-08-03T12:05:00+01:00',
+      visibleToRoles: ['commercial_manager', 'ceo', 'cfo'],
+    });
+    let state = managerUpdatesReducer(createInitialManagerUpdatesState(), {
+      type: 'UPSERT_UPDATE',
+      update: submitted,
+    });
+    expect(canDeleteUpdate(submitted, 'usr_operations', 'department_manager')).toBe(true);
+    expect(canDeleteUpdate(submitted, 'usr_commercial', 'commercial_manager')).toBe(false);
+    state = managerUpdatesReducer(state, {
+      type: 'DELETE_UPDATE',
+      updateId: submitted.id,
+      actorId: 'usr_commercial',
+    });
+    expect(state.updates.some((update) => update.id === submitted.id)).toBe(true);
+    expect(state.lastError).toMatch(/only the creator/i);
+    state = managerUpdatesReducer(state, {
+      type: 'DELETE_UPDATE',
+      updateId: submitted.id,
+      actorId: 'usr_operations',
+    });
+    expect(state.updates.some((update) => update.id === submitted.id)).toBe(false);
+  });
+
+  it('clears every Manager update for a destructive Atlas reset', () => {
+    const state = managerUpdatesReducer(createInitialManagerUpdatesState(), { type: 'CLEAR_ALL' });
+    expect(state.updates).toEqual([]);
+    expect(state.lastError).toBeNull();
   });
 
   it('derives deterministic chart values from numeric Highlights content', () => {

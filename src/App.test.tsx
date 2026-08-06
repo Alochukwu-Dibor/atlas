@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -10,6 +10,9 @@ import {
   managerUpdatesStorageKey,
   type ManagerWeeklyUpdate,
 } from './state/managerUpdates';
+import { executiveStorageKey } from './state/executive';
+import { recommendationStorageKey } from './state/recommendations';
+import { workflowStorageKey } from './state/workflow';
 import {
   getApprovedPlanFixtureFile,
   initialPlanState,
@@ -192,6 +195,12 @@ describe('route architecture', () => {
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Continue and extract' })).toBeDisabled();
     expect(window.localStorage.getItem(planStorageKey)).toContain('"confirmedPlan":null');
+    await waitFor(() => {
+      expect(window.localStorage.getItem(managerUpdatesStorageKey)).toContain('"updates":[]');
+      expect(window.localStorage.getItem(executiveStorageKey)).toContain('"decisions":[]');
+      expect(window.localStorage.getItem(recommendationStorageKey)).toContain('"items":[]');
+      expect(window.localStorage.getItem(workflowStorageKey)).toContain('"reports":[]');
+    });
   });
 
   it('accepts and removes a supported approved-plan file', async () => {
@@ -408,6 +417,7 @@ describe('route architecture', () => {
 
   it('routes the CFO persona into the role-specific Executive workspace', async () => {
     const user = userEvent.setup();
+    seedConfirmedPlan();
     render(
       <MemoryRouter initialEntries={['/commercial']}>
         <AtlasProvider>
@@ -426,6 +436,7 @@ describe('route architecture', () => {
 
   it('keeps the CEO View focused on delivery, risk and intervention', async () => {
     const user = userEvent.setup();
+    seedConfirmedPlan();
     render(
       <MemoryRouter initialEntries={['/commercial']}>
         <AtlasProvider>
@@ -445,6 +456,7 @@ describe('route architecture', () => {
 
   it('preserves shared Decisions and Outputs for the Executive workspace', async () => {
     const user = userEvent.setup();
+    seedConfirmedPlan();
     render(
       <MemoryRouter initialEntries={['/commercial']}>
         <AtlasProvider>
@@ -462,6 +474,7 @@ describe('route architecture', () => {
 
   it('consolidates department managers into one Manager role and two-item navigation', async () => {
     const user = userEvent.setup();
+    seedConfirmedPlan();
     render(
       <MemoryRouter initialEntries={['/commercial']}>
         <AtlasProvider>
@@ -499,6 +512,7 @@ describe('route architecture', () => {
 
   it('saves and reopens a partial Manager Weekly Update draft', async () => {
     const user = userEvent.setup();
+    seedConfirmedPlan();
     render(
       <MemoryRouter initialEntries={['/commercial']}>
         <AtlasProvider>
@@ -524,6 +538,7 @@ describe('route architecture', () => {
 
   it('validates and submits the exact shared Manager Weekly Update sections with a chart and attachment', async () => {
     const user = userEvent.setup();
+    seedConfirmedPlan();
     render(
       <MemoryRouter initialEntries={['/commercial']}>
         <AtlasProvider>
@@ -583,6 +598,7 @@ describe('route architecture', () => {
 
   it('blocks creation in a closed Manager reporting period', async () => {
     const user = userEvent.setup();
+    seedConfirmedPlan();
     render(
       <MemoryRouter initialEntries={['/commercial']}>
         <AtlasProvider>
@@ -674,6 +690,7 @@ describe('route architecture', () => {
 
   it('lets CEO and CFO view and discuss the same submitted update without edit access', async () => {
     const user = userEvent.setup();
+    seedConfirmedPlan();
     render(
       <MemoryRouter initialEntries={['/commercial']}>
         <AtlasProvider>
@@ -718,6 +735,7 @@ describe('route architecture', () => {
 
   it('keeps deadline-locked content read only while allowing the Manager to respond', async () => {
     const user = userEvent.setup();
+    seedConfirmedPlan();
     render(
       <MemoryRouter initialEntries={['/commercial']}>
         <AtlasProvider>
@@ -740,6 +758,10 @@ describe('route architecture', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Post response' }));
     expect(screen.getByText('Access meeting is confirmed for Friday.')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Delete submission' }));
+    const deletion = screen.getByRole('dialog', { name: 'Delete submitted Weekly Update?' });
+    await user.click(within(deletion).getByRole('button', { name: 'Delete submission' }));
+    expect(await screen.findByRole('heading', { name: 'No Weekly Updates yet' })).toBeVisible();
   });
 
   it('distinguishes unknown submissions from permission failures and never exposes another Manager draft', async () => {
@@ -842,6 +864,7 @@ describe('route architecture', () => {
 
   it('prevents a Manager from accessing Commercial Reporting', async () => {
     const user = userEvent.setup();
+    seedConfirmedPlan();
     render(
       <MemoryRouter initialEntries={['/reviews']}>
         <AtlasProvider>

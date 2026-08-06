@@ -72,6 +72,7 @@ interface AtlasState {
   setDepartmentId: (id: string) => void;
   setScenarioId: (id: ScenarioId) => void;
   resetDemo: () => void;
+  resetAtlas: () => void;
 }
 
 const AtlasContext = createContext<AtlasState | null>(null);
@@ -180,6 +181,24 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
         recommendationDispatch({ type: 'RESET' });
         planDispatch({ type: 'RESET' });
         managerUpdatesDispatch({ type: 'RESET' });
+      },
+      resetAtlas: () => {
+        setAssetId(atlas.organisation.defaultAssetId);
+        setBusinessUnitId(atlas.businessUnits[0].id);
+        setPlanningPeriodId(atlas.planningPeriods[0].id);
+        setCycleId(defaults.defaultOpenCycleId);
+        setDepartmentId('dept_operations');
+        setScenarioState('canonical');
+        window.localStorage.removeItem(workflowStorageKey);
+        window.localStorage.removeItem(executiveStorageKey);
+        window.localStorage.removeItem(recommendationStorageKey);
+        window.localStorage.removeItem(planStorageKey);
+        window.localStorage.removeItem(managerUpdatesStorageKey);
+        workflowDispatch({ type: 'CLEAR_ALL' });
+        executiveDispatch({ type: 'CLEAR_ALL' });
+        recommendationDispatch({ type: 'CLEAR_ALL' });
+        planDispatch({ type: 'RESET' });
+        managerUpdatesDispatch({ type: 'CLEAR_ALL' });
       },
     }),
     [

@@ -1046,7 +1046,7 @@ function ConfirmPlan() {
 }
 
 function ConfirmedPlan() {
-  const { plan, planDispatch, resetDemo } = useAtlas();
+  const { plan, planDispatch, resetAtlas } = useAtlas();
   const navigate = useNavigate();
   const toast = useToast();
   const [resetWarningOpen, setResetWarningOpen] = useState(false);
@@ -1103,7 +1103,7 @@ function ConfirmedPlan() {
             <Button
               variant="destructive"
               onClick={() => {
-                resetDemo();
+                resetAtlas();
                 setResetWarningOpen(false);
                 navigate('/plan', { replace: true });
                 toast('Atlas reset. Upload an approved plan to begin.');
@@ -1115,8 +1115,9 @@ function ConfirmedPlan() {
         }
       >
         <p>
-          This clears the confirmed plan and all local prototype workflow changes, including review
-          comments and reminders. Atlas will return to the approved-plan upload step.
+          This clears the confirmed plan, Weekly Updates, submissions, comments, reviews, decisions
+          and other local prototype data across Manager, Commercial Manager, CEO and CFO views.
+          Atlas will return to the approved-plan upload step.
         </p>
       </Modal>
     </>

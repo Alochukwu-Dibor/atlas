@@ -67,7 +67,9 @@ export interface ManagerUpdatesState {
 export type ManagerUpdatesAction =
   | { type: 'UPSERT_UPDATE'; update: ManagerWeeklyUpdate }
   | { type: 'ADD_COMMENT'; updateId: string; comment: ManagerUpdateComment }
+  | { type: 'DELETE_UPDATE'; updateId: string; actorId: string }
   | { type: 'RESET' }
+  | { type: 'CLEAR_ALL' }
   | { type: 'CLEAR_ERROR' };
 
 export const managerUpdatesStorageKey = 'atlas.manager-updates.v1';
@@ -177,6 +179,10 @@ export function createInitialManagerUpdatesState(): ManagerUpdatesState {
   return { version: 2, updates: initialUpdates(), lastError: null };
 }
 
+export function createEmptyManagerUpdatesState(): ManagerUpdatesState {
+  return { version: 2, updates: [], lastError: null };
+}
+
 export function loadManagerUpdatesState(): ManagerUpdatesState {
   if (typeof window === 'undefined') return createInitialManagerUpdatesState();
   try {
@@ -203,7 +209,19 @@ export function managerUpdatesReducer(
   action: ManagerUpdatesAction,
 ): ManagerUpdatesState {
   if (action.type === 'RESET') return createInitialManagerUpdatesState();
+  if (action.type === 'CLEAR_ALL') return createEmptyManagerUpdatesState();
   if (action.type === 'CLEAR_ERROR') return { ...state, lastError: null };
+  if (action.type === 'DELETE_UPDATE') {
+    const update = state.updates.find((item) => item.id === action.updateId);
+    if (!update || update.status !== 'submitted' || update.creatorId !== action.actorId) {
+      return { ...state, lastError: 'Only the creator can delete a submitted update.' };
+    }
+    return {
+      ...state,
+      updates: state.updates.filter((item) => item.id !== action.updateId),
+      lastError: null,
+    };
+  }
   if (action.type === 'ADD_COMMENT') {
     const update = state.updates.find((item) => item.id === action.updateId);
     if (!update || update.status !== 'submitted' || !action.comment.comment.trim()) {
@@ -330,6 +348,19 @@ export function canResubmitUpdate(
   now = managerPrototypeNow,
 ) {
   return update.status === 'submitted' && canEditUpdate(update, userId, role, now);
+}
+
+export function canDeleteUpdate(
+  update: ManagerWeeklyUpdate,
+  userId: string,
+  role: 'department_manager' | 'commercial_manager' | 'ceo' | 'cfo',
+) {
+  return (
+    update.status === 'submitted' &&
+    update.creatorId === userId &&
+    (role === 'department_manager' || role === 'commercial_manager') &&
+    selectAssignedProjectIds(userId).includes(update.projectId)
+  );
 }
 
 export function canCommentOnUpdate(

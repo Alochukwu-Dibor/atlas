@@ -18,6 +18,7 @@ import { atlas, format, getCycle, getDepartment, getUser } from '../data/atlas';
 import { useAtlas } from '../state/AtlasContext';
 import {
   canCommentOnUpdate,
+  canDeleteUpdate,
   canEditUpdate,
   canResubmitUpdate,
   canViewUpdate,
@@ -172,7 +173,7 @@ export function ManagerWeeklyUpdatesPage() {
   const detailPath = (id: string) =>
     isCommercial ? `/reviews/weekly-updates/${id}` : `/manager/submissions/${id}`;
   const assignedIds = selectAssignedProjectIds(activeUserId);
-  const projects = (plan.confirmedPlan?.projects ?? atlas.projects).filter((project) =>
+  const projects = (plan.confirmedPlan?.projects ?? []).filter((project) =>
     assignedIds.includes(project.id),
   );
   const requestedRecord = managerUpdates.updates.find(
@@ -277,6 +278,19 @@ export function ManagerWeeklyUpdatesPage() {
     setErrors({});
     setSubmittedId(update.id);
   };
+
+  if (!plan.confirmedPlan) {
+    return (
+      <StateView
+        type="empty"
+        title="No confirmed plan assignments"
+        message="A Commercial Manager must confirm an approved plan before Weekly Updates can be created."
+        action={
+          isCommercial ? <Button onClick={() => navigate('/plan')}>Open Plan</Button> : undefined
+        }
+      />
+    );
+  }
 
   if (requestedRecord && !requestedUpdate) {
     const deadlinePassed =
@@ -714,11 +728,13 @@ export function ManagerSubmissionsPage() {
 
 export function ManagerSubmissionDetailPage() {
   const navigate = useNavigate();
+  const showToast = useToast();
   const { id } = useParams();
   const { activeUserId, role, managerUpdates, managerUpdatesDispatch } = useAtlas();
   const actorRole = role as ManagerUpdateComment['authorRole'];
   const [commentText, setCommentText] = useState('');
   const [commentError, setCommentError] = useState('');
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const isCommercial = role === 'commercial_manager';
   const update = managerUpdates.updates.find((item) => item.id === id);
   const viewingOwnCommercialUpdate = isCommercial && update?.creatorId === activeUserId;
@@ -742,6 +758,7 @@ export function ManagerSubmissionDetailPage() {
   const canEdit = update ? canEditUpdate(update, activeUserId, actorRole) : false;
   const canResubmit = update ? canResubmitUpdate(update, activeUserId, actorRole) : false;
   const canComment = update ? canCommentOnUpdate(update, activeUserId, actorRole) : false;
+  const canDelete = update ? canDeleteUpdate(update, activeUserId, actorRole) : false;
   const deadlinePassed = update ? isUpdatePastDeadline(update) : false;
 
   if (!update) {
@@ -922,13 +939,53 @@ export function ManagerSubmissionDetailPage() {
           </>
         )}
       </Panel>
-      {canEdit && (
+      {(canEdit || canDelete) && (
         <div className="form-actions form-actions--end section">
-          <Button onClick={() => navigate(editPath)}>
-            {canResubmit ? 'Edit and resubmit' : 'Continue editing'}
-          </Button>
+          {canDelete && (
+            <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+              <Trash2 aria-hidden="true" />
+              Delete submission
+            </Button>
+          )}
+          {canEdit && (
+            <Button onClick={() => navigate(editPath)}>
+              {canResubmit ? 'Edit and resubmit' : 'Continue editing'}
+            </Button>
+          )}
         </div>
       )}
+      <Modal
+        open={deleteOpen}
+        title="Delete submitted Weekly Update?"
+        onClose={() => setDeleteOpen(false)}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setDeleteOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                managerUpdatesDispatch({
+                  type: 'DELETE_UPDATE',
+                  updateId: update.id,
+                  actorId: activeUserId,
+                });
+                setDeleteOpen(false);
+                navigate(backPath, { replace: true });
+                showToast('Submitted Weekly Update deleted across Atlas.');
+              }}
+            >
+              Delete submission
+            </Button>
+          </>
+        }
+      >
+        <p>
+          This permanently removes the submitted update and its comments from Manager, Commercial
+          Manager, CEO and CFO views. This action cannot be undone.
+        </p>
+      </Modal>
     </>
   );
 }
