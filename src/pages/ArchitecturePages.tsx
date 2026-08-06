@@ -13,7 +13,6 @@ import {
   YAxis,
 } from 'recharts';
 import { ChartWrapper } from '../components/Charts';
-import { ContextControls } from '../components/Shells';
 import {
   Button,
   DataTable,
@@ -82,7 +81,6 @@ export function ExecutionPage() {
       <PageHeader
         title="Execution"
         description="How is the approved business plan being delivered?"
-        controls={<ContextControls />}
       />
       <Panel title="Strategic objective delivery">
         <DataTable
@@ -355,7 +353,6 @@ export function ReviewsPage() {
       <PageHeader
         title="Reviews"
         description="Validate Weekly Execution Updates before they affect executive insights or Outputs."
-        controls={<ContextControls />}
       />
       <div className="filter-bar section" aria-label="Review filters">
         <Select
@@ -453,12 +450,9 @@ export function DecisionsPage() {
         title="Decisions"
         description="What requires approval, intervention or escalation?"
         controls={
-          <>
-            <ContextControls />
-            <Button variant="secondary" onClick={() => setRecommendedActionsOpen(true)}>
-              Draft recommended action
-            </Button>
-          </>
+          <Button variant="secondary" onClick={() => setRecommendedActionsOpen(true)}>
+            Draft recommended action
+          </Button>
         }
       />
       <Panel title="Decision queue">
@@ -611,7 +605,6 @@ export function OutputsPage() {
       <PageHeader
         title="Outputs"
         description="What validated report or structured output should be produced?"
-        controls={<ContextControls />}
       />
       {categories.map((category, index) => {
         const outputs = phase1Domain.outputs.filter((output) => output.audience === category.id);
@@ -1080,7 +1073,6 @@ export function CfoViewPage() {
       <PageHeader
         title="CFO View"
         description="Are we delivering within our funding capacity, and where is cash or value at risk?"
-        controls={<ContextControls allowOpenCycle={false} />}
       />
       <div className="grid grid--4 executive-kpis">
         <KpiCard

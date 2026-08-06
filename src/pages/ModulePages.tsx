@@ -12,7 +12,6 @@ import {
   YAxis,
 } from 'recharts';
 import { ChartWrapper, Ring } from '../components/Charts';
-import { ContextControls } from '../components/Shells';
 import {
   Button,
   DataTable,
@@ -42,12 +41,7 @@ function ModuleHeader({ title, description }: { title: string; description: stri
       <PageHeader
         title={title}
         description={description}
-        controls={
-          <>
-            <ContextControls allowOpenCycle={false} />
-            <Button onClick={() => window.print()}>Export</Button>
-          </>
-        }
+        controls={<Button onClick={() => window.print()}>Export</Button>}
       />
       <p className="export-disclosure">{buildSyntheticExport(`Atlas ${title}`)}</p>
     </>

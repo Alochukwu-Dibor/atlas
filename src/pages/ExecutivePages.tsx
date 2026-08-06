@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { CartesianGrid, Legend, Line, LineChart, Tooltip, XAxis, YAxis } from 'recharts';
 import { ChartWrapper } from '../components/Charts';
-import { ContextControls } from '../components/Shells';
 import { EvidenceTable, HistoryTable } from '../components/Traceability';
 import {
   Button,
@@ -90,12 +89,7 @@ export function ExecutiveDashboard() {
       <PageHeader
         title="CEO View"
         description="Are we delivering the business plan, and where must I intervene?"
-        controls={
-          <>
-            <ContextControls allowOpenCycle={false} />
-            <Button onClick={() => window.print()}>Export Report</Button>
-          </>
-        }
+        controls={<Button onClick={() => window.print()}>Export Report</Button>}
       />
       <p className="export-disclosure">{buildSyntheticExport('Atlas CEO View')}</p>
 

@@ -232,8 +232,7 @@ describe('route architecture', () => {
     expect(screen.getByText(/HSE · Weekly Execution Update · 27 Jul–2 Aug 2026/)).toBeVisible();
   });
 
-  it('shows limited reporting coverage without hiding confirmed project health', async () => {
-    const user = userEvent.setup();
+  it('does not expose global context or demo controls on the Dashboard', async () => {
     seedConfirmedPlan();
     render(
       <MemoryRouter initialEntries={['/commercial']}>
@@ -243,10 +242,12 @@ describe('route architecture', () => {
       </MemoryRouter>,
     );
     await screen.findByRole('heading', { name: 'Portfolio Health' });
-    await user.selectOptions(screen.getByLabelText('Demo scenario'), 'empty');
-    expect(await screen.findByText('Limited reporting data')).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Portfolio Health' })).toBeVisible();
-    expect(screen.queryByText('HSE Weekly Execution Update')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Business unit')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Asset context')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Reporting period')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Demo scenario')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Reset demo' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Assigned actions/ })).not.toBeInTheDocument();
   });
 
   it('uses contextual tabs for objective delivery details', async () => {

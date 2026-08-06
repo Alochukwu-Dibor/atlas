@@ -11,7 +11,6 @@ import {
   YAxis,
 } from 'recharts';
 import { ChartWrapper } from '../components/Charts';
-import { ContextControls } from '../components/Shells';
 import {
   Button,
   DataTable,
@@ -41,7 +40,6 @@ export default function CommercialDashboardPage() {
         <PageHeader
           title="Dashboard"
           description="How is the portfolio performing, and what should the Commercial Manager focus on now?"
-          controls={<ContextControls />}
         />
         <StateView
           type="empty"
@@ -59,7 +57,6 @@ export default function CommercialDashboardPage() {
       <PageHeader
         title="Dashboard"
         description="How is the portfolio performing, and what should the Commercial Manager focus on now?"
-        controls={<ContextControls />}
       />
 
       {dashboard.reportingCoverage.limited && (

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ContextControls } from '../components/Shells';
 import {
   Button,
   DataTable,
@@ -80,7 +79,6 @@ export function ProjectsPage() {
       <PageHeader
         title="Projects"
         description="Which projects are delivering as planned, and which require intervention?"
-        controls={<ContextControls />}
       />
       <div className="project-toolbar" aria-label="Project filters">
         <Field label="Search projects">
@@ -355,7 +353,6 @@ export function RecommendationsPage({ embedded = false }: { embedded?: boolean }
         <PageHeader
           title="Decision Support"
           description="Review Recommended Actions and shape the items proposed for executive decision."
-          controls={<ContextControls />}
         />
       )}
       <Panel title="Write a Commercial Recommended Action" className="recommendation-compose">

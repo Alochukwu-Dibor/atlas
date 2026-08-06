@@ -15,7 +15,6 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react';
-import { ContextControls } from '../components/Shells';
 import { ChartWrapper } from '../components/Charts';
 import { EvidenceTable, HistoryTable } from '../components/Traceability';
 import {
@@ -1878,20 +1877,17 @@ export function CommercialDashboard() {
         title="Business Overview"
         description="Is the business delivering against the approved plan, and what requires my attention?"
         controls={
-          <>
-            <ContextControls />
-            <Button
-              disabled={isPublished}
-              onClick={() => {
-                setNarrative(publication?.executiveNarrative ?? '');
-                setExceptionReason(publication?.controlledExceptionReason ?? '');
-                setPublishOpen(true);
-              }}
-              title={isPublished ? 'This cycle is published and immutable.' : undefined}
-            >
-              {isPublished ? 'Published · locked' : 'Prepare publication'}
-            </Button>
-          </>
+          <Button
+            disabled={isPublished}
+            onClick={() => {
+              setNarrative(publication?.executiveNarrative ?? '');
+              setExceptionReason(publication?.controlledExceptionReason ?? '');
+              setPublishOpen(true);
+            }}
+            title={isPublished ? 'This cycle is published and immutable.' : undefined}
+          >
+            {isPublished ? 'Published · locked' : 'Prepare publication'}
+          </Button>
         }
       />
       <Panel title="Business Health" className="business-health-section">
