@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ContextControls } from '../components/Shells';
 import {
   Button,
@@ -46,10 +47,14 @@ const projectTabs: readonly { id: ProjectTab; label: string }[] = [
 
 export function ProjectsPage() {
   const { plan } = useAtlas();
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { projectId } = useParams();
+  const [searchParams] = useSearchParams();
+  const requestedHealth = searchParams.get('health');
+  const selectedProjectId = projectId ?? null;
   const [detailTab, setDetailTab] = useState<ProjectTab>('overview');
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(requestedHealth ?? 'all');
   const [objectiveFilter, setObjectiveFilter] = useState('all');
   const baselineProjects = plan.confirmedPlan?.projects ?? [];
   const currentProjects = phase1Domain.projects.map((project) => ({
@@ -60,12 +65,14 @@ export function ProjectsPage() {
   const filteredProjects = currentProjects.filter(
     (project) =>
       project.name.toLowerCase().includes(search.toLowerCase()) &&
-      (statusFilter === 'all' || project.status === statusFilter) &&
+      (statusFilter === 'all' ||
+        project.status === statusFilter ||
+        (statusFilter === 'critical' && project.status === 'delayed')) &&
       (objectiveFilter === 'all' || project.strategicObjectiveIds.includes(objectiveFilter)),
   );
   const openProject = (id: string) => {
-    setSelectedProjectId(id);
     setDetailTab('overview');
+    navigate(`/projects/${id}`);
   };
 
   return (
@@ -89,6 +96,7 @@ export function ProjectsPage() {
             <option value="all">All health states</option>
             <option value="on_track">On track</option>
             <option value="at_risk">At risk</option>
+            <option value="critical">Critical</option>
             <option value="delayed">Delayed</option>
           </select>
         </Field>
@@ -154,7 +162,9 @@ export function ProjectsPage() {
       <Drawer
         title={selected?.name ?? ''}
         open={Boolean(selected)}
-        onClose={() => setSelectedProjectId(null)}
+        onClose={() => {
+          navigate('/projects');
+        }}
       >
         {selected && (
           <div className="detail-workspace">

@@ -186,6 +186,7 @@ function AssignedActionInbox({
 
 function ScenarioOutlet() {
   const { scenarioId, resetDemo } = useAtlas();
+  const location = useLocation();
   if (scenarioId === 'processing') {
     return (
       <StateView
@@ -196,7 +197,7 @@ function ScenarioOutlet() {
       />
     );
   }
-  if (scenarioId === 'empty') {
+  if (scenarioId === 'empty' && location.pathname !== '/commercial') {
     return (
       <StateView
         type="empty"

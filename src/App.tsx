@@ -15,9 +15,7 @@ const modulePage = () => import('./pages/ModulePages');
 const commercialPage = () => import('./pages/CommercialPages');
 const architecturePage = () => import('./pages/ArchitecturePages');
 const PlanPage = lazy(() => import('./pages/PlanPage'));
-const CommercialDashboard = lazy(() =>
-  reportingPage().then((module) => ({ default: module.CommercialDashboard })),
-);
+const CommercialDashboard = lazy(() => import('./pages/CommercialDashboardPage'));
 const CommercialReviewPage = lazy(() =>
   reportingPage().then((module) => ({ default: module.CommercialReviewPage })),
 );
@@ -95,6 +93,7 @@ export function App() {
             <Route path="commercial/review/:id" element={<CommercialReviewPage />} />
             <Route path="execution" element={<ExecutionPage />} />
             <Route path="projects" element={<ProjectsPage />} />
+            <Route path="projects/:projectId" element={<ProjectsPage />} />
             <Route path="reviews" element={<ReviewsPage />} />
             <Route path="reviews/:id" element={<CommercialReviewPage />} />
             <Route path="decisions" element={<DecisionsPage />} />

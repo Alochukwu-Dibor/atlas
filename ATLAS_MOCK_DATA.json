@@ -594,12 +594,12 @@
     { "period": "Jul", "actualVariancePercent": 3.6, "forecastVariancePercent": 4.8 }
   ],
   "businessPlanDeliveryTrend": [
-    { "period": "22–28 Jun", "deliveryPercent": 81 },
-    { "period": "29 Jun–5 Jul", "deliveryPercent": 80 },
-    { "period": "6–12 Jul", "deliveryPercent": 79 },
-    { "period": "13–19 Jul", "deliveryPercent": 78 },
-    { "period": "20–26 Jul", "deliveryPercent": 76 },
-    { "period": "27 Jul–2 Aug", "deliveryPercent": 73 }
+    { "period": "22–28 Jun", "plannedDeliveryPercent": 79, "deliveryPercent": 81, "currentReportingWeek": false },
+    { "period": "29 Jun–5 Jul", "plannedDeliveryPercent": 81, "deliveryPercent": 80, "currentReportingWeek": false },
+    { "period": "6–12 Jul", "plannedDeliveryPercent": 83, "deliveryPercent": 79, "currentReportingWeek": false },
+    { "period": "13–19 Jul", "plannedDeliveryPercent": 85, "deliveryPercent": 78, "currentReportingWeek": false },
+    { "period": "20–26 Jul", "plannedDeliveryPercent": 87, "deliveryPercent": 76, "currentReportingWeek": false },
+    { "period": "27 Jul–2 Aug", "plannedDeliveryPercent": 89, "deliveryPercent": 73, "currentReportingWeek": true }
   ],
   "commercialDashboard": {
     "cycleId": "cycle_2026_w30",
