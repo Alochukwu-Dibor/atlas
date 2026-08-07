@@ -28,11 +28,7 @@ function PersonaControl() {
     const nextRole = getUser(resolvedId)?.role;
     const selectedUser = getUser(resolvedId);
     if (selectedUser?.departmentId) setDepartmentId(selectedUser.departmentId);
-    setCycleId(
-      ['ceo', 'cfo'].includes(nextRole ?? '')
-        ? atlas.demoStates.defaultPublishedCycleId
-        : atlas.demoStates.defaultOpenCycleId,
-    );
+    setCycleId(atlas.demoStates.defaultOpenCycleId);
     navigate(
       nextRole === 'ceo'
         ? '/executive'

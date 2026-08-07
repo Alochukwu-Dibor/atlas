@@ -486,15 +486,18 @@ describe('route architecture', () => {
       </MemoryRouter>,
     );
     await user.selectOptions(screen.getByLabelText('Active demo persona'), 'usr_cfo');
-    expect(await screen.findByRole('heading', { name: 'CFO View' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'CFO Dashboard' })).toBeVisible();
     const navigation = screen.getByRole('navigation', { name: 'Executive navigation' });
     expect(within(navigation).getAllByRole('link')).toHaveLength(2);
     expect(navigation).toHaveTextContent('DashboardView Updates');
-    expect(screen.getByRole('heading', { name: 'Cash-flow forecast' })).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Historical financial variance' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Cash Flow Forecast' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'OpEx' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'CapEx' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Financial Risks' })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: 'Receivables' })).not.toBeInTheDocument();
   });
 
-  it('keeps the CEO View focused on delivery, risk and intervention', async () => {
+  it('keeps the CEO Dashboard focused on operational performance, risks and insights', async () => {
     const user = userEvent.setup();
     seedConfirmedPlan();
     render(
@@ -505,13 +508,21 @@ describe('route architecture', () => {
       </MemoryRouter>,
     );
     await user.selectOptions(screen.getByLabelText('Active demo persona'), 'usr_ceo');
-    expect(await screen.findByRole('heading', { name: 'CEO View' })).toBeVisible();
-    expect(screen.getByText('Business-plan delivery')).toBeVisible();
-    expect(screen.getByText('Budget position')).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Strategic risks' })).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Critical decisions' })).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Executive summary' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'CEO Dashboard' })).toBeVisible();
+    expect(screen.getByText('Production Performance')).toBeVisible();
+    expect(screen.getByText('Cash Flow')).toBeVisible();
+    expect(screen.getByText('HSE Performance')).toBeVisible();
+    expect(screen.getByText('Legal & Regulatory Position')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Planned vs Actual Production' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Strategic Risks' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Insights' })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: 'Critical decisions' })).not.toBeInTheDocument();
     expect(screen.queryByText(/submission queue/i)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /Production Performance/ }));
+    expect(
+      await screen.findByRole('heading', { name: 'Compressor Station B Restoration' }),
+    ).toBeVisible();
   });
 
   it('limits CEO and CFO navigation to Dashboard and the shared View Updates workspace', async () => {
@@ -582,7 +593,7 @@ describe('route architecture', () => {
         </AtlasProvider>
       </MemoryRouter>,
     );
-    await user.selectOptions(screen.getByLabelText('Active demo persona'), 'manager');
+    await user.selectOptions(await screen.findByLabelText('Active demo persona'), 'manager');
     await user.type(
       await screen.findByLabelText('Highlights from the Previous Week'),
       'Production delivery reached 96,800 bopd.',
@@ -591,7 +602,7 @@ describe('route architecture', () => {
     await user.click(screen.getByRole('link', { name: 'Submissions' }));
     const draft = await screen.findByRole('row', { name: /Not submitted Draft/ });
     await user.click(draft);
-    await user.click(screen.getByRole('button', { name: 'Continue editing' }));
+    await user.click(await screen.findByRole('button', { name: 'Continue editing' }));
     expect(await screen.findByLabelText('Highlights from the Previous Week')).toHaveValue(
       'Production delivery reached 96,800 bopd.',
     );

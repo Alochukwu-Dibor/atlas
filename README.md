@@ -11,7 +11,7 @@ Atlas is a functional front-end prototype for synthetic OML 30 plan tracking and
 - Commercial Dashboard, Projects and Reporting driven by the confirmed plan and shared reporting records.
 - Shared Manager Weekly Updates with drafts, attachments, deterministic charts, submission, resubmission, creator deletion and deadline locking.
 - Canonical cross-role submissions and discussions visible to authorised Commercial Manager, CEO and CFO personas.
-- Separate CEO and CFO dashboards plus one shared Executive View Updates workspace with persisted discussions.
+- Separate current-period CEO and CFO dashboards derived from the confirmed plan and validated reporting records, plus one shared Executive View Updates workspace with persisted discussions.
 - Loading, empty, recoverable error, no-access, processing, conflict, read-only, and locked states through deterministic scenarios and route permissions.
 - Device-local persistence and a confirmation-protected **Reset Atlas** action that clears the plan and cross-role workflow data.
 

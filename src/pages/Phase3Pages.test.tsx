@@ -4,6 +4,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { ToastProvider } from '../components/Ui';
 import { AtlasProvider } from '../state/AtlasContext';
+import {
+  getApprovedPlanFixtureFile,
+  initialPlanState,
+  planReducer,
+  planStorageKey,
+} from '../state/plan';
 import { ExecutiveDashboard } from './ExecutivePages';
 import { ProductionPage } from './ModulePages';
 
@@ -15,6 +21,21 @@ function renderPage(page: React.ReactNode) {
       </AtlasProvider>
     </MemoryRouter>,
   );
+}
+
+function seedConfirmedPlan() {
+  let state = planReducer(initialPlanState(), {
+    type: 'SELECT_FILE',
+    file: getApprovedPlanFixtureFile(),
+  });
+  state = planReducer(state, { type: 'START_EXTRACTION' });
+  state = planReducer(state, { type: 'COMPLETE_EXTRACTION' });
+  state = planReducer(state, {
+    type: 'CONFIRM_PLAN',
+    actorId: 'usr_commercial',
+    now: '2026-08-06T10:00:00+01:00',
+  });
+  window.localStorage.setItem(planStorageKey, JSON.stringify(state));
 }
 
 afterEach(() => {
@@ -52,22 +73,16 @@ describe('Phase 3 dashboards', () => {
     ).toBeVisible();
   });
 
-  it('enforces assignment requirements and displays the linked decision', async () => {
+  it('renders the current-period CEO production evidence and accessible data table', async () => {
     const user = userEvent.setup();
+    seedConfirmedPlan();
     renderPage(<ExecutiveDashboard />);
-    const recommendation = screen
-      .getByRole('heading', { name: 'Approve urgent export-line integrity expenditure' })
-      .closest('article')!;
-    await user.click(within(recommendation).getByRole('button', { name: 'Review action' }));
-    await user.selectOptions(screen.getByLabelText('Decision action'), 'assign_action');
-    await user.type(screen.getByLabelText('Decision rationale'), 'Complete the integrity review.');
-    const record = screen.getByRole('button', { name: 'Record Decision' });
-    expect(record).toBeDisabled();
-    await user.selectOptions(screen.getByLabelText('Assignment owner'), 'usr_operations');
-    await user.type(screen.getByLabelText('Assignment due date'), '2026-08-06');
-    expect(record).toBeEnabled();
-    await user.click(record);
-    expect(within(recommendation).getByText(/Complete the integrity review/)).toBeVisible();
-    expect(within(recommendation).getByText(/Ifeanyi Eze/)).toBeVisible();
+    expect(screen.getByText('96,800 bopd')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'View data table' }));
+    expect(
+      screen.getByRole('table', {
+        name: 'Planned production, actual production and variance data',
+      }),
+    ).toHaveTextContent('120,000 bopd');
   });
 });

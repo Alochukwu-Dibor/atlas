@@ -11,7 +11,6 @@ import { StateView, ToastProvider } from './components/Ui';
 
 const executivePage = () => import('./pages/ExecutivePages');
 const reportingPage = () => import('./pages/ReportingPages');
-const architecturePage = () => import('./pages/ArchitecturePages');
 const PlanPage = lazy(() => import('./pages/PlanPage'));
 const CommercialDashboard = lazy(() => import('./pages/CommercialDashboardPage'));
 const CommercialProjectsPage = lazy(() => import('./pages/CommercialProjectsPage'));
@@ -35,8 +34,8 @@ const CommercialReviewPage = lazy(() =>
 const ExecutiveDashboard = lazy(() =>
   executivePage().then((module) => ({ default: module.ExecutiveDashboard })),
 );
-const CfoViewPage = lazy(() =>
-  architecturePage().then((module) => ({ default: module.CfoViewPage })),
+const CfoDashboard = lazy(() =>
+  executivePage().then((module) => ({ default: module.CfoDashboard })),
 );
 
 export function App() {
@@ -80,7 +79,7 @@ export function App() {
           </Route>
           <Route element={<ExecutiveShell />}>
             <Route path="executive" element={<ExecutiveDashboard />} />
-            <Route path="executive/cfo" element={<CfoViewPage />} />
+            <Route path="executive/cfo" element={<CfoDashboard />} />
             <Route path="executive/view-updates" element={<ExecutiveUpdatesPage />} />
             <Route path="executive/view-updates/:id" element={<ManagerSubmissionDetailPage />} />
             <Route path="executive/weekly-updates/:id" element={<ManagerSubmissionDetailPage />} />
