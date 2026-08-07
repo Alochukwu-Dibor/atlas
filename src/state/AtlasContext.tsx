@@ -76,10 +76,19 @@ interface AtlasState {
 }
 
 const AtlasContext = createContext<AtlasState | null>(null);
+export const activePersonaStorageKey = 'atlas.active-persona.v1';
+
+function loadActivePersona(defaultId: string) {
+  if (typeof window === 'undefined') return defaultId;
+  const stored = window.localStorage.getItem(activePersonaStorageKey);
+  return stored && atlas.users.some((user) => user.id === stored) ? stored : defaultId;
+}
 
 export function AtlasProvider({ children }: { children: ReactNode }) {
   const defaults = atlas.demoStates;
-  const [activeUserId, setActiveUserId] = useState(defaults.defaultPersonaId);
+  const [activeUserId, setActiveUserId] = useState(() =>
+    loadActivePersona(defaults.defaultPersonaId),
+  );
   const [assetId, setAssetId] = useState(atlas.organisation.defaultAssetId);
   const [businessUnitId, setBusinessUnitId] = useState(atlas.businessUnits[0].id);
   const [planningPeriodId, setPlanningPeriodId] = useState(atlas.planningPeriods[0].id);
@@ -104,6 +113,10 @@ export function AtlasProvider({ children }: { children: ReactNode }) {
     loadManagerUpdatesState,
   );
   const role = atlas.users.find((user) => user.id === activeUserId)?.role ?? 'commercial_manager';
+
+  useEffect(() => {
+    window.localStorage.setItem(activePersonaStorageKey, activeUserId);
+  }, [activeUserId]);
 
   useEffect(() => {
     window.localStorage.setItem(workflowStorageKey, JSON.stringify(workflow));

@@ -85,6 +85,35 @@ describe('Manager Weekly Update state', () => {
     expect(selectVisibleSubmittedUpdates(state, 'cfo')[0].id).toBe(draft().id);
   });
 
+  it('sorts Executive updates by reporting period and then submission date', () => {
+    let state = managerUpdatesReducer(createInitialManagerUpdatesState(), {
+      type: 'UPSERT_UPDATE',
+      update: draft({
+        id: 'manager_update_operations_compressor_w31_early',
+        status: 'submitted',
+        submittedAt: '2026-08-03T10:00:00+01:00',
+        visibleToRoles: ['commercial_manager', 'ceo', 'cfo'],
+      }),
+    });
+    state = managerUpdatesReducer(state, {
+      type: 'UPSERT_UPDATE',
+      update: draft({
+        id: 'manager_update_finance_metering_w31_late',
+        creatorId: 'usr_finance',
+        departmentId: 'dept_finance',
+        projectId: 'prj_metering',
+        status: 'submitted',
+        submittedAt: '2026-08-03T11:00:00+01:00',
+        visibleToRoles: ['commercial_manager', 'ceo', 'cfo'],
+      }),
+    });
+    expect(selectVisibleSubmittedUpdates(state, 'ceo').map((update) => update.id)).toEqual([
+      'manager_update_finance_metering_w31_late',
+      'manager_update_operations_compressor_w31_early',
+      'manager_update_projects_integrity_w30',
+    ]);
+  });
+
   it('applies creator, project, role, status and deadline permissions centrally', () => {
     const privateDraft = draft();
     expect(canViewDraft(privateDraft, 'usr_operations')).toBe(true);

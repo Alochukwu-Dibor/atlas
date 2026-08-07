@@ -26,17 +26,14 @@ const ManagerSubmissionsPage = lazy(() =>
 const ManagerSubmissionDetailPage = lazy(() =>
   managerUpdatesPage().then((module) => ({ default: module.ManagerSubmissionDetailPage })),
 );
+const ExecutiveUpdatesPage = lazy(() =>
+  managerUpdatesPage().then((module) => ({ default: module.ExecutiveUpdatesPage })),
+);
 const CommercialReviewPage = lazy(() =>
   reportingPage().then((module) => ({ default: module.CommercialReviewPage })),
 );
 const ExecutiveDashboard = lazy(() =>
   executivePage().then((module) => ({ default: module.ExecutiveDashboard })),
-);
-const DecisionsPage = lazy(() =>
-  architecturePage().then((module) => ({ default: module.DecisionsPage })),
-);
-const OutputsPage = lazy(() =>
-  architecturePage().then((module) => ({ default: module.OutputsPage })),
 );
 const CfoViewPage = lazy(() =>
   architecturePage().then((module) => ({ default: module.CfoViewPage })),
@@ -84,8 +81,8 @@ export function App() {
           <Route element={<ExecutiveShell />}>
             <Route path="executive" element={<ExecutiveDashboard />} />
             <Route path="executive/cfo" element={<CfoViewPage />} />
-            <Route path="executive/decisions" element={<DecisionsPage />} />
-            <Route path="executive/outputs" element={<OutputsPage />} />
+            <Route path="executive/view-updates" element={<ExecutiveUpdatesPage />} />
+            <Route path="executive/view-updates/:id" element={<ManagerSubmissionDetailPage />} />
             <Route path="executive/weekly-updates/:id" element={<ManagerSubmissionDetailPage />} />
           </Route>
           <Route path="no-access" element={<NotFound />} />

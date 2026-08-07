@@ -11,7 +11,7 @@ Atlas is a functional front-end prototype for synthetic OML 30 plan tracking and
 - Commercial Dashboard, Projects and Reporting driven by the confirmed plan and shared reporting records.
 - Shared Manager Weekly Updates with drafts, attachments, deterministic charts, submission, resubmission, creator deletion and deadline locking.
 - Canonical cross-role submissions and discussions visible to authorised Commercial Manager, CEO and CFO personas.
-- CEO and CFO decision views, Outputs, accessible charts, evidence drawers and synthetic export disclosures.
+- Separate CEO and CFO dashboards plus one shared Executive View Updates workspace with persisted discussions.
 - Loading, empty, recoverable error, no-access, processing, conflict, read-only, and locked states through deterministic scenarios and route permissions.
 - Device-local persistence and a confirmation-protected **Reset Atlas** action that clears the plan and cross-role workflow data.
 
@@ -38,8 +38,8 @@ Use the persona selector to switch among:
 
 - Commercial Manager — Dashboard, Plan, Projects and Reporting. Reporting contains Submissions and Reports.
 - Manager — one shared Weekly Updates and Submissions workspace; department changes assignment context without changing the interface.
-- CEO — validated CEO View, Decisions, Outputs and shared submitted-update discussions.
-- CFO — shared-data CFO View, Decisions, and Outputs.
+- CEO — Dashboard and View Updates.
+- CFO — Dashboard and View Updates.
 
 Managers and Commercial Managers can draft and submit the same Weekly Update structure. Submitted updates use one canonical record across Manager, Commercial Manager, CEO and CFO views; comments share that record, resubmission replaces it, and the creator may delete it. After the reporting deadline, content is read-only while comments remain open.
 
@@ -63,9 +63,9 @@ Scenarios include canonical, empty, processing, conflict, and ready-to-publish s
 | `/manager/submissions/:id`      | Full-page Manager submission and discussion               |
 | `/executive`                    | CEO View                                                  |
 | `/executive/cfo`                | CFO View                                                  |
-| `/executive/decisions`          | Executive Decisions                                       |
-| `/executive/outputs`            | Executive Outputs                                         |
-| `/executive/weekly-updates/:id` | Executive submitted-update detail and shared discussion   |
+| `/executive/view-updates`       | Shared CEO/CFO submitted-update list                      |
+| `/executive/view-updates/:id`   | Shared CEO/CFO update detail and discussion               |
+| `/executive/weekly-updates/:id` | Compatibility route for existing Executive update links   |
 
 Legacy `/department` and `/department/reports/*` URLs redirect to the shared Manager routes; they do not render a department-specific Manager interface.
 
@@ -86,7 +86,7 @@ Run the commands above after changes; current exact results are recorded in the 
 
 - `src/data/types.ts` — explicit planning, execution, decision, evidence, output, and history domain contracts.
 - `src/data/atlas.ts` — typed fixture graph, selectors, status semantics, and formatters.
-- `src/state/AtlasContext.tsx` — shared persona, context, scenarios, persistence, fixture restore and destructive reset.
+- `src/state/AtlasContext.tsx` — shared persona, direct-route persona persistence, context, scenarios, fixture restore and destructive reset.
 - `src/state/managerUpdates.ts` — canonical Manager/Commercial Weekly Updates, comments, permissions, deadlines, resubmission and deletion.
 - `src/state/workflow.ts` — Weekly Execution Updates, commitments, clarifications, Commercial review, publication, lock, revision, and audit state machine.
 - `src/state/executive.ts` — decisions, assignments, progress, persistence, and audit state.

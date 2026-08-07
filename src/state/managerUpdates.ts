@@ -281,7 +281,12 @@ export function selectVisibleSubmittedUpdates(
 ) {
   return state.updates
     .filter((update) => update.status === 'submitted' && update.visibleToRoles.includes(role))
-    .sort((a, b) => (b.submittedAt ?? '').localeCompare(a.submittedAt ?? ''));
+    .sort((a, b) => {
+      const periodDifference = getPeriodEnd(b.reportingPeriodId).localeCompare(
+        getPeriodEnd(a.reportingPeriodId),
+      );
+      return periodDifference || (b.submittedAt ?? '').localeCompare(a.submittedAt ?? '');
+    });
 }
 
 export function extractChartValues(highlights: string) {

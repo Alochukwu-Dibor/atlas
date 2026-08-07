@@ -3,8 +3,9 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it } from 'vitest';
 import { App } from './App';
-import { AtlasProvider } from './state/AtlasContext';
+import { activePersonaStorageKey, AtlasProvider } from './state/AtlasContext';
 import {
+  createEmptyManagerUpdatesState,
   createInitialManagerUpdatesState,
   managerUpdatesReducer,
   managerUpdatesStorageKey,
@@ -62,6 +63,65 @@ function seedPrivateManagerDraft() {
     type: 'UPSERT_UPDATE',
     update,
   });
+  window.localStorage.setItem(managerUpdatesStorageKey, JSON.stringify(state));
+}
+
+function seedExecutiveUpdateSet() {
+  const commercialUpdate: ManagerWeeklyUpdate = {
+    id: 'manager_update_commercial_compressor_w31',
+    creatorId: 'usr_commercial',
+    departmentId: 'dept_commercial',
+    projectId: 'prj_compressor',
+    reportingPeriodId: 'cycle_2026_w31',
+    reportingDeadline: '2026-08-04',
+    sections: {
+      highlights: 'Commercial delivery reached 93% against the approved weekly plan.',
+      ongoingActivities: 'Cost recovery validation and partner alignment remain in progress.',
+      risks: 'One partner invoice remains unresolved.',
+      plansForWeek: 'Close the invoice query and update the commercial forecast.',
+    },
+    chart: {
+      id: 'chart_commercial_compressor_w31',
+      type: 'line',
+      title: 'Commercial delivery chart',
+      values: [
+        { label: 'Plan', value: 100 },
+        { label: 'Actual', value: 93 },
+      ],
+      generatedAt: '2026-08-03T11:00:00+01:00',
+    },
+    attachments: [
+      {
+        id: 'attachment_commercial_compressor_w31',
+        name: 'Commercial_Performance_W31.xlsx',
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        size: 184_000,
+        status: 'uploaded',
+      },
+    ],
+    status: 'submitted',
+    savedAt: '2026-08-03T11:00:00+01:00',
+    submittedAt: '2026-08-03T11:00:00+01:00',
+    visibleToRoles: ['commercial_manager', 'ceo', 'cfo'],
+    comments: [],
+  };
+  const hiddenDraft: ManagerWeeklyUpdate = {
+    ...commercialUpdate,
+    id: 'manager_update_operations_wellwork_w31_draft',
+    creatorId: 'usr_operations',
+    departmentId: 'dept_operations',
+    projectId: 'prj_wellwork',
+    chart: null,
+    attachments: [],
+    status: 'draft',
+    submittedAt: null,
+    visibleToRoles: [],
+  };
+  let state = managerUpdatesReducer(createInitialManagerUpdatesState(), {
+    type: 'UPSERT_UPDATE',
+    update: commercialUpdate,
+  });
+  state = managerUpdatesReducer(state, { type: 'UPSERT_UPDATE', update: hiddenDraft });
   window.localStorage.setItem(managerUpdatesStorageKey, JSON.stringify(state));
 }
 
@@ -427,9 +487,9 @@ describe('route architecture', () => {
     );
     await user.selectOptions(screen.getByLabelText('Active demo persona'), 'usr_cfo');
     expect(await screen.findByRole('heading', { name: 'CFO View' })).toBeVisible();
-    expect(screen.getByRole('navigation', { name: 'Executive navigation' })).toHaveTextContent(
-      'CEO ViewCFO ViewDecisionsOutputs',
-    );
+    const navigation = screen.getByRole('navigation', { name: 'Executive navigation' });
+    expect(within(navigation).getAllByRole('link')).toHaveLength(2);
+    expect(navigation).toHaveTextContent('DashboardView Updates');
     expect(screen.getByRole('heading', { name: 'Cash-flow forecast' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Historical financial variance' })).toBeVisible();
   });
@@ -454,7 +514,7 @@ describe('route architecture', () => {
     expect(screen.queryByText(/submission queue/i)).not.toBeInTheDocument();
   });
 
-  it('preserves shared Decisions and Outputs for the Executive workspace', async () => {
+  it('limits CEO and CFO navigation to Dashboard and the shared View Updates workspace', async () => {
     const user = userEvent.setup();
     seedConfirmedPlan();
     render(
@@ -466,10 +526,12 @@ describe('route architecture', () => {
     );
     await user.selectOptions(screen.getByLabelText('Active demo persona'), 'usr_ceo');
     const navigation = await screen.findByRole('navigation', { name: 'Executive navigation' });
-    await user.click(within(navigation).getByRole('link', { name: 'Decisions' }));
-    expect(await screen.findByRole('heading', { name: 'Decisions' })).toBeVisible();
-    await user.click(within(navigation).getByRole('link', { name: 'Outputs' }));
-    expect(await screen.findByRole('heading', { name: 'Outputs' })).toBeVisible();
+    expect(within(navigation).getAllByRole('link')).toHaveLength(2);
+    expect(navigation).toHaveTextContent('DashboardView Updates');
+    expect(within(navigation).queryByRole('link', { name: 'Decisions' })).not.toBeInTheDocument();
+    expect(within(navigation).queryByRole('link', { name: 'Outputs' })).not.toBeInTheDocument();
+    await user.click(within(navigation).getByRole('link', { name: 'View Updates' }));
+    expect(await screen.findByRole('heading', { name: 'View Updates' })).toBeVisible();
   });
 
   it('consolidates department managers into one Manager role and two-item navigation', async () => {
@@ -691,6 +753,7 @@ describe('route architecture', () => {
   it('lets CEO and CFO view and discuss the same submitted update without edit access', async () => {
     const user = userEvent.setup();
     seedConfirmedPlan();
+    seedExecutiveUpdateSet();
     render(
       <MemoryRouter initialEntries={['/commercial']}>
         <AtlasProvider>
@@ -699,38 +762,130 @@ describe('route architecture', () => {
       </MemoryRouter>,
     );
     await user.selectOptions(screen.getByLabelText('Active demo persona'), 'usr_ceo');
+    await user.click(
+      within(await screen.findByRole('navigation', { name: 'Executive navigation' })).getByRole(
+        'link',
+        { name: 'View Updates' },
+      ),
+    );
     const executiveUpdates = await screen.findByRole('table', {
-      name: 'Submitted Weekly Updates available to executives',
+      name: 'Authorised submitted Weekly Updates',
     });
-    await user.click(within(executiveUpdates).getByRole('row', { name: /Ughelli/ }));
+    expect(within(executiveUpdates).getAllByRole('row')).toHaveLength(3);
+    expect(executiveUpdates).toHaveTextContent('Tunde AdebayoCommercial');
+    expect(executiveUpdates).toHaveTextContent('Chinedu NwosuProjects');
+    expect(executiveUpdates).not.toHaveTextContent('Private draft highlight');
+    await user.type(screen.getByLabelText('Search updates'), 'Ughelli');
+    expect(within(executiveUpdates).getAllByRole('row')).toHaveLength(2);
+    await user.clear(screen.getByLabelText('Search updates'));
+    const viewActions = within(executiveUpdates).getAllByRole('button', { name: 'View update' });
+    expect(viewActions).toHaveLength(2);
+    await user.click(viewActions[0]);
+    expect(await screen.findByText('Commercial_Performance_W31.xlsx')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Generated Chart' })).toBeVisible();
     expect(await screen.findByLabelText('Add a comment')).toBeVisible();
     await user.type(screen.getByLabelText('Add a comment'), 'CEO: confirm intervention owner.');
     await user.click(screen.getByRole('button', { name: 'Post comment' }));
     expect(screen.getByText('CEO: confirm intervention owner.')).toBeVisible();
     expect(screen.queryByRole('button', { name: /resubmit/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete submission' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Back to View Updates' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Open related project' })).toBeVisible();
 
     await user.selectOptions(screen.getByLabelText('Active demo persona'), 'usr_cfo');
+    await user.click(
+      within(await screen.findByRole('navigation', { name: 'Executive navigation' })).getByRole(
+        'link',
+        { name: 'View Updates' },
+      ),
+    );
     const cfoUpdates = await screen.findByRole('table', {
-      name: 'Submitted Weekly Updates available to executives',
+      name: 'Authorised submitted Weekly Updates',
     });
-    await user.click(within(cfoUpdates).getByRole('row', { name: /Ughelli/ }));
+    await user.click(within(cfoUpdates).getAllByRole('button', { name: 'View update' })[0]);
     expect(await screen.findByText('CEO: confirm intervention owner.')).toBeVisible();
+    await user.type(screen.getByLabelText('Add a comment'), 'CFO: confirm the cash impact.');
+    await user.click(screen.getByRole('button', { name: 'Post comment' }));
+    expect(screen.getByText('CFO: confirm the cash impact.')).toBeVisible();
     expect(screen.queryByRole('button', { name: /resubmit/i })).not.toBeInTheDocument();
 
-    await user.selectOptions(screen.getByLabelText('Active demo persona'), 'manager');
-    await user.selectOptions(screen.getByLabelText('Department workspace'), 'dept_projects');
-    await user.click(screen.getByRole('link', { name: 'Submissions' }));
+    await user.selectOptions(screen.getByLabelText('Active demo persona'), 'usr_commercial');
+    await user.click(screen.getByRole('link', { name: 'Reporting' }));
+    await user.click(await screen.findByRole('button', { name: 'My submissions' }));
     const managerHistory = await screen.findByRole('table', {
       name: 'Manager Weekly Update submissions',
     });
-    await user.click(within(managerHistory).getByRole('row', { name: /Ughelli/ }));
+    await user.click(within(managerHistory).getByRole('row', { name: /Compressor/ }));
     expect(await screen.findByText('CEO: confirm intervention owner.')).toBeVisible();
+    expect(screen.getByText('CFO: confirm the cash impact.')).toBeVisible();
     await user.type(
       screen.getByLabelText('Add a response'),
-      'Manager: intervention owner is Chinedu Nwosu.',
+      'Commercial Manager: cash impact is included in the revised forecast.',
     );
     await user.click(screen.getByRole('button', { name: 'Post response' }));
-    expect(screen.getByText('Manager: intervention owner is Chinedu Nwosu.')).toBeVisible();
+    expect(
+      screen.getByText('Commercial Manager: cash impact is included in the revised forecast.'),
+    ).toBeVisible();
+  });
+
+  it('restores the Executive persona for direct update-detail refreshes and handles invalid IDs', async () => {
+    seedConfirmedPlan();
+    seedExecutiveUpdateSet();
+    window.localStorage.setItem(activePersonaStorageKey, 'usr_ceo');
+    const { unmount } = render(
+      <MemoryRouter
+        initialEntries={['/executive/view-updates/manager_update_commercial_compressor_w31']}
+      >
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText('Commercial_Performance_W31.xlsx')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Back to View Updates' })).toBeVisible();
+    unmount();
+    const privateView = render(
+      <MemoryRouter
+        initialEntries={['/executive/view-updates/manager_update_operations_wellwork_w31_draft']}
+      >
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole('heading', { name: 'Submission unavailable' })).toBeVisible();
+    expect(
+      screen.queryByText('Commercial delivery reached 93% against the approved weekly plan.'),
+    ).not.toBeInTheDocument();
+    privateView.unmount();
+    render(
+      <MemoryRouter initialEntries={['/executive/view-updates/not-a-submission']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole('heading', { name: 'Submission not found' })).toBeVisible();
+  });
+
+  it('shows a clear Executive empty state when no submitted updates are authorised', async () => {
+    seedConfirmedPlan();
+    window.localStorage.setItem(activePersonaStorageKey, 'usr_cfo');
+    window.localStorage.setItem(
+      managerUpdatesStorageKey,
+      JSON.stringify(createEmptyManagerUpdatesState()),
+    );
+    render(
+      <MemoryRouter initialEntries={['/executive/view-updates']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    expect(
+      await screen.findByRole('heading', { name: 'No submitted Weekly Updates' }),
+    ).toBeVisible();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
   it('keeps deadline-locked content read only while allowing the Manager to respond', async () => {

@@ -133,30 +133,119 @@ function ChartPreview({ chart }: { chart: GeneratedChart }) {
   );
 }
 
-export function SubmittedWeeklyUpdatesPanel({ detailBasePath }: { detailBasePath: string }) {
+export function ExecutiveUpdatesPage() {
   const navigate = useNavigate();
   const { role, managerUpdates } = useAtlas();
-  if (role !== 'ceo' && role !== 'cfo') return null;
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
+  if (role !== 'ceo' && role !== 'cfo') {
+    return (
+      <StateView
+        type="no-access"
+        title="View Updates unavailable"
+        message="Only the CEO and CFO can access the Executive View Updates workspace."
+      />
+    );
+  }
   const updates = selectVisibleSubmittedUpdates(managerUpdates, role as 'ceo' | 'cfo');
+  const filteredUpdates = updates.filter((update) => {
+    const manager = getUser(update.creatorId)?.name ?? '';
+    const department = getDepartment(update.departmentId)?.name ?? '';
+    const project = atlas.projects.find((item) => item.id === update.projectId)?.name ?? '';
+    const period = getCycle(update.reportingPeriodId).label;
+    return `${period} ${manager} ${department} ${project}`
+      .toLowerCase()
+      .includes(search.toLowerCase());
+  });
+  const pageSize = 8;
+  const totalPages = Math.max(1, Math.ceil(filteredUpdates.length / pageSize));
+  const safePage = Math.min(page, totalPages - 1);
+  const pageUpdates = filteredUpdates.slice(safePage * pageSize, (safePage + 1) * pageSize);
   return (
-    <Panel title="Submitted Weekly Updates" className="section">
+    <>
+      <PageHeader
+        title="View Updates"
+        description="Review submitted Weekly Updates and request clarification through the shared discussion."
+      />
       {updates.length ? (
-        <DataTable
-          caption="Submitted Weekly Updates available to executives"
-          headers={['Reporting Period', 'Project', 'Creator', 'Department', 'Submitted']}
-          rows={updates.map((update) => [
-            getCycle(update.reportingPeriodId).label,
-            atlas.projects.find((project) => project.id === update.projectId)?.name ?? 'Project',
-            getUser(update.creatorId)?.name ?? 'Manager',
-            getDepartment(update.departmentId)?.name ?? 'Department',
-            update.submittedAt ? format.date(update.submittedAt) : 'Not submitted',
-          ])}
-          onRowClick={(index) => navigate(`${detailBasePath}/${updates[index].id}`)}
-        />
+        <Panel title="Submitted Weekly Updates">
+          <div className="submission-history-tools">
+            <Field label="Search updates">
+              <input
+                type="search"
+                value={search}
+                placeholder="Search by period, contributor, department or project"
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(0);
+                }}
+              />
+            </Field>
+          </div>
+          {pageUpdates.length ? (
+            <>
+              <DataTable
+                caption="Authorised submitted Weekly Updates"
+                headers={[
+                  'Reporting Period',
+                  'Manager & Department',
+                  'Project',
+                  'Date Submitted',
+                  'Action',
+                ]}
+                rows={pageUpdates.map((update) => [
+                  getCycle(update.reportingPeriodId).label,
+                  <span className="submission-status-cell">
+                    <strong>{getUser(update.creatorId)?.name ?? 'Manager'}</strong>
+                    <small>{getDepartment(update.departmentId)?.name ?? 'Department'}</small>
+                  </span>,
+                  atlas.projects.find((project) => project.id === update.projectId)?.name ??
+                    'Project',
+                  update.submittedAt ? format.date(update.submittedAt) : 'Not submitted',
+                  <Button
+                    variant="secondary"
+                    onClick={() => navigate(`/executive/view-updates/${update.id}`)}
+                  >
+                    View update
+                  </Button>,
+                ])}
+              />
+              <div className="table-pagination" aria-label="Executive updates pagination">
+                <span>
+                  {safePage * pageSize + 1}–
+                  {Math.min((safePage + 1) * pageSize, filteredUpdates.length)} of{' '}
+                  {filteredUpdates.length}
+                </span>
+                <div className="form-actions">
+                  <Button
+                    variant="secondary"
+                    disabled={safePage === 0}
+                    onClick={() => setPage((current) => Math.max(0, current - 1))}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    disabled={safePage >= totalPages - 1}
+                    onClick={() => setPage((current) => Math.min(totalPages - 1, current + 1))}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="empty-copy">No submitted Weekly Updates match this search.</p>
+          )}
+        </Panel>
       ) : (
-        <p className="empty-copy">No submitted Weekly Updates are available.</p>
+        <StateView
+          type="empty"
+          title="No submitted Weekly Updates"
+          message="Authorised Manager and Commercial Manager submissions will appear here after submission."
+        />
       )}
-    </Panel>
+    </>
   );
 }
 
@@ -736,23 +825,22 @@ export function ManagerSubmissionDetailPage() {
   const [commentError, setCommentError] = useState('');
   const [deleteOpen, setDeleteOpen] = useState(false);
   const isCommercial = role === 'commercial_manager';
+  const isExecutive = role === 'ceo' || role === 'cfo';
   const update = managerUpdates.updates.find((item) => item.id === id);
   const viewingOwnCommercialUpdate = isCommercial && update?.creatorId === activeUserId;
   const backPath = viewingOwnCommercialUpdate
     ? '/reviews/my-submissions'
     : isCommercial
       ? '/reviews'
-      : role === 'ceo' || role === 'cfo'
-        ? role === 'cfo'
-          ? '/executive/cfo'
-          : '/executive'
+      : isExecutive
+        ? '/executive/view-updates'
         : '/manager/submissions';
   const backLabel = viewingOwnCommercialUpdate
     ? 'Back to Submissions'
     : isCommercial
       ? 'Back to Reporting'
-      : role === 'ceo' || role === 'cfo'
-        ? 'Back to Executive view'
+      : isExecutive
+        ? 'Back to View Updates'
         : 'Back to Submissions';
   const canView = update ? canViewUpdate(update, activeUserId, actorRole) : false;
   const canEdit = update ? canEditUpdate(update, activeUserId, actorRole) : false;
@@ -812,7 +900,7 @@ export function ManagerSubmissionDetailPage() {
             <Button variant="secondary" onClick={() => navigate(backPath)}>
               {backLabel}
             </Button>
-            {isCommercial && update.creatorId !== activeUserId && (
+            {(isExecutive || (isCommercial && update.creatorId !== activeUserId)) && (
               <Button variant="secondary" onClick={() => navigate(`/projects/${update.projectId}`)}>
                 Open related project
               </Button>

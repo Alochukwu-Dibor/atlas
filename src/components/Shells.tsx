@@ -1,11 +1,4 @@
-import {
-  BarChart3,
-  BriefcaseBusiness,
-  ChevronDown,
-  FileText,
-  LayoutDashboard,
-  Lightbulb,
-} from 'lucide-react';
+import { BarChart3, BriefcaseBusiness, ChevronDown, FileText, LayoutDashboard } from 'lucide-react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { atlas, getAsset, getCycle, getUser } from '../data/atlas';
 import { useAtlas } from '../state/AtlasContext';
@@ -16,13 +9,6 @@ const commercialNavItems = [
   { to: '/plan', label: 'Plan', icon: FileText },
   { to: '/projects', label: 'Projects', icon: BriefcaseBusiness },
   { to: '/reviews', label: 'Reporting', icon: BarChart3 },
-];
-
-const executiveNavItems = [
-  { to: '/executive', label: 'CEO View', icon: LayoutDashboard },
-  { to: '/executive/cfo', label: 'CFO View', icon: BarChart3 },
-  { to: '/executive/decisions', label: 'Decisions', icon: Lightbulb },
-  { to: '/executive/outputs', label: 'Outputs', icon: FileText },
 ];
 
 export function Brand() {
@@ -170,7 +156,17 @@ export function SidebarShell() {
       />
     );
   }
-  const primaryItems = role === 'commercial_manager' ? commercialNavItems : executiveNavItems;
+  const primaryItems =
+    role === 'commercial_manager'
+      ? commercialNavItems
+      : [
+          {
+            to: role === 'cfo' ? '/executive/cfo' : '/executive',
+            label: 'Dashboard',
+            icon: LayoutDashboard,
+          },
+          { to: '/executive/view-updates', label: 'View Updates', icon: FileText },
+        ];
   return (
     <div className="shell shell--top">
       <header className="app-header">
@@ -247,6 +243,11 @@ export function ExecutiveShell() {
       />
     );
   }
+  const dashboardPath = role === 'cfo' ? '/executive/cfo' : '/executive';
+  const executiveNavItems = [
+    { to: dashboardPath, label: 'Dashboard' },
+    { to: '/executive/view-updates', label: 'View Updates' },
+  ];
   return (
     <div className="shell shell--executive">
       <header className="app-header executive-header">
@@ -259,7 +260,7 @@ export function ExecutiveShell() {
         <div className="app-header__nav-row">
           <nav className="executive-nav" aria-label="Executive navigation">
             {executiveNavItems.map(({ to, label }) => (
-              <NavLink key={to} to={to} end={to === '/executive'}>
+              <NavLink key={to} to={to} end>
                 {label}
               </NavLink>
             ))}
