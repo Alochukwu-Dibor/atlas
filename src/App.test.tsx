@@ -145,7 +145,7 @@ describe('route architecture', () => {
     ).toBeVisible();
     const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
     expect(navigation).toBeVisible();
-    expect(navigation).toHaveTextContent('DashboardPlanProjectsReporting');
+    expect(navigation).toHaveTextContent('DashboardPlanPortfolioReporting');
     expect(within(navigation).getAllByRole('link')).toHaveLength(4);
     expect(within(navigation).queryByRole('link', { name: 'Execution' })).not.toBeInTheDocument();
     expect(within(navigation).queryByRole('link', { name: 'Decisions' })).not.toBeInTheDocument();
@@ -160,7 +160,7 @@ describe('route architecture', () => {
     expect(screen.getByRole('heading', { name: 'What Needs My Attention' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Today’s Priorities' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Plan Delivery Trend' })).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Projects' })).toHaveAttribute('href', '/projects');
+    expect(screen.getByRole('link', { name: 'Portfolio' })).toHaveAttribute('href', '/projects');
     expect(
       screen.queryByRole('navigation', { name: 'Configuration navigation' }),
     ).not.toBeInTheDocument();
@@ -296,7 +296,9 @@ describe('route architecture', () => {
         </AtlasProvider>
       </MemoryRouter>,
     );
-    expect(await screen.findByRole('heading', { name: 'Projects' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'Portfolio' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: 'Projects' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: 'Departments' })).toBeVisible();
     const table = screen.getByRole('table', { name: 'Commercial project portfolio' });
     expect(table).toBeVisible();
     expect(
@@ -315,7 +317,9 @@ describe('route architecture', () => {
       </MemoryRouter>,
     );
     expect(
-      await screen.findByRole('heading', { name: 'Confirm an approved plan to activate Projects' }),
+      await screen.findByRole('heading', {
+        name: 'Confirm an approved plan to activate Portfolio',
+      }),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Open Plan' })).toBeVisible();
   });
@@ -341,7 +345,7 @@ describe('route architecture', () => {
       </MemoryRouter>,
     );
     expect(await screen.findByRole('heading', { name: 'Project not found' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Back to Projects' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Back to Portfolio' })).toBeVisible();
   });
 
   it('does not expose superseded Commercial Manager routes', async () => {
@@ -441,7 +445,7 @@ describe('route architecture', () => {
         </AtlasProvider>
       </MemoryRouter>,
     );
-    await screen.findByRole('heading', { name: 'Projects' });
+    await screen.findByRole('heading', { name: 'Portfolio' });
     expect(screen.queryByText('Average progress')).not.toBeInTheDocument();
     await user.type(screen.getByLabelText('Search projects'), 'Compressor');
     expect(screen.getByRole('table', { name: 'Commercial project portfolio' })).toHaveTextContent(
@@ -453,15 +457,21 @@ describe('route architecture', () => {
       await screen.findByRole('heading', { name: 'Compressor Station B Restoration' }),
     ).toBeVisible();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    await user.click(screen.getByRole('tab', { name: 'KPI, target and milestone adherence' }));
-    expect(screen.getByRole('table', { name: 'KPI adherence' })).toBeVisible();
+    await user.click(screen.getByRole('tab', { name: 'Target and Milestone adherence' }));
+    expect(screen.queryByRole('table', { name: 'KPI adherence' })).not.toBeInTheDocument();
     expect(screen.getByRole('table', { name: 'Target adherence' })).toBeVisible();
     expect(screen.getByRole('table', { name: 'Milestone adherence' })).toBeVisible();
+    expect(
+      within(screen.getByRole('table', { name: 'Target adherence' })).getAllByRole('row'),
+    ).toHaveLength(4);
+    expect(
+      within(screen.getByRole('table', { name: 'Milestone adherence' })).getAllByRole('row'),
+    ).toHaveLength(4);
     await user.click(screen.getByRole('tab', { name: 'Activity log' }));
     expect(
       screen.getByText('Approved plan confirmed as the Atlas tracking baseline.'),
     ).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Back to Projects' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Back to Portfolio' })).toBeVisible();
   });
 
   it('enforces persona permissions for the executive route', () => {
@@ -702,7 +712,7 @@ describe('route architecture', () => {
     ).toBeGreaterThan(1);
     const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
     expect(within(navigation).getAllByRole('link')).toHaveLength(4);
-    expect(navigation).toHaveTextContent('DashboardPlanProjectsReporting');
+    expect(navigation).toHaveTextContent('DashboardPlanPortfolioReporting');
     expect(screen.getByLabelText('Highlights from the Previous Week')).toBeVisible();
     expect(screen.getByLabelText('Ongoing Activities')).toBeVisible();
     expect(screen.getByLabelText('Risks')).toBeVisible();

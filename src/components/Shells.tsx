@@ -7,7 +7,7 @@ import { Button, Select, StateView } from './Ui';
 const commercialNavItems = [
   { to: '/commercial', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/plan', label: 'Plan', icon: FileText },
-  { to: '/projects', label: 'Projects', icon: BriefcaseBusiness },
+  { to: '/projects', label: 'Portfolio', icon: BriefcaseBusiness },
   { to: '/reviews', label: 'Reporting', icon: BarChart3 },
 ];
 

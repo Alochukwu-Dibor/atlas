@@ -3625,6 +3625,99 @@ tr.is-clickable:hover {
   margin: 0;
 }
 
+.department-portfolio {
+  display: grid;
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.portfolio-department-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.portfolio-department-picker button {
+  padding: 10px 14px;
+  border: 1px solid var(--atlas-border-strong);
+  border-radius: 8px;
+  background: var(--atlas-surface);
+  color: var(--atlas-text-secondary);
+  font: inherit;
+  font-weight: 600;
+}
+
+.portfolio-department-picker button:hover,
+.portfolio-department-picker button:focus-visible,
+.portfolio-department-picker button.is-active {
+  border-color: var(--atlas-primary);
+  background: var(--atlas-primary-tint);
+  color: var(--atlas-primary);
+}
+
+.department-portfolio__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 24px;
+}
+
+.department-portfolio__header h2,
+.department-portfolio__header p {
+  margin: 0;
+}
+
+.department-portfolio__header p {
+  margin-top: 6px;
+  color: var(--atlas-text-secondary);
+}
+
+.department-portfolio__header .field {
+  width: min(360px, 100%);
+  margin: 0;
+}
+
+.department-portfolio__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+  gap: 24px;
+}
+
+.department-risk-list {
+  display: grid;
+}
+
+.department-risk-list button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 16px 0;
+  border: 0;
+  border-bottom: 1px solid var(--atlas-border);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.department-risk-list button:last-child {
+  border-bottom: 0;
+}
+
+.department-risk-list button:hover,
+.department-risk-list button:focus-visible {
+  color: var(--atlas-primary);
+}
+
+.department-risk-list span {
+  display: grid;
+  gap: 4px;
+}
+
+.department-risk-list small {
+  color: var(--atlas-text-secondary);
+}
+
 .project-workspace-status {
   display: flex;
   flex-wrap: wrap;
@@ -4117,6 +4210,7 @@ tr.is-clickable:hover {
 @media (max-width: 900px) {
   .business-health-section,
   .project-toolbar,
+  .department-portfolio__grid,
   .project-overview-grid,
   .reporting-summary-grid,
   .report-type-grid {
@@ -4125,6 +4219,11 @@ tr.is-clickable:hover {
 
   .project-activity-log li {
     grid-template-columns: 1fr auto;
+  }
+
+  .department-portfolio__header {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .project-activity-log li > div,

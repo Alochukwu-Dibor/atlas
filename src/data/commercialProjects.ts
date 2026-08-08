@@ -104,9 +104,284 @@ function adherenceFor(kpiId: string, baseline: number, actual: number) {
   return Math.max(0, Math.min(100, Math.round((actual / baseline) * 100)));
 }
 
+type SupplementalMeasure = Omit<
+  CommercialProjectMeasure,
+  'id' | 'sourceId' | 'type' | 'department'
+>;
+
+const projectAdherenceFixtures: Record<
+  string,
+  { targets: SupplementalMeasure[]; milestones: SupplementalMeasure[] }
+> = {
+  prj_compressor: {
+    targets: [
+      {
+        name: 'Restore gross oil delivery to 120,000 barrels per day',
+        approvedValue: 120000,
+        actualValue: 96800,
+        unit: 'bopd',
+        variance: '-23,200 bopd',
+        adherencePercent: 81,
+        dueOrPeriod: '27 Jul–2 Aug 2026',
+        status: 'at_risk',
+      },
+      {
+        name: 'Recover 23,200 barrels per day of deferred production before September',
+        approvedValue: 23200,
+        actualValue: 11600,
+        unit: 'bopd',
+        variance: '-11,600 bopd',
+        adherencePercent: 50,
+        dueOrPeriod: '2026-08-31',
+        status: 'at_risk',
+      },
+      {
+        name: 'Maintain compressor-system availability above 90%',
+        approvedValue: 90,
+        actualValue: 82.4,
+        unit: '%',
+        variance: '-7.6 pp',
+        adherencePercent: 92,
+        dueOrPeriod: '27 Jul–2 Aug 2026',
+        status: 'needs_attention',
+      },
+    ],
+    milestones: [
+      {
+        name: 'Replacement rotor delivered to Compressor Station B',
+        approvedValue: '2026-08-06',
+        actualValue: 'At risk',
+        unit: '',
+        variance: 'Logistics confirmation outstanding',
+        adherencePercent: 65,
+        dueOrPeriod: '2026-08-06',
+        status: 'at_risk',
+      },
+      {
+        name: 'Compressor mechanical installation and alignment completed',
+        approvedValue: '2026-08-08',
+        actualValue: 'Not started',
+        unit: '',
+        variance: 'Dependent on rotor delivery',
+        adherencePercent: 20,
+        dueOrPeriod: '2026-08-08',
+        status: 'needs_attention',
+      },
+      {
+        name: 'Performance test confirms at least 90% station availability',
+        approvedValue: '2026-08-09',
+        actualValue: 'Scheduled',
+        unit: '',
+        variance: 'Test window remains open',
+        adherencePercent: 45,
+        dueOrPeriod: '2026-08-09',
+        status: 'scheduled',
+      },
+    ],
+  },
+  prj_integrity: {
+    targets: [
+      {
+        name: 'Complete 100% of priority export-line inspection scope',
+        approvedValue: 100,
+        actualValue: 54,
+        unit: '%',
+        variance: '-46 pp',
+        adherencePercent: 54,
+        dueOrPeriod: '2026-08-22',
+        status: 'delayed',
+      },
+      {
+        name: 'Deliver the integrity programme within the approved USD 28 million budget',
+        approvedValue: 28000000,
+        actualValue: 30100000,
+        unit: 'USD forecast',
+        variance: '+USD 2.1m',
+        adherencePercent: 93,
+        dueOrPeriod: '2026-08-22',
+        status: 'at_risk',
+      },
+      {
+        name: 'Resolve all high-risk access constraints before inspection mobilisation',
+        approvedValue: 2,
+        actualValue: 1,
+        unit: 'constraints closed',
+        variance: '1 remains open',
+        adherencePercent: 50,
+        dueOrPeriod: '2026-08-05',
+        status: 'critical',
+      },
+    ],
+    milestones: [
+      {
+        name: 'Community access protocol executed for the inspection corridor',
+        approvedValue: '2026-08-05',
+        actualValue: 'In progress',
+        unit: '',
+        variance: 'Executive action required',
+        adherencePercent: 55,
+        dueOrPeriod: '2026-08-05',
+        status: 'at_risk',
+      },
+      {
+        name: 'Priority export-line inspection window completed',
+        approvedValue: '2026-08-15',
+        actualValue: 'Delayed',
+        unit: '',
+        variance: 'Forecast 22 Aug 2026',
+        adherencePercent: 54,
+        dueOrPeriod: '2026-08-15',
+        status: 'delayed',
+      },
+      {
+        name: 'Final integrity findings and repair plan approved',
+        approvedValue: '2026-08-22',
+        actualValue: 'Not started',
+        unit: '',
+        variance: 'Dependent on inspection',
+        adherencePercent: 15,
+        dueOrPeriod: '2026-08-22',
+        status: 'needs_attention',
+      },
+    ],
+  },
+  prj_wellwork: {
+    targets: [
+      {
+        name: 'Restore the first Kokori well to sustained production before September',
+        approvedValue: 1,
+        actualValue: 0,
+        unit: 'well online',
+        variance: 'Commissioning pending',
+        adherencePercent: 61,
+        dueOrPeriod: '2026-08-28',
+        status: 'on_track',
+      },
+      {
+        name: 'Complete at least 60% of the well-restoration campaign by week 31',
+        approvedValue: 60,
+        actualValue: 61,
+        unit: '%',
+        variance: '+1 pp',
+        adherencePercent: 100,
+        dueOrPeriod: '27 Jul–2 Aug 2026',
+        status: 'on_track',
+      },
+      {
+        name: 'Deliver the campaign within the approved USD 65 million budget',
+        approvedValue: 65000000,
+        actualValue: 64200000,
+        unit: 'USD forecast',
+        variance: '-USD 0.8m',
+        adherencePercent: 100,
+        dueOrPeriod: '2026-09-15',
+        status: 'on_track',
+      },
+    ],
+    milestones: [
+      {
+        name: 'First restored Kokori well restarted',
+        approvedValue: '2026-08-28',
+        actualValue: 'On track',
+        unit: '',
+        variance: 'No schedule variance',
+        adherencePercent: 72,
+        dueOrPeriod: '2026-08-28',
+        status: 'on_track',
+      },
+      {
+        name: 'Three-well workover sequence completed',
+        approvedValue: '2026-09-08',
+        actualValue: 'In progress',
+        unit: '',
+        variance: 'Sequence 2 of 3 active',
+        adherencePercent: 67,
+        dueOrPeriod: '2026-09-08',
+        status: 'on_track',
+      },
+      {
+        name: 'Sustained production test and campaign handover completed',
+        approvedValue: '2026-09-15',
+        actualValue: 'Scheduled',
+        unit: '',
+        variance: 'Test plan approved',
+        adherencePercent: 45,
+        dueOrPeriod: '2026-09-15',
+        status: 'scheduled',
+      },
+    ],
+  },
+  prj_metering: {
+    targets: [
+      {
+        name: 'Complete 100% of fiscal-metering commissioning scope',
+        approvedValue: 100,
+        actualValue: 88,
+        unit: '%',
+        variance: '-12 pp',
+        adherencePercent: 88,
+        dueOrPeriod: '2026-08-12',
+        status: 'on_track',
+      },
+      {
+        name: 'Achieve at least 98% measurement accuracy at acceptance',
+        approvedValue: 98,
+        actualValue: 96.4,
+        unit: '%',
+        variance: '-1.6 pp',
+        adherencePercent: 98,
+        dueOrPeriod: '2026-08-12',
+        status: 'needs_attention',
+      },
+      {
+        name: 'Close all acceptance punch-list items before custody transfer',
+        approvedValue: 12,
+        actualValue: 9,
+        unit: 'items closed',
+        variance: '3 items open',
+        adherencePercent: 75,
+        dueOrPeriod: '2026-08-12',
+        status: 'on_track',
+      },
+    ],
+    milestones: [
+      {
+        name: 'Fiscal meter installation and loop checks completed',
+        approvedValue: '2026-08-06',
+        actualValue: 'Completed',
+        unit: '',
+        variance: 'Completed on schedule',
+        adherencePercent: 100,
+        dueOrPeriod: '2026-08-06',
+        status: 'completed',
+      },
+      {
+        name: 'Calibration and proving accepted by operations assurance',
+        approvedValue: '2026-08-10',
+        actualValue: 'In progress',
+        unit: '',
+        variance: 'Final proving run pending',
+        adherencePercent: 88,
+        dueOrPeriod: '2026-08-10',
+        status: 'on_track',
+      },
+      {
+        name: 'Custody-transfer handover certificate signed',
+        approvedValue: '2026-08-12',
+        actualValue: 'Scheduled',
+        unit: '',
+        variance: 'Acceptance meeting booked',
+        adherencePercent: 60,
+        dueOrPeriod: '2026-08-12',
+        status: 'scheduled',
+      },
+    ],
+  },
+};
+
 function measuresFor(baseline: ProjectBaseline): CommercialProjectMeasure[] {
   const cycle = getCycle(atlas.demoStates.defaultOpenCycleId);
-  const targets = baseline.targets.map((target) => {
+  const baselineTargets = baseline.targets.map((target) => {
     const reported = phase1Domain.kpiTargets.find((item) => item.kpiId === target.kpiId);
     const definition = phase1Domain.kpiDefinitions.find((item) => item.id === target.kpiId);
     const actual = reported?.actual ?? 0;
@@ -152,7 +427,7 @@ function measuresFor(baseline: ProjectBaseline): CommercialProjectMeasure[] {
       status: reported?.status ?? 'missing_inputs',
     };
   });
-  const milestones = baseline.milestones.map((milestone) => {
+  const baselineMilestones = baseline.milestones.map((milestone) => {
     const reported = phase1Domain.milestones.find((item) => item.id === milestone.id);
     const status = reported?.status ?? 'missing_inputs';
     return {
@@ -184,6 +459,24 @@ function measuresFor(baseline: ProjectBaseline): CommercialProjectMeasure[] {
       status,
     };
   });
+  const fixture = projectAdherenceFixtures[baseline.id];
+  const department = getDepartment(baseline.departmentId)?.name ?? 'Unassigned';
+  const targets =
+    fixture?.targets.map((measure, index) => ({
+      ...measure,
+      id: `target:${baseline.id}:${index + 1}`,
+      sourceId: baselineTargets[index]?.sourceId ?? `target_${baseline.id}_${index + 1}`,
+      type: 'Target' as const,
+      department,
+    })) ?? baselineTargets;
+  const milestones =
+    fixture?.milestones.map((measure, index) => ({
+      ...measure,
+      id: `milestone:${baseline.id}:${index + 1}`,
+      sourceId: baselineMilestones[index]?.sourceId ?? `milestone_${baseline.id}_${index + 1}`,
+      type: 'Milestone' as const,
+      department,
+    })) ?? baselineMilestones;
   return [...kpis, ...targets, ...milestones];
 }
 

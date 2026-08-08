@@ -1,6 +1,8 @@
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Bar, BarChart, CartesianGrid, Legend, Tooltip, XAxis, YAxis } from 'recharts';
+import { ChartWrapper } from '../components/Charts';
 import {
   Button,
   DataTable,
@@ -18,14 +20,25 @@ import {
   type CommercialProjectMeasure,
 } from '../data/commercialProjects';
 import { format } from '../data/atlas';
+import {
+  selectPortfolioDepartments,
+  type PortfolioDepartmentId,
+} from '../data/commercialPortfolio';
 import { useAtlas } from '../state/AtlasContext';
 
 type ProjectView = 'overview' | 'adherence' | 'activity';
 
 const projectViews: readonly { id: ProjectView; label: string }[] = [
   { id: 'overview', label: 'Overview' },
-  { id: 'adherence', label: 'KPI, target and milestone adherence' },
+  { id: 'adherence', label: 'Target and Milestone adherence' },
   { id: 'activity', label: 'Activity log' },
+];
+
+type PortfolioView = 'projects' | 'departments';
+
+const portfolioViews: readonly { id: PortfolioView; label: string }[] = [
+  { id: 'projects', label: 'Projects' },
+  { id: 'departments', label: 'Departments' },
 ];
 
 function measureValue(value: number | string, unit: string) {
@@ -104,13 +117,9 @@ function ProjectsList() {
   if (!plan.confirmedPlan) {
     return (
       <>
-        <PageHeader
-          title="Projects"
-          description="How is each project performing against the confirmed approved plan?"
-        />
         <StateView
           type="empty"
-          title="Confirm an approved plan to activate Projects"
+          title="Confirm an approved plan to activate Portfolio"
           message="Project names, phases and approved measures are loaded from the confirmed tracking baseline."
           action={<Button onClick={() => navigate('/plan')}>Open Plan</Button>}
         />
@@ -123,10 +132,6 @@ function ProjectsList() {
   );
   return (
     <>
-      <PageHeader
-        title="Projects"
-        description="How is each project performing against the confirmed approved plan?"
-      />
       <div className="project-list-toolbar">
         <Field label="Search projects">
           <input
@@ -165,6 +170,194 @@ function ProjectsList() {
   );
 }
 
+function DepartmentsDashboard() {
+  const { plan } = useAtlas();
+  const navigate = useNavigate();
+  const departments = selectPortfolioDepartments(plan.confirmedPlan);
+  const [departmentId, setDepartmentId] = useState<PortfolioDepartmentId>('finance');
+  const [projectId, setProjectId] = useState('all');
+  const department = departments.find((item) => item.id === departmentId) ?? departments[0];
+
+  if (!plan.confirmedPlan) {
+    return (
+      <StateView
+        type="empty"
+        title="Confirm an approved plan to view department delivery"
+        message="Department dashboards use confirmed projects and approved baselines as their scope."
+        action={<Button onClick={() => navigate('/plan')}>Open Plan</Button>}
+      />
+    );
+  }
+
+  const visibleProjects =
+    projectId === 'all'
+      ? department.projects
+      : department.projects.filter((project) => project.id === projectId);
+  const visibleGoals =
+    projectId === 'all'
+      ? department.goals
+      : department.goals.filter((goal) => goal.projectId === projectId);
+  const visibleRisks = department.risks.filter(
+    (risk) => projectId === 'all' || risk.projectId === projectId,
+  );
+  const chartData = visibleProjects.map((project) => ({
+    project: project.name
+      .replace('Compressor Station B ', '')
+      .replace('Ughelli Export Line ', '')
+      .replace('Kokori ', ''),
+    planned: project.plannedProgressPercent ?? 0,
+    actual: project.progressPercent,
+  }));
+
+  const selectDepartment = (nextId: PortfolioDepartmentId) => {
+    setDepartmentId(nextId);
+    setProjectId('all');
+  };
+
+  return (
+    <div className="department-portfolio">
+      <div className="portfolio-department-picker" aria-label="Departments">
+        {departments.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={item.id === department.id ? 'is-active' : ''}
+            aria-pressed={item.id === department.id}
+            onClick={() => selectDepartment(item.id)}
+          >
+            {item.name}
+          </button>
+        ))}
+      </div>
+
+      <div className="department-portfolio__header">
+        <div>
+          <h2>{department.name}</h2>
+          <p>{department.description}</p>
+        </div>
+        <Field label="Filter by project">
+          <select value={projectId} onChange={(event) => setProjectId(event.target.value)}>
+            <option value="all">All linked projects</option>
+            {department.projects.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+
+      <div className="grid grid--3 department-metrics">
+        {department.metrics.map((metric) => (
+          <KpiCard
+            key={metric.label}
+            label={metric.label}
+            value={metric.value}
+            context={metric.context}
+            status={metric.status}
+          />
+        ))}
+      </div>
+
+      <div className="department-portfolio__grid">
+        <Panel title="Delivery performance">
+          {chartData.length ? (
+            <ChartWrapper
+              title={`${department.name} project delivery`}
+              summary={`Planned and actual progress for ${visibleProjects.length} linked projects.`}
+              tableHeaders={['Project', 'Planned progress', 'Actual progress']}
+              tableRows={chartData.map((point) => [
+                point.project,
+                `${point.planned}%`,
+                `${point.actual}%`,
+              ])}
+            >
+              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -14, bottom: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="project" tick={{ fontSize: 12 }} />
+                <YAxis domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
+                <Tooltip formatter={(value) => `${value}%`} />
+                <Legend />
+                <Bar dataKey="planned" name="Approved plan" fill="#98a2b3" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="actual" name="Actual delivery" fill="#175cd3" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ChartWrapper>
+          ) : (
+            <p className="empty-copy">No projects are linked to this department filter.</p>
+          )}
+        </Panel>
+
+        <Panel title="Risks">
+          {visibleRisks.length ? (
+            <div className="department-risk-list">
+              {visibleRisks.map((risk) => (
+                <button
+                  key={risk.id}
+                  type="button"
+                  onClick={() => navigate(`/projects/${risk.projectId}`)}
+                >
+                  <span>
+                    <strong>{risk.issue}</strong>
+                    <small>{risk.impact}</small>
+                  </span>
+                  <StatusBadge status={risk.status} />
+                  <ArrowRight aria-hidden="true" />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="empty-copy">No open risks match this department and project filter.</p>
+          )}
+        </Panel>
+      </div>
+
+      <Panel title="Goals and delivery against plan" className="section">
+        {visibleGoals.length ? (
+          <DataTable
+            caption={`${department.name} goals`}
+            headers={['Goal', 'Project', 'Approved plan', 'Actual progress', 'Status']}
+            rows={visibleGoals.map((goal) => [
+              <strong>{goal.name}</strong>,
+              goal.projectName,
+              `${goal.plannedPercent}%`,
+              <div className="progress-cell">
+                <progress value={goal.progressPercent} max={100} />
+                <span>{goal.progressPercent}%</span>
+              </div>,
+              <StatusBadge status={goal.status} />,
+            ])}
+            onRowClick={(index) => navigate(`/projects/${visibleGoals[index].projectId}`)}
+          />
+        ) : (
+          <p className="empty-copy">No goals match this department and project filter.</p>
+        )}
+      </Panel>
+    </div>
+  );
+}
+
+function PortfolioList() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const view: PortfolioView =
+    searchParams.get('tab') === 'departments' ? 'departments' : 'projects';
+  return (
+    <>
+      <PageHeader
+        title="Portfolio"
+        description="How are confirmed projects and responsible departments delivering against plan?"
+      />
+      <DetailTabs
+        label="Portfolio"
+        value={view}
+        tabs={portfolioViews}
+        onChange={(nextView) => navigate(`/projects?tab=${nextView}`)}
+      />
+      {view === 'projects' ? <ProjectsList /> : <DepartmentsDashboard />}
+    </>
+  );
+}
+
 function ProjectWorkspace({ projectId }: { projectId: string }) {
   const { plan, workflow } = useAtlas();
   const navigate = useNavigate();
@@ -192,7 +385,7 @@ function ProjectWorkspace({ projectId }: { projectId: string }) {
         type="error"
         title="Project not found"
         message={`No confirmed project matches the identifier “${projectId}”.`}
-        action={<Button onClick={() => navigate('/projects')}>Back to Projects</Button>}
+        action={<Button onClick={() => navigate('/projects')}>Back to Portfolio</Button>}
       />
     );
   }
@@ -210,7 +403,7 @@ function ProjectWorkspace({ projectId }: { projectId: string }) {
         description="Project workspace · performance against the confirmed approved plan"
         controls={
           <Button variant="secondary" onClick={() => navigate('/projects')}>
-            <ArrowLeft aria-hidden="true" /> Back to Projects
+            <ArrowLeft aria-hidden="true" /> Back to Portfolio
           </Button>
         }
       />
@@ -342,11 +535,6 @@ function ProjectWorkspace({ projectId }: { projectId: string }) {
             </p>
           )}
           <ProjectMeasureTable
-            type="KPI"
-            measures={project.measures}
-            focusedMeasure={focusedMeasure}
-          />
-          <ProjectMeasureTable
             type="Target"
             measures={project.measures}
             focusedMeasure={focusedMeasure}
@@ -396,5 +584,5 @@ function ProjectWorkspace({ projectId }: { projectId: string }) {
 
 export default function CommercialProjectsPage() {
   const { projectId } = useParams();
-  return projectId ? <ProjectWorkspace projectId={projectId} /> : <ProjectsList />;
+  return projectId ? <ProjectWorkspace projectId={projectId} /> : <PortfolioList />;
 }

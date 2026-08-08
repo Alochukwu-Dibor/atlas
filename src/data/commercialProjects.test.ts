@@ -56,20 +56,29 @@ describe('Commercial Projects selectors', () => {
     );
   });
 
-  it('derives KPI, target and milestone adherence from the confirmed baseline', () => {
+  it('provides complete target and milestone adherence for every confirmed project', () => {
     const project = selectCommercialProjectWorkspace(
       confirmedPlan(),
       createInitialWorkflowState(),
       'prj_compressor',
     )!;
     expect(project.objective).toBe('Restore and sustain planned production');
-    expect(project.measures.map((measure) => measure.type)).toEqual(['KPI', 'Target', 'Milestone']);
+    expect(project.measures.filter((measure) => measure.type === 'Target')).toHaveLength(3);
+    expect(project.measures.filter((measure) => measure.type === 'Milestone')).toHaveLength(3);
     expect(project.measures[0]).toMatchObject({
       approvedValue: 120000,
       actualValue: 96800,
       status: 'at_risk',
     });
     expect(project.insights[0].destination).toContain('/projects/prj_compressor?view=adherence');
+    expect(project.measures).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'Restore gross oil delivery to 120,000 barrels per day' }),
+        expect.objectContaining({
+          name: 'Performance test confirms at least 90% station availability',
+        }),
+      ]),
+    );
   });
 
   it('builds a chronological, linked project activity log', () => {
