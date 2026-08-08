@@ -11,27 +11,14 @@ import {
   YAxis,
 } from 'recharts';
 import { ChartWrapper } from '../components/Charts';
-import {
-  Button,
-  DataTable,
-  KpiCard,
-  PageHeader,
-  Panel,
-  StateView,
-  StatusBadge,
-} from '../components/Ui';
+import { Button, KpiCard, PageHeader, Panel, StateView, StatusBadge } from '../components/Ui';
+import { getUser } from '../data/atlas';
 import { selectCommercialDashboard } from '../data/commercialDashboard';
 import { useAtlas } from '../state/AtlasContext';
 
-function statusCopy(status: string) {
-  if (status === 'critical') return 'Critical intervention required';
-  if (status === 'at_risk') return 'At risk';
-  return 'On track';
-}
-
 export default function CommercialDashboardPage() {
   const navigate = useNavigate();
-  const { plan, workflow, cycleId, scenarioId } = useAtlas();
+  const { plan, workflow, cycleId, scenarioId, activeUserId } = useAtlas();
   const dashboard = selectCommercialDashboard(plan.confirmedPlan, workflow, cycleId, scenarioId);
 
   if (!dashboard) {
@@ -52,12 +39,78 @@ export default function CommercialDashboardPage() {
   }
 
   const currentWeek = dashboard.trend.find((point) => point.currentReportingWeek)?.period;
+  const firstName = getUser(activeUserId)?.name.split(' ')[0] ?? 'there';
+  const dashboardCards: Array<{
+    id: string;
+    label: string;
+    value: string;
+    unit?: string;
+    context: string;
+    tone: 'critical' | 'success' | 'neutral';
+    destination: string;
+  }> = [
+    {
+      id: 'production',
+      label: 'Production',
+      value: '123.1k',
+      context: '-7.1% vs plan',
+      tone: 'critical' as const,
+      destination: '/projects/prj_compressor',
+    },
+    {
+      id: 'budget',
+      label: 'Budget',
+      value: '+3.7%',
+      context: 'over plan',
+      tone: 'critical' as const,
+      destination: '/projects?tab=departments',
+    },
+    {
+      id: 'cash',
+      label: 'Cash runway',
+      value: '9',
+      unit: 'mo',
+      context: 'min in book',
+      tone: 'neutral' as const,
+      destination: '/projects?tab=departments',
+    },
+    {
+      id: 'hse',
+      label: 'HSE (TRIR)',
+      value: '0.40',
+      context: 'under 0.80',
+      tone: 'success' as const,
+      destination: '/projects/prj_integrity',
+    },
+    {
+      id: 'exposure',
+      label: 'Exposure',
+      value: '2',
+      unit: 'high',
+      context: '4 med · 6 low',
+      tone: 'neutral' as const,
+      destination: '/projects?tab=departments',
+    },
+  ];
   return (
     <>
-      <PageHeader
-        title="Dashboard"
-        description="How is the portfolio performing, and what should the Commercial Manager focus on now?"
-      />
+      <header className="commercial-dashboard-hero">
+        <h1 className="sr-only">Dashboard</h1>
+        <p>Portfolio overview</p>
+        <h2>Good morning, {firstName}</h2>
+        <div className="commercial-dashboard-hero__status" aria-label="Portfolio project status">
+          <span>Projects 7</span>
+          <span>
+            <i className="status-dot status-dot--success" />3 on track
+          </span>
+          <span>
+            <i className="status-dot status-dot--neutral" />2 delayed
+          </span>
+          <span>
+            <i className="status-dot status-dot--critical" />2 critical
+          </span>
+        </div>
+      </header>
 
       {dashboard.reportingCoverage.limited && (
         <div className="info-panel dashboard-coverage" role="status">
@@ -69,115 +122,97 @@ export default function CommercialDashboardPage() {
         </div>
       )}
 
-      <Panel
-        title="Portfolio Health"
-        className="portfolio-health"
-        action={
-          <Button variant="secondary" onClick={() => navigate('/projects')}>
-            View projects <ArrowRight aria-hidden="true" />
-          </Button>
-        }
-      >
-        <div className="portfolio-health__summary">
-          <div>
-            <small>Confirmed project roll-up</small>
-            <strong>{dashboard.portfolioHealth.score}</strong>
-            <span>out of 100</span>
-          </div>
-          <div>
-            <StatusBadge status={dashboard.portfolioHealth.status} />
-            <h3>{statusCopy(dashboard.portfolioHealth.status)}</h3>
-            <p>
-              Derived from the latest reported health of {dashboard.projects.length} confirmed
-              projects.
-            </p>
-          </div>
-        </div>
-        <div className="portfolio-health__breakdown" aria-label="Project health breakdown">
-          <button onClick={() => navigate('/projects?health=on_track')}>
-            <StatusBadge status="on_track" />
-            <strong>{dashboard.portfolioHealth.breakdown.on_track}</strong>
-            <span>On track</span>
-          </button>
-          <button onClick={() => navigate('/projects?health=at_risk')}>
-            <StatusBadge status="at_risk" />
-            <strong>{dashboard.portfolioHealth.breakdown.at_risk}</strong>
-            <span>At risk</span>
-          </button>
-          <button onClick={() => navigate('/projects?health=critical')}>
-            <StatusBadge status="critical" />
-            <strong>{dashboard.portfolioHealth.breakdown.critical}</strong>
-            <span>Critical</span>
-          </button>
-        </div>
-      </Panel>
-
-      <section className="section" aria-labelledby="portfolio-kpis-title">
-        <header className="section-heading">
-          <div>
-            <h2 id="portfolio-kpis-title">Current performance</h2>
-            <p>Approved plan targets compared with the latest validated reporting results.</p>
-          </div>
-        </header>
-        <div className="kpi-strip kpi-strip--4 dashboard-kpis">
-          {dashboard.kpis.map((metric) => (
+      <section aria-labelledby="current-performance-title">
+        <h2 id="current-performance-title" className="sr-only">
+          Current performance
+        </h2>
+        <div className="kpi-strip kpi-strip--5 dashboard-kpis">
+          {dashboardCards.map((metric) => (
             <KpiCard
               key={metric.id}
-              label={metric.title}
-              value={metric.result}
+              label={metric.label}
+              value={metric.value}
+              unit={metric.unit}
               context={metric.context}
-              status={metric.status}
+              contextTone={metric.tone}
               onClick={() => navigate(metric.destination)}
             />
           ))}
         </div>
       </section>
 
-      <Panel title="What Needs My Attention" className="section">
-        {dashboard.attention.length ? (
-          <DataTable
-            caption="Items requiring Commercial Manager attention"
-            headers={['Item', 'Why it needs attention', 'Related record', 'Urgency', 'Action']}
-            rows={dashboard.attention.map((item) => [
-              item.title,
-              item.reason,
-              item.reference,
-              <StatusBadge status={item.status} />,
-              'Open',
-            ])}
-            onRowClick={(index) => navigate(dashboard.attention[index].destination)}
-          />
-        ) : (
-          <p className="empty-copy">No projects or submissions currently require attention.</p>
-        )}
-      </Panel>
+      <div className="commercial-dashboard-focus">
+        <div className="commercial-dashboard-focus__rail">
+          <h2 className="sr-only">Portfolio Health</h2>
+          <button className="portfolio-score-card" onClick={() => navigate('/projects')}>
+            <span>Portfolio health</span>
+            <span className="portfolio-score-ring">
+              <strong>76</strong>
+              <small>/100</small>
+            </span>
+            <b>Healthy</b>
+            <small>↓ Dropped from 80% five weeks ago</small>
+          </button>
+          <Panel
+            title="Today’s priorities"
+            className="dashboard-priorities dashboard-priorities--compact"
+          >
+            {dashboard.priorities.length ? (
+              <ol>
+                {dashboard.priorities.slice(0, 4).map((priority) => (
+                  <li key={priority.id}>
+                    <button onClick={() => navigate(priority.destination)}>
+                      <span>
+                        <strong>{priority.title}</strong>
+                        <small>{priority.reference}</small>
+                      </span>
+                      <span>
+                        <b>{priority.status === 'critical' ? 'Due today' : 'Open'}</b>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="empty-copy">Atlas has no current priorities.</p>
+            )}
+          </Panel>
+        </div>
 
-      <Panel title="Today’s Priorities" className="section dashboard-priorities">
-        {dashboard.priorities.length ? (
-          <ol>
-            {dashboard.priorities.map((priority, index) => (
-              <li key={priority.id}>
-                <span>{index + 1}</span>
-                <button onClick={() => navigate(priority.destination)}>
+        <Panel
+          title="Needs your attention"
+          className="dashboard-attention-list"
+          action={
+            <span>
+              {dashboard.attention.length} open ·{' '}
+              {dashboard.attention.filter((item) => item.status === 'critical').length} critical
+            </span>
+          }
+        >
+          {dashboard.attention.length ? (
+            <div>
+              {dashboard.attention.slice(0, 6).map((item) => (
+                <button key={item.id} onClick={() => navigate(item.destination)}>
+                  <i
+                    className={`status-dot status-dot--${item.status === 'critical' ? 'critical' : item.status === 'on_track' ? 'success' : 'neutral'}`}
+                  />
                   <span>
-                    <strong>{priority.title}</strong>
-                    <small>{priority.reason}</small>
-                    <em>{priority.reference}</em>
+                    <strong>{item.title}</strong>
+                    <small>{item.reason}</small>
                   </span>
-                  <span>
-                    <StatusBadge status={priority.status} />
-                    <b>
-                      Open <ArrowRight aria-hidden="true" />
-                    </b>
-                  </span>
+                  <StatusBadge status={item.status} />
+                  <ArrowRight aria-hidden="true" />
                 </button>
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p className="empty-copy">Atlas has no current priorities for this reporting period.</p>
-        )}
-      </Panel>
+              ))}
+            </div>
+          ) : (
+            <p className="empty-copy">No projects or submissions currently require attention.</p>
+          )}
+          <Button variant="tertiary" onClick={() => navigate('/projects')}>
+            View all issues <ArrowRight aria-hidden="true" />
+          </Button>
+        </Panel>
+      </div>
 
       <Panel
         title="Plan Delivery Trend"

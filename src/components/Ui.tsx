@@ -73,6 +73,7 @@ export function KpiCard({
   unit,
   status,
   context,
+  contextTone,
   onClick,
 }: {
   label: string;
@@ -80,6 +81,7 @@ export function KpiCard({
   unit?: string;
   status?: string;
   context?: string;
+  contextTone?: 'critical' | 'success' | 'neutral';
   onClick?: () => void;
 }) {
   const content = (
@@ -90,7 +92,11 @@ export function KpiCard({
       </span>
       <span className="kpi__footer">
         {status && <StatusBadge status={status} />}
-        {context && <span>{context}</span>}
+        {context && (
+          <span className={contextTone ? `kpi__context--${contextTone}` : undefined}>
+            {context}
+          </span>
+        )}
       </span>
     </>
   );

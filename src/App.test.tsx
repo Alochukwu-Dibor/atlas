@@ -153,12 +153,12 @@ describe('route architecture', () => {
     expect(screen.getByRole('heading', { name: 'Portfolio Health' })).toBeVisible();
     expect(screen.queryByText('Business Health')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Current performance' })).toBeVisible();
-    expect(screen.getByRole('button', { name: /Production capacity/ })).toBeVisible();
-    expect(screen.getByRole('button', { name: /Cash-flow position/ })).toBeVisible();
-    expect(screen.getByRole('button', { name: /^HSE TRIR/ })).toBeVisible();
-    expect(screen.getByRole('button', { name: /^Legal 86%/ })).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'What Needs My Attention' })).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Today’s Priorities' })).toBeVisible();
+    expect(screen.getByRole('button', { name: /^Production / })).toBeVisible();
+    expect(screen.getByRole('button', { name: /^Cash runway/ })).toBeVisible();
+    expect(screen.getByRole('button', { name: /^HSE \(TRIR\)/ })).toBeVisible();
+    expect(screen.getByRole('button', { name: /^Exposure/ })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Needs your attention' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Today’s priorities' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Plan Delivery Trend' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Portfolio' })).toHaveAttribute('href', '/projects');
     expect(
@@ -370,8 +370,8 @@ describe('route architecture', () => {
       </MemoryRouter>,
     );
 
-    const projectRow = await screen.findByRole('row', {
-      name: /Compressor Station B Restoration/,
+    const projectRow = await screen.findByRole('button', {
+      name: /Compressor Station B Restoration Replacement rotor delivery/,
     });
     await user.click(projectRow);
 
@@ -392,7 +392,7 @@ describe('route architecture', () => {
         </AtlasProvider>
       </MemoryRouter>,
     );
-    await user.click(await screen.findByRole('button', { name: /Production capacity/ }));
+    await user.click(await screen.findByRole('button', { name: /^Production / }));
     expect(
       await screen.findByRole('heading', { name: 'Compressor Station B Restoration' }),
     ).toBeVisible();
@@ -409,7 +409,7 @@ describe('route architecture', () => {
         </AtlasProvider>
       </MemoryRouter>,
     );
-    const submissionRow = await screen.findByRole('row', {
+    const submissionRow = await screen.findByRole('button', {
       name: /HSE Weekly Execution Update Clarification remains unresolved/,
     });
     await user.click(submissionRow);
