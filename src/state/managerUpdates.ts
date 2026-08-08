@@ -51,6 +51,7 @@ export interface ManagerWeeklyUpdate {
   sections: ManagerUpdateSections;
   chart: GeneratedChart | null;
   attachments: ManagerAttachment[];
+  pastedText?: string;
   status: ManagerSubmissionStatus;
   savedAt: string;
   submittedAt: string | null;

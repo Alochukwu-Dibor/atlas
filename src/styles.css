@@ -2124,6 +2124,35 @@ a.button {
   display: none;
 }
 
+.executive-health-card__value {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.executive-health-card__value > strong {
+  font-size: 36px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.executive-health-card__ring {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: conic-gradient(#111214 var(--health-value), #e5e7eb 0);
+  position: relative;
+}
+
+.executive-health-card__ring::after {
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: #fff;
+  content: '';
+}
+
 .executive-kpis {
   gap: 20px;
 }
@@ -4112,6 +4141,57 @@ tr.is-clickable:hover {
 
 .department-risk-list small {
   color: var(--atlas-text-secondary);
+}
+
+.manager-support-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.manager-paste-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 8px 14px;
+  border: 1px solid var(--atlas-border);
+  border-radius: 10px;
+  color: var(--atlas-text-primary);
+  background: #fff;
+  text-align: left;
+}
+
+.manager-paste-action:hover,
+.manager-paste-action:focus-visible {
+  background: var(--atlas-surface-subtle);
+}
+
+.manager-paste-action svg {
+  width: 18px;
+}
+
+.manager-paste-action span {
+  display: grid;
+  gap: 2px;
+}
+
+.manager-paste-action small,
+.manager-pasted-summary {
+  color: var(--atlas-text-secondary);
+}
+
+.manager-pasted-text {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 10px;
+  background: #f7f8f9;
+}
+
+.manager-pasted-text p {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
 }
 
 .project-workspace-status {

@@ -1,4 +1,4 @@
-import { BarChart3, FileCheck2, FileUp, Trash2 } from 'lucide-react';
+import { BarChart3, ClipboardPaste, FileCheck2, FileUp, Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from 'recharts';
@@ -137,7 +137,6 @@ export function ExecutiveUpdatesPage() {
   const navigate = useNavigate();
   const { role, managerUpdates } = useAtlas();
   const [search, setSearch] = useState('');
-  const [page, setPage] = useState(0);
   if (role !== 'ceo' && role !== 'cfo') {
     return (
       <StateView
@@ -148,7 +147,31 @@ export function ExecutiveUpdatesPage() {
     );
   }
   const updates = selectVisibleSubmittedUpdates(managerUpdates, role as 'ceo' | 'cfo');
-  const filteredUpdates = updates.filter((update) => {
+  const previewRows = updates.length
+    ? [
+        ['usr_operations', 'dept_operations', 'prj_compressor', '2026-08-03T09:10:00+01:00'],
+        ['usr_finance', 'dept_finance', 'prj_metering', '2026-08-03T09:35:00+01:00'],
+        ['usr_hse', 'dept_hse', 'prj_integrity', '2026-08-03T10:05:00+01:00'],
+        ['usr_legal', 'dept_legal', 'prj_integrity', '2026-08-03T10:40:00+01:00'],
+        ['usr_commercial', 'dept_commercial', 'prj_wellwork', '2026-08-03T11:15:00+01:00'],
+      ].map(([creatorId, departmentId, projectId, submittedAt], index) => ({
+        update: {
+          ...updates[0],
+          id: `executive_preview_update_${index + 1}`,
+          creatorId,
+          departmentId,
+          projectId,
+          reportingPeriodId: 'cycle_2026_w31',
+          submittedAt,
+        },
+        detailId: updates[0].id,
+      }))
+    : [];
+  const displayRows = [
+    ...updates.map((update) => ({ update, detailId: update.id })),
+    ...previewRows,
+  ];
+  const filteredUpdates = displayRows.filter(({ update }) => {
     const manager = getUser(update.creatorId)?.name ?? '';
     const department = getDepartment(update.departmentId)?.name ?? '';
     const project = atlas.projects.find((item) => item.id === update.projectId)?.name ?? '';
@@ -157,10 +180,6 @@ export function ExecutiveUpdatesPage() {
       .toLowerCase()
       .includes(search.toLowerCase());
   });
-  const pageSize = 8;
-  const totalPages = Math.max(1, Math.ceil(filteredUpdates.length / pageSize));
-  const safePage = Math.min(page, totalPages - 1);
-  const pageUpdates = filteredUpdates.slice(safePage * pageSize, (safePage + 1) * pageSize);
   return (
     <>
       <PageHeader
@@ -175,65 +194,28 @@ export function ExecutiveUpdatesPage() {
                 type="search"
                 value={search}
                 placeholder="Search by period, contributor, department or project"
-                onChange={(event) => {
-                  setSearch(event.target.value);
-                  setPage(0);
-                }}
+                onChange={(event) => setSearch(event.target.value)}
               />
             </Field>
           </div>
-          {pageUpdates.length ? (
-            <>
-              <DataTable
-                caption="Authorised submitted Weekly Updates"
-                headers={[
-                  'Reporting Period',
-                  'Manager & Department',
+          {filteredUpdates.length ? (
+            <DataTable
+              caption="Authorised submitted Weekly Updates"
+              headers={['Reporting Period', 'Manager', 'Project', 'Date Submitted', 'Action']}
+              rows={filteredUpdates.map(({ update, detailId }) => [
+                getCycle(update.reportingPeriodId).label,
+                <strong>{getUser(update.creatorId)?.name ?? 'Manager'}</strong>,
+                atlas.projects.find((project) => project.id === update.projectId)?.name ??
                   'Project',
-                  'Date Submitted',
-                  'Action',
-                ]}
-                rows={pageUpdates.map((update) => [
-                  getCycle(update.reportingPeriodId).label,
-                  <span className="submission-status-cell">
-                    <strong>{getUser(update.creatorId)?.name ?? 'Manager'}</strong>
-                    <small>{getDepartment(update.departmentId)?.name ?? 'Department'}</small>
-                  </span>,
-                  atlas.projects.find((project) => project.id === update.projectId)?.name ??
-                    'Project',
-                  update.submittedAt ? format.date(update.submittedAt) : 'Not submitted',
-                  <Button
-                    variant="secondary"
-                    onClick={() => navigate(`/executive/view-updates/${update.id}`)}
-                  >
-                    View update
-                  </Button>,
-                ])}
-              />
-              <div className="table-pagination" aria-label="Executive updates pagination">
-                <span>
-                  {safePage * pageSize + 1}–
-                  {Math.min((safePage + 1) * pageSize, filteredUpdates.length)} of{' '}
-                  {filteredUpdates.length}
-                </span>
-                <div className="form-actions">
-                  <Button
-                    variant="secondary"
-                    disabled={safePage === 0}
-                    onClick={() => setPage((current) => Math.max(0, current - 1))}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    disabled={safePage >= totalPages - 1}
-                    onClick={() => setPage((current) => Math.min(totalPages - 1, current + 1))}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            </>
+                update.submittedAt ? format.date(update.submittedAt) : 'Not submitted',
+                <Button
+                  variant="secondary"
+                  onClick={() => navigate(`/executive/view-updates/${detailId}`)}
+                >
+                  View update
+                </Button>,
+              ])}
+            />
           ) : (
             <p className="empty-copy">No submitted Weekly Updates match this search.</p>
           )}
@@ -282,6 +264,8 @@ export function ManagerWeeklyUpdatesPage() {
   const [attachments, setAttachments] = useState<ManagerAttachment[]>(
     requestedUpdate?.attachments ?? [],
   );
+  const [pastedText, setPastedText] = useState(requestedUpdate?.pastedText ?? '');
+  const [pasteModalOpen, setPasteModalOpen] = useState(false);
   const [chart, setChart] = useState<GeneratedChart | null>(requestedUpdate?.chart ?? null);
   const [chartModalOpen, setChartModalOpen] = useState(false);
   const [chartType, setChartType] = useState<ManagerChartType>(
@@ -311,6 +295,7 @@ export function ManagerWeeklyUpdatesPage() {
     );
     setSections(saved?.sections ?? emptySections);
     setAttachments(saved?.attachments ?? []);
+    setPastedText(saved?.pastedText ?? '');
     setChart(saved?.chart ?? null);
     setErrors({});
   };
@@ -330,6 +315,7 @@ export function ManagerWeeklyUpdatesPage() {
       sections,
       chart,
       attachments: attachments.filter((attachment) => attachment.status === 'uploaded'),
+      pastedText: pastedText.trim(),
       status,
       savedAt: now,
       submittedAt: status === 'submitted' ? now : null,
@@ -585,9 +571,25 @@ export function ManagerWeeklyUpdatesPage() {
                 event.target.value = '';
               }}
             />
-            <Button variant="secondary" onClick={() => fileInput.current?.click()}>
-              <FileUp aria-hidden="true" /> Attach documents
-            </Button>
+            <div className="manager-support-actions">
+              <Button variant="secondary" onClick={() => fileInput.current?.click()}>
+                <FileUp aria-hidden="true" /> Attach documents
+              </Button>
+              <button
+                type="button"
+                className="manager-paste-action"
+                onClick={() => setPasteModalOpen(true)}
+              >
+                <ClipboardPaste aria-hidden="true" />
+                <span>
+                  <strong>{pastedText ? 'Edit pasted text' : 'Paste text'}</strong>
+                  <small>Paste email thread or transcript</small>
+                </span>
+              </button>
+            </div>
+            {pastedText && (
+              <p className="manager-pasted-summary">Pasted text added to this update.</p>
+            )}
             {attachments.length > 0 && (
               <ul className="manager-attachment-list">
                 {attachments.map((attachment) => (
@@ -634,6 +636,37 @@ export function ManagerWeeklyUpdatesPage() {
           {managerUpdates.lastError && <p className="field__error">{managerUpdates.lastError}</p>}
         </>
       )}
+
+      <Modal
+        open={pasteModalOpen}
+        title="Paste email thread or transcript"
+        onClose={() => setPasteModalOpen(false)}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setPasteModalOpen(false)}>
+              Cancel
+            </Button>
+            {pastedText && (
+              <Button variant="tertiary" onClick={() => setPastedText('')}>
+                Remove text
+              </Button>
+            )}
+            <Button onClick={() => setPasteModalOpen(false)} disabled={!pastedText.trim()}>
+              Add to update
+            </Button>
+          </>
+        }
+      >
+        <Field label="Email thread or transcript">
+          <textarea
+            value={pastedText}
+            placeholder="Paste the source text here"
+            rows={12}
+            onChange={(event) => setPastedText(event.target.value)}
+          />
+        </Field>
+        <p className="field-hint">This text is stored with the draft and submitted update.</p>
+      </Modal>
 
       <Modal
         open={chartModalOpen}
@@ -981,6 +1014,12 @@ export function ManagerSubmissionDetailPage() {
           </ul>
         ) : (
           <p className="empty-copy">No supporting documents attached.</p>
+        )}
+        {update.pastedText && (
+          <div className="manager-pasted-text">
+            <strong>Pasted email thread or transcript</strong>
+            <p>{update.pastedText}</p>
+          </div>
         )}
       </Panel>
       <Panel title="Comments & Responses" className="section manager-discussion">

@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useState, type CSSProperties } from 'react';
 import {
   Area,
   AreaChart,
@@ -17,6 +18,7 @@ import {
   KpiCard,
   PageHeader,
   Panel,
+  Select,
   StateView,
   StatusBadge,
 } from '../components/Ui';
@@ -24,9 +26,35 @@ import { format } from '../data/atlas';
 import { selectExecutiveDashboard } from '../data/executiveDashboard';
 import { useAtlas } from '../state/AtlasContext';
 
+function ExecutiveHealthCard({
+  label,
+  value,
+  status,
+}: {
+  label: string;
+  value: number;
+  status: string;
+}) {
+  return (
+    <article className="panel kpi executive-health-card">
+      <span className="kpi__label">{label}</span>
+      <div className="executive-health-card__value">
+        <span
+          className="executive-health-card__ring"
+          style={{ '--health-value': `${value * 3.6}deg` } as CSSProperties}
+          aria-hidden="true"
+        />
+        <strong>{value}</strong>
+        <StatusBadge status={status} />
+      </div>
+    </article>
+  );
+}
+
 export function ExecutiveDashboard() {
   const navigate = useNavigate();
   const { cycleId, managerUpdates, plan } = useAtlas();
+  const [projectFilter, setProjectFilter] = useState('all');
   const dashboard = selectExecutiveDashboard(plan.confirmedPlan, managerUpdates, cycleId);
 
   if (!dashboard) {
@@ -40,6 +68,14 @@ export function ExecutiveDashboard() {
   }
 
   const { metrics, productionTrend, strategicRisks, insights } = dashboard.ceo;
+  const filteredRisks = strategicRisks.filter(
+    (risk) => projectFilter === 'all' || risk.destination?.includes(projectFilter),
+  );
+  const filteredInsights = insights.filter(
+    (insight) => projectFilter === 'all' || insight.destination?.includes(projectFilter),
+  );
+  const production = metrics.find((metric) => metric.id === 'production');
+  const cash = metrics.find((metric) => metric.id === 'cash-flow');
 
   return (
     <>
@@ -47,22 +83,49 @@ export function ExecutiveDashboard() {
         title="CEO Dashboard"
         description={`Organisation-wide operational performance · ${dashboard.cycle.label}`}
         controls={
-          <Button variant="secondary" onClick={() => navigate('/executive/view-updates')}>
-            View submitted updates
-          </Button>
+          <>
+            <Select
+              label="Filter dashboard by project"
+              value={projectFilter}
+              onChange={setProjectFilter}
+              options={[
+                { value: 'all', label: 'All projects' },
+                ...(plan.confirmedPlan?.projects ?? []).map((project) => ({
+                  value: project.id,
+                  label: project.name,
+                })),
+              ]}
+            />
+            <Button variant="secondary" onClick={() => navigate('/executive/view-updates')}>
+              View submitted updates
+            </Button>
+          </>
         }
       />
 
       <div className="grid grid--4 executive-kpis">
-        <KpiCard label="Portfolio Health" value="76" status="Healthy" />
-        {metrics.slice(0, 3).map((metric) => (
-          <KpiCard
-            key={metric.id}
-            label={metric.label}
-            value={metric.value}
-            onClick={metric.destination ? () => navigate(metric.destination!) : undefined}
-          />
-        ))}
+        <ExecutiveHealthCard label="Business Health" value={76} status="Healthy" />
+        <KpiCard
+          label="Production"
+          value={production?.value ?? '96,800 bopd'}
+          context="−19.3% vs plan"
+          contextTone="critical"
+          onClick={production?.destination ? () => navigate(production.destination!) : undefined}
+        />
+        <KpiCard
+          label="Budget variance"
+          value="+3.4%"
+          context="over plan"
+          contextTone="critical"
+          onClick={() => navigate('/executive/view-updates')}
+        />
+        <KpiCard
+          label="Cash runway"
+          value="11 months"
+          context="within funding range"
+          contextTone="success"
+          onClick={cash?.destination ? () => navigate(cash.destination!) : undefined}
+        />
       </div>
 
       <Panel title="Planned vs Actual Production" className="section">
@@ -127,11 +190,11 @@ export function ExecutiveDashboard() {
 
       <div className="grid grid--2 section executive-dashboard-split">
         <Panel title="Strategic Risks">
-          {strategicRisks.length ? (
+          {filteredRisks.length ? (
             <DataTable
               caption="Strategic risks for the current reporting period"
               headers={['Risk', 'Impact']}
-              rows={strategicRisks.map((risk) => [
+              rows={filteredRisks.map((risk) => [
                 <span className="risk-title-cell" key={risk.id}>
                   <StatusBadge status={risk.status} />
                   <strong>{risk.risk}</strong>
@@ -139,7 +202,7 @@ export function ExecutiveDashboard() {
                 risk.impact,
               ])}
               onRowClick={(index) => {
-                const destination = strategicRisks[index].destination;
+                const destination = filteredRisks[index].destination;
                 if (destination) navigate(destination);
               }}
             />
@@ -149,9 +212,9 @@ export function ExecutiveDashboard() {
         </Panel>
 
         <Panel title="Insights" className="executive-insights">
-          {insights.length ? (
+          {filteredInsights.length ? (
             <div className="executive-insight-list">
-              {insights.map((insight) => (
+              {filteredInsights.map((insight) => (
                 <article key={insight.id} className="executive-insight">
                   <div>
                     <StatusBadge status={insight.status} />
@@ -179,6 +242,7 @@ export function ExecutiveDashboard() {
 export function CfoDashboard() {
   const navigate = useNavigate();
   const { cycleId, managerUpdates, plan } = useAtlas();
+  const [projectFilter, setProjectFilter] = useState('all');
   const dashboard = selectExecutiveDashboard(plan.confirmedPlan, managerUpdates, cycleId);
 
   if (!dashboard) {
@@ -192,6 +256,12 @@ export function CfoDashboard() {
   }
 
   const { metrics, cashFlowForecast, spend, financialRisks } = dashboard.cfo;
+  const filteredFinancialRisks = financialRisks.filter(
+    (risk) => projectFilter === 'all' || risk.destination?.includes(projectFilter),
+  );
+  const cashPosition = metrics.find((metric) => metric.id === 'cash-position');
+  const approvedCommitted = metrics.find((metric) => metric.id === 'approved-committed');
+  const costRecovery = metrics.find((metric) => metric.id === 'cost-recovery');
   const forecastStart = cashFlowForecast.at(0)?.period;
   const forecastEnd = cashFlowForecast.at(-1)?.period;
 
@@ -201,22 +271,57 @@ export function CfoDashboard() {
         title="CFO Dashboard"
         description={`Consolidated financial performance · ${dashboard.cycle.label}`}
         controls={
-          <Button variant="secondary" onClick={() => navigate('/executive/view-updates')}>
-            View submitted updates
-          </Button>
+          <>
+            <Select
+              label="Filter dashboard by project"
+              value={projectFilter}
+              onChange={setProjectFilter}
+              options={[
+                { value: 'all', label: 'All projects' },
+                ...(plan.confirmedPlan?.projects ?? []).map((project) => ({
+                  value: project.id,
+                  label: project.name,
+                })),
+              ]}
+            />
+            <Button variant="secondary" onClick={() => navigate('/executive/view-updates')}>
+              View submitted updates
+            </Button>
+          </>
         }
       />
 
       <div className="grid grid--4 executive-kpis">
-        <KpiCard label="Funding Health" value="82" status="Stable" />
-        {metrics.slice(0, 3).map((metric) => (
-          <KpiCard
-            key={metric.id}
-            label={metric.label}
-            value={metric.value}
-            onClick={metric.destination ? () => navigate(metric.destination!) : undefined}
-          />
-        ))}
+        <ExecutiveHealthCard label="Financial Health" value={82} status="Stable" />
+        <KpiCard
+          label="Cash position"
+          value={cashPosition?.value ?? '$42.5m'}
+          context="11 mo runway"
+          contextTone="success"
+          onClick={
+            cashPosition?.destination ? () => navigate(cashPosition.destination!) : undefined
+          }
+        />
+        <KpiCard
+          label="Approved vs Committed"
+          value={approvedCommitted?.value ?? '77.4%'}
+          context="22.6% available"
+          contextTone="success"
+          onClick={
+            approvedCommitted?.destination
+              ? () => navigate(approvedCommitted.destination!)
+              : undefined
+          }
+        />
+        <KpiCard
+          label="Cost Recovery"
+          value={costRecovery?.value ?? '87%'}
+          context="−8% vs target"
+          contextTone="critical"
+          onClick={
+            costRecovery?.destination ? () => navigate(costRecovery.destination!) : undefined
+          }
+        />
       </div>
 
       <Panel title="Cash Flow Forecast" className="section">
@@ -328,11 +433,11 @@ export function CfoDashboard() {
       </div>
 
       <Panel title="Financial Risks" className="section">
-        {financialRisks.length ? (
+        {filteredFinancialRisks.length ? (
           <DataTable
             caption="Financial risks for the current reporting period"
             headers={['Risk', 'Impact', 'Exposure', 'Mitigation']}
-            rows={financialRisks.map((risk) => [
+            rows={filteredFinancialRisks.map((risk) => [
               <span className="risk-title-cell" key={risk.id}>
                 <StatusBadge status={risk.status} />
                 <strong>{risk.risk}</strong>
@@ -342,7 +447,7 @@ export function CfoDashboard() {
               risk.mitigation,
             ])}
             onRowClick={(index) => {
-              const destination = financialRisks[index].destination;
+              const destination = filteredFinancialRisks[index].destination;
               if (destination) navigate(destination);
             }}
           />

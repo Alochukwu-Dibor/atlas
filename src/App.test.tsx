@@ -519,10 +519,10 @@ describe('route architecture', () => {
     );
     await user.selectOptions(screen.getByLabelText('Active demo persona'), 'usr_ceo');
     expect(await screen.findByRole('heading', { name: 'CEO Dashboard' })).toBeVisible();
-    expect(screen.getByText('Portfolio Health')).toBeVisible();
-    expect(screen.getByText('Production Performance')).toBeVisible();
-    expect(screen.getByText('Cash Flow')).toBeVisible();
-    expect(screen.getByText('HSE Performance')).toBeVisible();
+    expect(screen.getByText('Business Health')).toBeVisible();
+    expect(screen.getByText('Production')).toBeVisible();
+    expect(screen.getByText('Budget variance')).toBeVisible();
+    expect(screen.getByText('Cash runway')).toBeVisible();
     expect(screen.queryByText('Legal & Regulatory Position')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Planned vs Actual Production' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Strategic Risks' })).toBeVisible();
@@ -530,7 +530,7 @@ describe('route architecture', () => {
     expect(screen.queryByRole('heading', { name: 'Critical decisions' })).not.toBeInTheDocument();
     expect(screen.queryByText(/submission queue/i)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /Production Performance/ }));
+    await user.click(screen.getByRole('button', { name: /Production 96,800 bopd/ }));
     expect(
       await screen.findByRole('heading', { name: 'Compressor Station B Restoration' }),
     ).toBeVisible();
@@ -793,15 +793,15 @@ describe('route architecture', () => {
     const executiveUpdates = await screen.findByRole('table', {
       name: 'Authorised submitted Weekly Updates',
     });
-    expect(within(executiveUpdates).getAllByRole('row')).toHaveLength(3);
-    expect(executiveUpdates).toHaveTextContent('Tunde AdebayoCommercial');
-    expect(executiveUpdates).toHaveTextContent('Chinedu NwosuProjects');
+    expect(within(executiveUpdates).getAllByRole('row')).toHaveLength(8);
+    expect(executiveUpdates).toHaveTextContent('Tunde Adebayo');
+    expect(executiveUpdates).toHaveTextContent('Chinedu Nwosu');
     expect(executiveUpdates).not.toHaveTextContent('Private draft highlight');
     await user.type(screen.getByLabelText('Search updates'), 'Ughelli');
-    expect(within(executiveUpdates).getAllByRole('row')).toHaveLength(2);
+    expect(within(executiveUpdates).getAllByRole('row')).toHaveLength(4);
     await user.clear(screen.getByLabelText('Search updates'));
     const viewActions = within(executiveUpdates).getAllByRole('button', { name: 'View update' });
-    expect(viewActions).toHaveLength(2);
+    expect(viewActions).toHaveLength(7);
     await user.click(viewActions[0]);
     expect(await screen.findByText('Commercial_Performance_W31.xlsx')).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Generated Chart' })).toBeVisible();
