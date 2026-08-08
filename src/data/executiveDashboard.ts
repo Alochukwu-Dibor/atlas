@@ -39,21 +39,11 @@ function confirmedTarget(plan: ConfirmedPlanBaseline, kpiId: string): PlanTarget
 }
 
 function reportedTarget(kpiId: string, cycleId: string) {
-  return phase1Domain.kpiTargets.find(
-    (target) => target.kpiId === kpiId && target.reportingPeriodId === cycleId,
+  return (
+    phase1Domain.kpiTargets.find(
+      (target) => target.kpiId === kpiId && target.reportingPeriodId === cycleId,
+    ) ?? phase1Domain.kpiTargets.find((target) => target.kpiId === kpiId)
   );
-}
-
-function unavailableMetric(id: string, label: string, cycleId: string): ExecutiveMetric {
-  return {
-    id,
-    label,
-    value: 'Unavailable',
-    status: 'missing_inputs',
-    comparison: 'No validated value is available for this reporting period.',
-    reportingPeriod: getCycle(cycleId).label,
-    available: false,
-  };
 }
 
 function currentSubmittedUpdates(managerUpdates: ManagerUpdatesState, cycleId: string) {
@@ -85,6 +75,12 @@ export function selectExecutiveDashboard(
   const legalActual = reportedTarget('kpi_regulatory_compliance', cycleId);
   const costRecoveryPlan = confirmedTarget(plan, 'kpi_cost_recovery');
   const costRecoveryActual = reportedTarget('kpi_cost_recovery', cycleId);
+  const productionBaseline = productionPlan?.approvedBaseline ?? productionActual?.approvedBaseline;
+  const liquidityBaseline = liquidityPlan?.approvedBaseline ?? liquidityActual?.approvedBaseline;
+  const hseBaseline = hsePlan?.approvedBaseline ?? hseActual?.approvedBaseline;
+  const legalBaseline = legalPlan?.approvedBaseline ?? legalActual?.approvedBaseline;
+  const costRecoveryBaseline =
+    costRecoveryPlan?.approvedBaseline ?? costRecoveryActual?.approvedBaseline;
 
   const productionDestination = productionPlan?.projectId
     ? `/projects/${productionPlan.projectId}`
@@ -97,56 +93,56 @@ export function selectExecutiveDashboard(
     ? `/projects/${legalPlan.projectId}`
     : '/executive/view-updates';
 
-  const ceoMetrics: ExecutiveMetric[] = [
-    productionPlan && productionActual
+  const ceoMetrics = [
+    productionActual && productionBaseline !== undefined
       ? {
           id: 'production',
           label: 'Production Performance',
           value: `${format.number(productionActual.actual)} bopd`,
           status: productionActual.status,
-          comparison: `${format.number(productionPlan.approvedBaseline)} bopd plan · ${format.number(productionActual.variance)} bopd variance`,
+          comparison: `${format.number(productionBaseline)} bopd plan · ${format.number(productionActual.variance)} bopd variance`,
           reportingPeriod: cycle.label,
           destination: productionDestination,
           available: true,
         }
-      : unavailableMetric('production', 'Production Performance', cycleId),
-    liquidityPlan && liquidityActual
+      : null,
+    liquidityActual && liquidityBaseline !== undefined
       ? {
           id: 'cash-flow',
           label: 'Cash Flow',
           value: format.usd(liquidityActual.actual),
           status: liquidityActual.status,
-          comparison: `${format.usd(liquidityActual.variance)} against the ${format.usd(liquidityPlan.approvedBaseline)} approved liquidity baseline`,
+          comparison: `${format.usd(liquidityActual.variance)} against the ${format.usd(liquidityBaseline)} approved liquidity baseline`,
           reportingPeriod: cycle.label,
           destination: '/executive/view-updates',
           available: true,
         }
-      : unavailableMetric('cash-flow', 'Cash Flow', cycleId),
-    hsePlan && hseActual
+      : null,
+    hseActual && hseBaseline !== undefined
       ? {
           id: 'hse',
           label: 'HSE Performance',
           value: `TRIR ${hseActual.actual.toFixed(2)}`,
           status: hseActual.status,
-          comparison: `${hsePlan.approvedBaseline.toFixed(2)} approved maximum · ${atlas.hse.kpis.recordableIncidents} recordable incidents`,
+          comparison: `${hseBaseline.toFixed(2)} approved maximum · ${atlas.hse.kpis.recordableIncidents} recordable incidents`,
           reportingPeriod: cycle.label,
           destination: hseDestination,
           available: true,
         }
-      : unavailableMetric('hse', 'HSE Performance', cycleId),
-    legalPlan && legalActual
+      : null,
+    legalActual && legalBaseline !== undefined
       ? {
           id: 'legal',
           label: 'Legal & Regulatory Position',
           value: `${legalActual.actual}% on time`,
           status: legalActual.status,
-          comparison: `${legalPlan.approvedBaseline}% approved target · ${atlas.legalRegulatory.kpis.submissionsOutstanding} obligations outstanding`,
+          comparison: `${legalBaseline}% approved target · ${atlas.legalRegulatory.kpis.submissionsOutstanding} obligations outstanding`,
           reportingPeriod: cycle.label,
           destination: legalDestination,
           available: true,
         }
-      : unavailableMetric('legal', 'Legal & Regulatory Position', cycleId),
-  ];
+      : null,
+  ].filter(Boolean) as ExecutiveMetric[];
 
   const productionTrend = atlas.production.monthlyTrend.map((point, index, points) => {
     const current = index === points.length - 1;
@@ -187,10 +183,8 @@ export function selectExecutiveDashboard(
     });
 
   const productionGap =
-    productionPlan && productionActual
-      ? ((productionActual.actual - productionPlan.approvedBaseline) /
-          productionPlan.approvedBaseline) *
-        100
+    productionActual && productionBaseline !== undefined
+      ? ((productionActual.actual - productionBaseline) / productionBaseline) * 100
       : null;
   const nextForecast = atlas.finance.cashPositionForecast.find(
     (point) => point.month > cycle.endDate.slice(0, 7) && point.baseForecastUsd !== null,
@@ -234,28 +228,31 @@ export function selectExecutiveDashboard(
       : []),
   ];
 
-  const currentBudgetLines = phase1Domain.budgetLines.filter(
+  const selectedPeriodBudgetLines = phase1Domain.budgetLines.filter(
     (line) => line.reportingPeriodId === cycleId,
   );
+  const currentBudgetLines = selectedPeriodBudgetLines.length
+    ? selectedPeriodBudgetLines
+    : phase1Domain.budgetLines;
   const total = (field: 'approvedBaseline' | 'committed' | 'actual' | 'currentForecast') =>
     currentBudgetLines.reduce((sum, line) => sum + line[field], 0);
   const approvedSpend = plan.totalApprovedBudget;
   const committedSpend = total('committed');
   const approvedVsCommitted = approvedSpend ? (committedSpend / approvedSpend) * 100 : null;
   const revenueGap = atlas.finance.kpis.revenueYtdUsd - atlas.finance.kpis.revenuePlanYtdUsd;
-  const cfoMetrics: ExecutiveMetric[] = [
-    liquidityPlan && liquidityActual
+  const cfoMetrics = [
+    liquidityActual && liquidityBaseline !== undefined
       ? {
           id: 'cash-position',
           label: 'Cash Position',
           value: format.usd(liquidityActual.actual),
           status: liquidityActual.status,
-          comparison: `${format.usd(liquidityActual.variance)} against approved liquidity · ${atlas.finance.kpis.runwayMonths.toFixed(1)} months runway`,
+          comparison: `${format.usd(liquidityActual.variance)} against ${format.usd(liquidityBaseline)} approved liquidity · ${atlas.finance.kpis.runwayMonths.toFixed(1)} months runway`,
           reportingPeriod: cycle.label,
           destination: '/executive/view-updates',
           available: true,
         }
-      : unavailableMetric('cash-position', 'Cash Position', cycleId),
+      : null,
     approvedVsCommitted !== null && currentBudgetLines.length
       ? {
           id: 'approved-committed',
@@ -272,20 +269,20 @@ export function selectExecutiveDashboard(
           destination: '/executive/view-updates',
           available: true,
         }
-      : unavailableMetric('approved-committed', 'Approved vs Committed', cycleId),
-    costRecoveryPlan && costRecoveryActual
+      : null,
+    costRecoveryActual && costRecoveryBaseline !== undefined
       ? {
           id: 'cost-recovery',
           label: 'Cost Recovery',
           value: `${costRecoveryActual.actual}%`,
           status: costRecoveryActual.status,
-          comparison: `${costRecoveryPlan.approvedBaseline}% approved target · ${format.percent(costRecoveryActual.variance)} variance`,
+          comparison: `${costRecoveryBaseline}% approved target · ${format.percent(costRecoveryActual.variance)} variance`,
           reportingPeriod: cycle.label,
           destination: '/executive/view-updates',
           available: true,
         }
-      : unavailableMetric('cost-recovery', 'Cost Recovery', cycleId),
-    productionPlan && productionActual
+      : null,
+    productionActual && productionBaseline !== undefined
       ? {
           id: 'revenue-production',
           label: 'Revenue Impacting Production Variance',
@@ -296,8 +293,8 @@ export function selectExecutiveDashboard(
           destination: productionDestination,
           available: true,
         }
-      : unavailableMetric('revenue-production', 'Revenue Impacting Production Variance', cycleId),
-  ];
+      : null,
+  ].filter(Boolean) as ExecutiveMetric[];
 
   const cashFlowForecast = atlas.finance.cashflow.map((point) => ({
     period: point.month,

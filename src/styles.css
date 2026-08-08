@@ -2015,7 +2015,7 @@ a.button {
 }
 
 .panel {
-  padding: 24px;
+  padding: 20px;
   border: 1px solid var(--atlas-border);
   border-radius: 12px;
   box-shadow: none;
@@ -2059,8 +2059,8 @@ a.button {
 }
 
 .kpi {
-  min-height: 174px;
-  padding: 28px;
+  min-height: 146px;
+  padding: 22px;
 }
 
 .kpi__label {
@@ -2069,9 +2069,9 @@ a.button {
 }
 
 .kpi__value {
-  margin-top: 14px;
-  font-size: 38px;
-  line-height: 46px;
+  margin-top: 10px;
+  font-size: 34px;
+  line-height: 40px;
   letter-spacing: -0.035em;
 }
 
@@ -2227,7 +2227,9 @@ a.button {
 
 .panel:has(> .table-scroll) {
   padding: 0;
+  border: 0;
   overflow: hidden;
+  background: #f7f8f9;
 }
 
 .panel:has(> .table-scroll) > .panel__header {
@@ -2238,6 +2240,7 @@ a.button {
 
 .table-scroll {
   border-radius: inherit;
+  background: #f7f8f9;
 }
 
 table {
@@ -2245,17 +2248,17 @@ table {
 }
 
 th {
-  height: 58px;
-  padding: 0 24px;
+  height: 50px;
+  padding: 0 20px;
   color: var(--atlas-text-secondary);
-  background: #fff;
+  background: #f7f8f9;
   font-size: 13px;
   font-weight: 500;
 }
 
 td {
-  height: 66px;
-  padding: 13px 24px;
+  height: 56px;
+  padding: 10px 20px;
   border-top: 1px solid var(--atlas-border);
   font-size: 14px;
 }
@@ -3171,14 +3174,16 @@ tr.is-clickable:hover {
 
 .commercial-dashboard-focus {
   display: grid;
-  grid-template-columns: minmax(280px, 0.32fr) minmax(0, 1fr);
+  grid-template-columns: minmax(380px, 0.42fr) minmax(0, 1fr);
+  grid-template-areas:
+    'health attention'
+    'priorities trend';
   gap: 24px;
   align-items: start;
 }
 
-.commercial-dashboard-focus__rail {
-  display: grid;
-  gap: 24px;
+.commercial-dashboard-health {
+  grid-area: health;
 }
 
 .portfolio-score-card {
@@ -3257,7 +3262,7 @@ tr.is-clickable:hover {
 }
 
 .dashboard-attention-list {
-  min-height: 100%;
+  grid-area: attention;
   padding: 24px 28px;
   border: 0;
   background: #f7f8f9;
@@ -3314,6 +3319,7 @@ tr.is-clickable:hover {
 }
 
 .dashboard-priorities--compact {
+  grid-area: priorities;
   padding: 18px;
   border: 0;
   background: #f7f8f9;
@@ -3335,13 +3341,34 @@ tr.is-clickable:hover {
 }
 
 .dashboard-priorities--compact li > button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   min-height: 74px;
   padding: 14px 0;
+  gap: 12px;
+}
+
+.dashboard-priorities--compact li > button > span:first-child {
+  min-width: 0;
+}
+
+.dashboard-priorities--compact li > button > span:last-child {
+  display: block;
 }
 
 .dashboard-priorities--compact li > button > span:last-child b {
-  color: var(--atlas-critical);
+  color: var(--atlas-text-secondary);
   font-weight: 600;
+}
+
+.dashboard-priorities--compact li > button > span:last-child b.is-urgent {
+  color: var(--atlas-critical);
+}
+
+.dashboard-priorities--compact > .button {
+  margin-top: 12px;
+  padding-left: 0;
 }
 
 .dashboard-coverage {
@@ -3453,7 +3480,7 @@ tr.is-clickable:hover {
 }
 
 .dashboard-kpis .kpi {
-  min-height: 190px;
+  min-height: 146px;
 }
 
 .dashboard-kpis .kpi__value {
@@ -3544,17 +3571,44 @@ tr.is-clickable:hover {
   width: 16px;
 }
 
+.dashboard-priorities--compact li {
+  display: block;
+}
+
+.dashboard-priorities--compact li > button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 74px;
+  padding: 14px 0;
+}
+
+.dashboard-priorities--compact li > button > span:first-child {
+  min-width: 0;
+}
+
+.dashboard-priorities--compact li > button > span:last-child {
+  display: block;
+}
+
 .dashboard-trend .chart-canvas {
-  min-height: 330px;
+  min-height: 260px;
+}
+
+.dashboard-trend {
+  grid-area: trend;
+  min-width: 0;
 }
 
 @media (max-width: 1100px) {
   .commercial-dashboard-focus {
     grid-template-columns: 1fr;
-  }
-
-  .commercial-dashboard-focus__rail {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      'health'
+      'attention'
+      'priorities'
+      'trend';
   }
 
   .portfolio-health {
@@ -3572,7 +3626,6 @@ tr.is-clickable:hover {
 }
 
 @media (max-width: 680px) {
-  .commercial-dashboard-focus__rail,
   .commercial-dashboard-focus {
     grid-template-columns: 1fr;
   }

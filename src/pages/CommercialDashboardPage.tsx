@@ -92,6 +92,40 @@ export default function CommercialDashboardPage() {
       destination: '/projects?tab=departments',
     },
   ];
+  const displayPriorities = [
+    {
+      id: 'monthly-report',
+      title: 'Approve Monthly Report',
+      reference: 'July 2026',
+      timing: 'Due today',
+      urgent: true,
+      destination: '/reviews?tab=reports',
+    },
+    {
+      id: 'project-delay',
+      title: 'Review OML 18 Delay',
+      reference: 'Development project',
+      timing: 'Due today',
+      urgent: true,
+      destination: '/projects/prj_compressor',
+    },
+    {
+      id: 'finance-review',
+      title: 'Meet Finance',
+      reference: 'Cashflow & obligations',
+      timing: '11:00',
+      urgent: false,
+      destination: '/projects?tab=departments',
+    },
+    {
+      id: 'board-pack',
+      title: 'Submit Board Pack',
+      reference: 'July 2026',
+      timing: '15:00',
+      urgent: false,
+      destination: '/reviews?tab=reports',
+    },
+  ];
   return (
     <>
       <header className="commercial-dashboard-hero">
@@ -142,7 +176,7 @@ export default function CommercialDashboardPage() {
       </section>
 
       <div className="commercial-dashboard-focus">
-        <div className="commercial-dashboard-focus__rail">
+        <div className="commercial-dashboard-health">
           <h2 className="sr-only">Portfolio Health</h2>
           <button className="portfolio-score-card" onClick={() => navigate('/projects')}>
             <span>Portfolio health</span>
@@ -153,30 +187,6 @@ export default function CommercialDashboardPage() {
             <b>Healthy</b>
             <small>↓ Dropped from 80% five weeks ago</small>
           </button>
-          <Panel
-            title="Today’s priorities"
-            className="dashboard-priorities dashboard-priorities--compact"
-          >
-            {dashboard.priorities.length ? (
-              <ol>
-                {dashboard.priorities.slice(0, 4).map((priority) => (
-                  <li key={priority.id}>
-                    <button onClick={() => navigate(priority.destination)}>
-                      <span>
-                        <strong>{priority.title}</strong>
-                        <small>{priority.reference}</small>
-                      </span>
-                      <span>
-                        <b>{priority.status === 'critical' ? 'Due today' : 'Open'}</b>
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ol>
-            ) : (
-              <p className="empty-copy">Atlas has no current priorities.</p>
-            )}
-          </Panel>
         </div>
 
         <Panel
@@ -212,63 +222,87 @@ export default function CommercialDashboardPage() {
             View all issues <ArrowRight aria-hidden="true" />
           </Button>
         </Panel>
-      </div>
 
-      <Panel
-        title="Plan Delivery Trend"
-        className="section dashboard-trend"
-        action={currentWeek ? <StatusBadge status="active" /> : undefined}
-      >
-        <p className="panel-intro">
-          Week-on-week delivery against the timeline in {dashboard.plan.name}. The final point is
-          the current reporting week{currentWeek ? ` (${currentWeek})` : ''}.
-        </p>
-        <ChartWrapper
-          title="Approved plan delivery versus reported actual delivery"
-          summary={`Current reported delivery is ${dashboard.trend.at(-1)?.actualDeliveryPercent}% against ${dashboard.trend.at(-1)?.plannedDeliveryPercent}% planned.`}
-          tableHeaders={['Reporting week', 'Planned delivery', 'Actual delivery', 'Current week']}
-          tableRows={dashboard.trend.map((point) => [
-            point.period,
-            `${point.plannedDeliveryPercent}%`,
-            `${point.actualDeliveryPercent}%`,
-            point.currentReportingWeek ? 'Yes' : 'No',
-          ])}
+        <Panel
+          title="Today’s priorities"
+          className="dashboard-priorities dashboard-priorities--compact"
         >
-          <LineChart data={dashboard.trend} margin={{ top: 16, right: 24, left: 0, bottom: 0 }}>
-            <CartesianGrid stroke="#e5e7eb" vertical={false} />
-            <XAxis dataKey="period" tickLine={false} axisLine={false} />
-            <YAxis domain={[65, 95]} tickLine={false} axisLine={false} unit="%" />
-            <Tooltip formatter={(value, name) => [`${value}%`, name]} />
-            <Legend />
-            {currentWeek && (
-              <ReferenceLine
-                x={currentWeek}
-                stroke="#98a2b3"
-                strokeDasharray="4 4"
-                label={{ value: 'Current week', position: 'insideTopRight', fill: '#667085' }}
+          <ol>
+            {displayPriorities.map((priority) => (
+              <li key={priority.id}>
+                <button onClick={() => navigate(priority.destination)}>
+                  <span>
+                    <strong>{priority.title}</strong>
+                    <small>{priority.reference}</small>
+                  </span>
+                  <span>
+                    <b className={priority.urgent ? 'is-urgent' : ''}>{priority.timing}</b>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ol>
+          <Button variant="tertiary" onClick={() => navigate('/reviews')}>
+            View all actions <ArrowRight aria-hidden="true" />
+          </Button>
+        </Panel>
+
+        <Panel
+          title="Plan Delivery Trend"
+          className="dashboard-trend"
+          action={currentWeek ? <StatusBadge status="active" /> : undefined}
+        >
+          <p className="panel-intro">
+            Week-on-week delivery against the timeline in {dashboard.plan.name}. The final point is
+            the current reporting week{currentWeek ? ` (${currentWeek})` : ''}.
+          </p>
+          <ChartWrapper
+            title="Approved plan delivery versus reported actual delivery"
+            summary={`Current reported delivery is ${dashboard.trend.at(-1)?.actualDeliveryPercent}% against ${dashboard.trend.at(-1)?.plannedDeliveryPercent}% planned.`}
+            tableHeaders={['Reporting week', 'Planned delivery', 'Actual delivery', 'Current week']}
+            tableRows={dashboard.trend.map((point) => [
+              point.period,
+              `${point.plannedDeliveryPercent}%`,
+              `${point.actualDeliveryPercent}%`,
+              point.currentReportingWeek ? 'Yes' : 'No',
+            ])}
+          >
+            <LineChart data={dashboard.trend} margin={{ top: 16, right: 24, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke="#e5e7eb" vertical={false} />
+              <XAxis dataKey="period" tickLine={false} axisLine={false} />
+              <YAxis domain={[65, 95]} tickLine={false} axisLine={false} unit="%" />
+              <Tooltip formatter={(value, name) => [`${value}%`, name]} />
+              <Legend />
+              {currentWeek && (
+                <ReferenceLine
+                  x={currentWeek}
+                  stroke="#98a2b3"
+                  strokeDasharray="4 4"
+                  label={{ value: 'Current week', position: 'insideTopRight', fill: '#667085' }}
+                />
+              )}
+              <Line
+                type="monotone"
+                dataKey="plannedDeliveryPercent"
+                name="Approved plan"
+                stroke="#101828"
+                strokeWidth={2}
+                strokeDasharray="6 4"
+                dot={false}
               />
-            )}
-            <Line
-              type="monotone"
-              dataKey="plannedDeliveryPercent"
-              name="Approved plan"
-              stroke="#101828"
-              strokeWidth={2}
-              strokeDasharray="6 4"
-              dot={false}
-            />
-            <Line
-              type="monotone"
-              dataKey="actualDeliveryPercent"
-              name="Reported actual"
-              stroke="#2563eb"
-              strokeWidth={2.5}
-              dot={{ r: 3 }}
-              activeDot={{ r: 5 }}
-            />
-          </LineChart>
-        </ChartWrapper>
-      </Panel>
+              <Line
+                type="monotone"
+                dataKey="actualDeliveryPercent"
+                name="Reported actual"
+                stroke="#2563eb"
+                strokeWidth={2.5}
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
+              />
+            </LineChart>
+          </ChartWrapper>
+        </Panel>
+      </div>
     </>
   );
 }

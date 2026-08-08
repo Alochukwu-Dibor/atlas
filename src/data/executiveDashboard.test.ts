@@ -101,14 +101,18 @@ describe('Executive dashboard selector', () => {
     );
   });
 
-  it('uses unavailable KPI states rather than stale values for another reporting period', () => {
+  it('uses the latest validated metric when the selected period has no direct KPI record', () => {
     const dashboard = selectExecutiveDashboard(
       confirmedPlan(),
       createInitialManagerUpdatesState(),
       'cycle_2026_w30',
     )!;
-    expect(dashboard.ceo.metrics.every((metric) => !metric.available)).toBe(true);
-    expect(dashboard.ceo.productionTrend).toEqual([]);
-    expect(dashboard.cfo.metrics.some((metric) => !metric.available)).toBe(true);
+    expect(dashboard.ceo.metrics).toHaveLength(4);
+    expect(dashboard.ceo.metrics.every((metric) => metric.available)).toBe(true);
+    expect(dashboard.ceo.productionTrend.length).toBeGreaterThan(0);
+    expect(dashboard.cfo.metrics).toHaveLength(4);
+    expect(dashboard.cfo.metrics.every((metric) => metric.available)).toBe(true);
+    expect(dashboard.ceo.metrics.some((metric) => metric.value === 'Unavailable')).toBe(false);
+    expect(dashboard.cfo.metrics.some((metric) => metric.value === 'Unavailable')).toBe(false);
   });
 });
