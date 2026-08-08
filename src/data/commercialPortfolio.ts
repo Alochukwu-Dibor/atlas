@@ -104,32 +104,32 @@ function metricsFor(
       {
         label: 'Budget planned',
         value: '$190M',
-        context: '',
-        status: '',
+        context: 'Approved annual baseline',
+        status: 'on_track',
       },
       {
         label: 'Budget actual',
         value: '$196.5M',
-        context: '',
-        status: '',
+        context: '$6.5M above plan',
+        status: 'at_risk',
       },
       {
         label: 'Variance',
         value: '+3.4%',
-        context: '',
-        status: '',
+        context: 'Above approved budget',
+        status: 'at_risk',
       },
       {
         label: 'Cash runway',
         value: '11 mo',
-        context: '',
-        status: '',
+        context: 'Above 10-month minimum',
+        status: 'on_track',
       },
       {
         label: 'Loan status',
         value: 'On schedule',
-        context: '',
-        status: '',
+        context: 'Repayments remain current',
+        status: 'on_track',
       },
     ],
     hse: [
@@ -286,13 +286,46 @@ export function selectPortfolioDepartments(
   confirmedPlan: ConfirmedPlanBaseline | null,
 ): PortfolioDepartment[] {
   const confirmedProjects = selectCommercialProjects(confirmedPlan);
+  const goalNames: Record<PortfolioDepartmentId, string[]> = {
+    finance: [
+      'Maintain project spend within the approved annual funding envelope',
+      'Recover at least 90% of eligible joint-venture operating costs',
+      'Preserve a minimum ten-month unrestricted cash runway',
+      'Complete debt-service obligations without a covenant breach',
+    ],
+    hse: [
+      'Complete every high-potential corrective action before project handover',
+      'Keep total recordable incident rate below the approved threshold',
+      'Close all overdue environmental findings during the reporting quarter',
+    ],
+    legal: [
+      'Submit all statutory project filings before their regulatory deadlines',
+      'Close material contract approvals before construction commitments are made',
+      'Reduce unresolved legal exposure across active project agreements',
+    ],
+    production: [
+      'Restore sustainable daily production above 115,000 barrels of oil',
+      'Recover constrained well capacity before the end of the operating quarter',
+      'Maintain metering availability above 98% across producing facilities',
+    ],
+    engineering: [
+      'Complete critical construction milestones within the approved project schedule',
+      'Close commissioning punch-list items before operational handover',
+      'Deliver engineering packages without material scope growth',
+    ],
+    community: [
+      'Secure uninterrupted community access for every planned field activity',
+      'Close outstanding stakeholder commitments before mobilisation',
+      'Resolve material community grievances within the agreed response period',
+    ],
+  };
   return departmentDefinitions.map((definition) => {
     const projects = confirmedProjects.filter((project) =>
       definition.projectIds.includes(project.id),
     );
-    const goals = projects.map((project) => ({
+    const goals = projects.map((project, index) => ({
       id: `${definition.id}:${project.id}`,
-      name: `${project.name} delivery against approved plan`,
+      name: goalNames[definition.id][index % goalNames[definition.id].length],
       projectId: project.id,
       projectName: project.name,
       progressPercent: project.progressPercent,

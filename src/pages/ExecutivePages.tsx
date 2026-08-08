@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { useState, type CSSProperties } from 'react';
+import { useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -12,6 +12,11 @@ import {
   YAxis,
 } from 'recharts';
 import { ChartWrapper } from '../components/Charts';
+import {
+  AtlasInsightDrawer,
+  HealthMetricCard,
+  type AtlasInsightContext,
+} from '../components/AtlasInsightDrawer';
 import {
   Button,
   DataTable,
@@ -26,35 +31,11 @@ import { format } from '../data/atlas';
 import { selectExecutiveDashboard } from '../data/executiveDashboard';
 import { useAtlas } from '../state/AtlasContext';
 
-function ExecutiveHealthCard({
-  label,
-  value,
-  status,
-}: {
-  label: string;
-  value: number;
-  status: string;
-}) {
-  return (
-    <article className="panel kpi executive-health-card">
-      <span className="kpi__label">{label}</span>
-      <div className="executive-health-card__value">
-        <span
-          className="executive-health-card__ring"
-          style={{ '--health-value': `${value * 3.6}deg` } as CSSProperties}
-          aria-hidden="true"
-        />
-        <strong>{value}</strong>
-        <StatusBadge status={status} />
-      </div>
-    </article>
-  );
-}
-
 export function ExecutiveDashboard() {
   const navigate = useNavigate();
   const { cycleId, managerUpdates, plan } = useAtlas();
   const [projectFilter, setProjectFilter] = useState('all');
+  const [drawerContext, setDrawerContext] = useState<AtlasInsightContext | null>(null);
   const dashboard = selectExecutiveDashboard(plan.confirmedPlan, managerUpdates, cycleId);
 
   if (!dashboard) {
@@ -104,7 +85,7 @@ export function ExecutiveDashboard() {
       />
 
       <div className="grid grid--4 executive-kpis">
-        <ExecutiveHealthCard label="Business Health" value={76} status="Healthy" />
+        <HealthMetricCard label="Business Health" value={76} status="Healthy" />
         <KpiCard
           label="Production"
           value={production?.value ?? '96,800 bopd'}
@@ -202,8 +183,13 @@ export function ExecutiveDashboard() {
                 risk.impact,
               ])}
               onRowClick={(index) => {
-                const destination = filteredRisks[index].destination;
-                if (destination) navigate(destination);
+                const risk = filteredRisks[index];
+                setDrawerContext({
+                  title: risk.risk,
+                  description: risk.impact,
+                  impact: risk.exposure,
+                  status: risk.status,
+                });
               }}
             />
           ) : (
@@ -219,14 +205,20 @@ export function ExecutiveDashboard() {
                   <div>
                     <StatusBadge status={insight.status} />
                     <h3>{insight.title}</h3>
-                    <p>{insight.detail}</p>
-                    <small>{insight.impact}</small>
                   </div>
-                  {insight.destination && (
-                    <Button variant="secondary" onClick={() => navigate(insight.destination!)}>
-                      View context
-                    </Button>
-                  )}
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      setDrawerContext({
+                        title: insight.title,
+                        description: insight.detail,
+                        impact: insight.impact,
+                        status: insight.status,
+                      })
+                    }
+                  >
+                    View context
+                  </Button>
                 </article>
               ))}
             </div>
@@ -235,6 +227,7 @@ export function ExecutiveDashboard() {
           )}
         </Panel>
       </div>
+      <AtlasInsightDrawer context={drawerContext} onClose={() => setDrawerContext(null)} />
     </>
   );
 }
@@ -243,6 +236,7 @@ export function CfoDashboard() {
   const navigate = useNavigate();
   const { cycleId, managerUpdates, plan } = useAtlas();
   const [projectFilter, setProjectFilter] = useState('all');
+  const [drawerContext, setDrawerContext] = useState<AtlasInsightContext | null>(null);
   const dashboard = selectExecutiveDashboard(plan.confirmedPlan, managerUpdates, cycleId);
 
   if (!dashboard) {
@@ -292,7 +286,7 @@ export function CfoDashboard() {
       />
 
       <div className="grid grid--4 executive-kpis">
-        <ExecutiveHealthCard label="Financial Health" value={82} status="Stable" />
+        <HealthMetricCard label="Financial Health" value={82} status="Stable" />
         <KpiCard
           label="Cash position"
           value={cashPosition?.value ?? '$42.5m'}
@@ -447,14 +441,20 @@ export function CfoDashboard() {
               risk.mitigation,
             ])}
             onRowClick={(index) => {
-              const destination = filteredFinancialRisks[index].destination;
-              if (destination) navigate(destination);
+              const risk = filteredFinancialRisks[index];
+              setDrawerContext({
+                title: risk.risk,
+                description: risk.impact,
+                impact: `${risk.exposure} · ${risk.mitigation}`,
+                status: risk.status,
+              });
             }}
           />
         ) : (
           <p className="empty-copy">No financial risks are recorded for this reporting period.</p>
         )}
       </Panel>
+      <AtlasInsightDrawer context={drawerContext} onClose={() => setDrawerContext(null)} />
     </>
   );
 }

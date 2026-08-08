@@ -980,6 +980,18 @@ tr.is-clickable:hover {
   overflow: auto;
   background: white;
   box-shadow: -12px 0 32px rgba(16, 24, 40, 0.12);
+  animation: atlas-drawer-in 180ms ease-out;
+}
+
+@keyframes atlas-drawer-in {
+  from {
+    transform: translateX(28px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 .drawer > header,
 .modal > header {
@@ -4038,6 +4050,97 @@ tr.is-clickable:hover {
 
 .department-metrics {
   gap: 18px;
+}
+
+.department-metrics--6 {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.atlas-insight-drawer {
+  display: grid;
+  gap: 24px;
+  min-height: calc(100vh - 98px);
+}
+
+.atlas-insight-summary {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border-radius: 10px;
+  background: var(--atlas-surface-subtle, #f7f8f9);
+}
+
+.atlas-insight-summary .badge {
+  justify-self: start;
+}
+
+.atlas-insight-summary p,
+.atlas-insight-summary small,
+.atlas-insight-conversation p {
+  margin: 0;
+}
+
+.atlas-insight-summary small {
+  color: var(--atlas-text-secondary);
+}
+
+.atlas-follow-up-presets {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.atlas-follow-up-presets .button {
+  justify-content: flex-start;
+  height: auto;
+  min-height: 42px;
+  text-align: left;
+  white-space: normal;
+}
+
+.atlas-insight-conversation {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.atlas-insight-conversation li {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--atlas-border);
+  border-radius: 10px;
+}
+
+.atlas-insight-composer {
+  position: sticky;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-self: end;
+  padding-top: 12px;
+  background: white;
+}
+
+.atlas-insight-composer textarea {
+  width: 100%;
+  min-height: 72px;
+  resize: vertical;
+}
+
+@media (max-width: 1280px) {
+  .department-metrics--6 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer {
+    animation: none;
+  }
 }
 
 .department-metrics .kpi__footer:empty {

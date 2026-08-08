@@ -4,6 +4,11 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, Legend, Tooltip, XAxis, YAxis } from 'recharts';
 import { ChartWrapper } from '../components/Charts';
 import {
+  AtlasInsightDrawer,
+  HealthMetricCard,
+  type AtlasInsightContext,
+} from '../components/AtlasInsightDrawer';
+import {
   Button,
   DataTable,
   DetailTabs,
@@ -58,6 +63,12 @@ function ProjectMeasureTable({
   focusedMeasure: string | null;
 }) {
   const records = measures.filter((measure) => measure.type === type);
+  const currentValue = (measure: CommercialProjectMeasure) => {
+    if (type !== 'Milestone') return measureValue(measure.actualValue, measure.unit);
+    if (measure.status === 'completed') return 'Completed';
+    if (measure.status === 'scheduled' || measure.status === 'missing_inputs') return 'Not started';
+    return 'In progress';
+  };
   return (
     <Panel title={`${type} adherence`} className="section">
       {records.length ? (
@@ -65,12 +76,9 @@ function ProjectMeasureTable({
           caption={`${type} adherence`}
           headers={[
             'Measure',
-            'Type',
-            'Department',
             'Approved baseline / target',
-            'Current actual / status',
+            type === 'Milestone' ? 'Current status' : 'Current actual / status',
             'Variance / adherence',
-            'Due date / reporting period',
             'Health',
           ]}
           rows={records.map((measure) => [
@@ -80,10 +88,8 @@ function ProjectMeasureTable({
             >
               {measure.name}
             </span>,
-            <span className="measure-type">{measure.type}</span>,
-            measure.department,
             measureValue(measure.approvedValue, measure.unit),
-            measureValue(measure.actualValue, measure.unit),
+            currentValue(measure),
             <div className="adherence-cell">
               <span>{measure.variance}</span>
               <progress
@@ -93,9 +99,6 @@ function ProjectMeasureTable({
               />
               <small>{measure.adherencePercent}% adherence</small>
             </div>,
-            measure.dueOrPeriod.includes('2026-')
-              ? format.date(measure.dueOrPeriod)
-              : measure.dueOrPeriod,
             <StatusBadge status={measure.status} />,
           ])}
         />
@@ -176,6 +179,7 @@ function DepartmentsDashboard() {
   const departments = selectPortfolioDepartments(plan.confirmedPlan);
   const [departmentId, setDepartmentId] = useState<PortfolioDepartmentId>('finance');
   const [projectId, setProjectId] = useState('all');
+  const [drawerContext, setDrawerContext] = useState<AtlasInsightContext | null>(null);
   const department = departments.find((item) => item.id === departmentId) ?? departments[0];
 
   if (!plan.confirmedPlan) {
@@ -248,15 +252,26 @@ function DepartmentsDashboard() {
       </div>
 
       <div
-        className={`grid department-metrics ${department.id === 'finance' ? 'grid--5' : 'grid--3'}`}
+        className={`grid department-metrics ${department.id === 'finance' ? 'department-metrics--6' : 'grid--4'}`}
       >
+        <HealthMetricCard
+          label={`${department.name} Health`}
+          value={department.overallPercent}
+          status={department.overallStatus}
+        />
         {department.metrics.map((metric) => (
           <KpiCard
             key={metric.label}
             label={metric.label}
             value={metric.value}
             context={metric.context}
-            status={metric.status}
+            contextTone={
+              metric.status === 'on_track'
+                ? 'success'
+                : metric.status === 'at_risk' || metric.status === 'critical'
+                  ? 'critical'
+                  : 'neutral'
+            }
           />
         ))}
       </div>
@@ -296,7 +311,14 @@ function DepartmentsDashboard() {
                 <button
                   key={risk.id}
                   type="button"
-                  onClick={() => navigate(`/projects/${risk.projectId}`)}
+                  onClick={() =>
+                    setDrawerContext({
+                      title: risk.issue,
+                      description: risk.impact,
+                      impact: `Linked project: ${department.projects.find((project) => project.id === risk.projectId)?.name ?? 'Confirmed project'}`,
+                      status: risk.status,
+                    })
+                  }
                 >
                   <span>
                     <strong>{risk.issue}</strong>
@@ -313,15 +335,14 @@ function DepartmentsDashboard() {
         </Panel>
       </div>
 
-      <Panel title="Goals and delivery against plan" className="section">
+      <Panel title="Goals adherence" className="section">
         {visibleGoals.length ? (
           <DataTable
-            caption={`${department.name} goals`}
-            headers={['Goal', 'Project', 'Approved plan', 'Actual progress', 'Status']}
+            caption={`${department.name} goals adherence`}
+            headers={['Goal', 'Project', 'Progress', 'Status']}
             rows={visibleGoals.map((goal) => [
               <strong>{goal.name}</strong>,
               goal.projectName,
-              `${goal.plannedPercent}%`,
               <div className="progress-cell">
                 <progress value={goal.progressPercent} max={100} />
                 <span>{goal.progressPercent}%</span>
@@ -334,6 +355,7 @@ function DepartmentsDashboard() {
           <p className="empty-copy">No goals match this department and project filter.</p>
         )}
       </Panel>
+      <AtlasInsightDrawer context={drawerContext} onClose={() => setDrawerContext(null)} />
     </div>
   );
 }
@@ -364,6 +386,7 @@ function ProjectWorkspace({ projectId }: { projectId: string }) {
   const { plan, workflow } = useAtlas();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [drawerContext, setDrawerContext] = useState<AtlasInsightContext | null>(null);
   const requestedView = searchParams.get('view');
   const view: ProjectView = projectViews.some((item) => item.id === requestedView)
     ? (requestedView as ProjectView)
@@ -499,7 +522,17 @@ function ProjectWorkspace({ projectId }: { projectId: string }) {
             {project.insights.length ? (
               <div className="project-insights">
                 {project.insights.map((insight) => (
-                  <button key={insight.id} onClick={() => navigate(insight.destination)}>
+                  <button
+                    key={insight.id}
+                    onClick={() =>
+                      setDrawerContext({
+                        title: insight.title,
+                        description: insight.reason,
+                        impact: `Project: ${project.name}`,
+                        status: insight.status,
+                      })
+                    }
+                  >
                     <span>
                       <strong>{insight.title}</strong>
                       <small>{insight.reason}</small>
@@ -580,6 +613,7 @@ function ProjectWorkspace({ projectId }: { projectId: string }) {
           )}
         </Panel>
       )}
+      <AtlasInsightDrawer context={drawerContext} onClose={() => setDrawerContext(null)} />
     </>
   );
 }
