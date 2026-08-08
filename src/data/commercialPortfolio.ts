@@ -94,10 +94,6 @@ function metricsFor(
   id: PortfolioDepartmentId,
   projects: CommercialProjectListItem[],
 ): DepartmentMetric[] {
-  const projectIds = new Set(projects.map((project) => project.id));
-  const budgetLines = phase1Domain.budgetLines.filter(
-    (line) => line.projectId && projectIds.has(line.projectId),
-  );
   const averageProgress = projects.length
     ? Math.round(
         projects.reduce((sum, project) => sum + project.progressPercent, 0) / projects.length,
@@ -106,22 +102,34 @@ function metricsFor(
   const metrics: Record<PortfolioDepartmentId, DepartmentMetric[]> = {
     finance: [
       {
-        label: 'Approved project budget',
-        value: currencyMillions(budgetLines.reduce((sum, line) => sum + line.approvedBaseline, 0)),
-        context: `${projects.length} linked projects`,
-        status: 'on_track',
+        label: 'Budget planned',
+        value: '$190M',
+        context: '',
+        status: '',
       },
       {
-        label: 'Committed spend',
-        value: currencyMillions(budgetLines.reduce((sum, line) => sum + line.committed, 0)),
-        context: 'Against approved project lines',
-        status: 'on_track',
+        label: 'Budget actual',
+        value: '$196.5M',
+        context: '',
+        status: '',
       },
       {
-        label: 'Forecast variance',
-        value: '+4.8%',
-        context: 'Above approved business-plan budget',
-        status: 'at_risk',
+        label: 'Variance',
+        value: '+3.4%',
+        context: '',
+        status: '',
+      },
+      {
+        label: 'Cash runway',
+        value: '11 mo',
+        context: '',
+        status: '',
+      },
+      {
+        label: 'Loan status',
+        value: 'On schedule',
+        context: '',
+        status: '',
       },
     ],
     hse: [

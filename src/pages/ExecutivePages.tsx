@@ -1,11 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import {
-  Bar,
+  Area,
+  AreaChart,
   CartesianGrid,
-  ComposedChart,
   Legend,
   Line,
-  LineChart,
   ReferenceLine,
   Tooltip,
   XAxis,
@@ -55,13 +54,12 @@ export function ExecutiveDashboard() {
       />
 
       <div className="grid grid--4 executive-kpis">
-        {metrics.map((metric) => (
+        <KpiCard label="Portfolio Health" value="76" status="Healthy" />
+        {metrics.slice(0, 3).map((metric) => (
           <KpiCard
             key={metric.id}
             label={metric.label}
             value={metric.value}
-            status={metric.status}
-            context={`${metric.comparison} · ${metric.reportingPeriod}`}
             onClick={metric.destination ? () => navigate(metric.destination!) : undefined}
           />
         ))}
@@ -80,7 +78,13 @@ export function ExecutiveDashboard() {
               `${format.number(point.variance)} bopd`,
             ])}
           >
-            <ComposedChart data={productionTrend} margin={{ left: 8, right: 8, top: 8, bottom: 0 }}>
+            <AreaChart data={productionTrend} margin={{ left: 8, right: 8, top: 8, bottom: 0 }}>
+              <defs>
+                <linearGradient id="executiveProductionFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#94a3b8" stopOpacity={0.28} />
+                  <stop offset="100%" stopColor="#f8fafc" stopOpacity={0.04} />
+                </linearGradient>
+              </defs>
               <CartesianGrid stroke="#e5e7eb" vertical={false} />
               <XAxis dataKey="period" tickLine={false} axisLine={false} />
               <YAxis
@@ -90,16 +94,17 @@ export function ExecutiveDashboard() {
                 axisLine={false}
                 label={{ value: 'bopd', angle: -90, position: 'insideLeft' }}
               />
-              <YAxis
-                yAxisId="variance"
-                orientation="right"
-                tickFormatter={(value) => `${value / 1000}k`}
-                tickLine={false}
-                axisLine={false}
-                label={{ value: 'variance bopd', angle: 90, position: 'insideRight' }}
-              />
               <Tooltip formatter={(value) => `${format.number(Number(value))} bopd`} />
               <Legend />
+              <Area
+                yAxisId="production"
+                dataKey="actual"
+                name="Actual Production"
+                type="monotone"
+                stroke="#475569"
+                strokeWidth={2}
+                fill="url(#executiveProductionFill)"
+              />
               <Line
                 yAxisId="production"
                 dataKey="planned"
@@ -109,22 +114,7 @@ export function ExecutiveDashboard() {
                 strokeWidth={2}
                 dot={false}
               />
-              <Line
-                yAxisId="production"
-                dataKey="actual"
-                name="Actual Production"
-                stroke="#2563eb"
-                strokeWidth={2}
-                dot={false}
-              />
-              <Bar
-                yAxisId="variance"
-                dataKey="variance"
-                name="Variance"
-                fill="#d0d5dd"
-                maxBarSize={28}
-              />
-            </ComposedChart>
+            </AreaChart>
           </ChartWrapper>
         ) : (
           <StateView
@@ -218,13 +208,12 @@ export function CfoDashboard() {
       />
 
       <div className="grid grid--4 executive-kpis">
-        {metrics.map((metric) => (
+        <KpiCard label="Funding Health" value="82" status="Stable" />
+        {metrics.slice(0, 3).map((metric) => (
           <KpiCard
             key={metric.id}
             label={metric.label}
             value={metric.value}
-            status={metric.status}
-            context={`${metric.comparison} · ${metric.reportingPeriod}`}
             onClick={metric.destination ? () => navigate(metric.destination!) : undefined}
           />
         ))}
@@ -248,7 +237,13 @@ export function CfoDashboard() {
               format.usd(point.netCashPosition),
             ])}
           >
-            <LineChart data={cashFlowForecast} margin={{ left: 8, right: 8, top: 8, bottom: 0 }}>
+            <AreaChart data={cashFlowForecast} margin={{ left: 8, right: 8, top: 8, bottom: 0 }}>
+              <defs>
+                <linearGradient id="executiveCashFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#94a3b8" stopOpacity={0.24} />
+                  <stop offset="100%" stopColor="#f8fafc" stopOpacity={0.03} />
+                </linearGradient>
+              </defs>
               <CartesianGrid stroke="#e5e7eb" vertical={false} />
               <XAxis dataKey="period" tickLine={false} axisLine={false} />
               <YAxis
@@ -260,12 +255,13 @@ export function CfoDashboard() {
               <Tooltip formatter={(value) => format.usd(Number(value))} />
               <Legend />
               <ReferenceLine y={0} stroke="#667085" />
-              <Line
+              <Area
                 dataKey="forecastInflows"
                 name="Forecast Inflows"
-                stroke="#2563eb"
+                type="monotone"
+                stroke="#475569"
                 strokeWidth={2}
-                dot={false}
+                fill="url(#executiveCashFill)"
               />
               <Line
                 dataKey="forecastOutflows"
@@ -282,7 +278,7 @@ export function CfoDashboard() {
                 strokeWidth={2}
                 dot={false}
               />
-            </LineChart>
+            </AreaChart>
           </ChartWrapper>
         ) : (
           <StateView

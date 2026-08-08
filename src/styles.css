@@ -1478,6 +1478,7 @@ blockquote {
   .commercial-top,
   .executive-top,
   .grid--4,
+  .grid--5,
   .kpi-strip--5,
   .kpi-strip--6 {
     grid-template-columns: repeat(2, 1fr);
@@ -1635,6 +1636,7 @@ blockquote {
   }
   .grid--3,
   .grid--4,
+  .grid--5,
   .commercial-top,
   .executive-top,
   .kpi-strip--5,
@@ -2046,6 +2048,10 @@ a.button {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.grid--5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
 .kpi-strip--4 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -2114,8 +2120,53 @@ a.button {
   line-height: 20px;
 }
 
+.executive-kpis .kpi__footer:empty {
+  display: none;
+}
+
+.executive-kpis {
+  gap: 20px;
+}
+
+.executive-kpis .kpi,
+.department-metrics .kpi {
+  min-height: 126px;
+  padding: 18px 20px;
+}
+
+.executive-kpis .kpi__value,
+.department-metrics .kpi__value {
+  margin-top: 8px;
+  font-size: 30px;
+  line-height: 36px;
+}
+
+.executive-kpis + .section {
+  margin-top: 28px;
+}
+
+.executive-kpis + .section .chart-canvas {
+  height: 220px;
+}
+
+.executive-kpis + .section .chart-wrap {
+  padding: 10px 12px 0;
+  border-radius: 10px;
+  background: #f7f8f9;
+}
+
 .executive-dashboard-split > .panel {
   min-width: 0;
+}
+
+.executive-dashboard-split {
+  margin-top: 28px;
+}
+
+.executive-insights,
+.executive-spend-grid > .panel {
+  border-color: transparent;
+  background: #f7f8f9;
 }
 
 .risk-title-cell {
@@ -2133,7 +2184,7 @@ a.button {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 20px;
-  padding: 20px 0;
+  padding: 14px 0;
   border-top: 1px solid var(--atlas-border);
 }
 
@@ -2166,7 +2217,7 @@ a.button {
 }
 
 .executive-spend-list > div {
-  padding: 18px 0;
+  padding: 13px 0;
   border-top: 1px solid var(--atlas-border);
 }
 
@@ -2189,7 +2240,7 @@ a.button {
   align-items: center;
   gap: 10px;
   margin: 6px 0 0;
-  font-size: 19px;
+  font-size: 17px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -2568,6 +2619,7 @@ tr.is-clickable:hover {
 
   .grid--3,
   .grid--4,
+  .grid--5,
   .kpi-strip--5,
   .kpi-strip--6 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3951,8 +4003,28 @@ tr.is-clickable:hover {
 
 .department-portfolio {
   display: grid;
-  gap: 24px;
+  gap: 20px;
   margin-top: 24px;
+}
+
+.department-metrics {
+  gap: 18px;
+}
+
+.department-metrics .kpi__footer:empty {
+  display: none;
+}
+
+.department-portfolio__grid .panel {
+  padding: 18px;
+}
+
+.department-portfolio__grid .chart-canvas {
+  height: 210px;
+}
+
+.department-portfolio > .section {
+  margin-top: 8px;
 }
 
 .portfolio-department-picker {

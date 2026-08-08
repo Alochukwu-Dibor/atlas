@@ -519,10 +519,11 @@ describe('route architecture', () => {
     );
     await user.selectOptions(screen.getByLabelText('Active demo persona'), 'usr_ceo');
     expect(await screen.findByRole('heading', { name: 'CEO Dashboard' })).toBeVisible();
+    expect(screen.getByText('Portfolio Health')).toBeVisible();
     expect(screen.getByText('Production Performance')).toBeVisible();
     expect(screen.getByText('Cash Flow')).toBeVisible();
     expect(screen.getByText('HSE Performance')).toBeVisible();
-    expect(screen.getByText('Legal & Regulatory Position')).toBeVisible();
+    expect(screen.queryByText('Legal & Regulatory Position')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Planned vs Actual Production' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Strategic Risks' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Insights' })).toBeVisible();

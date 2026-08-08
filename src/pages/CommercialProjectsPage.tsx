@@ -247,7 +247,9 @@ function DepartmentsDashboard() {
         </Field>
       </div>
 
-      <div className="grid grid--3 department-metrics">
+      <div
+        className={`grid department-metrics ${department.id === 'finance' ? 'grid--5' : 'grid--3'}`}
+      >
         {department.metrics.map((metric) => (
           <KpiCard
             key={metric.label}
