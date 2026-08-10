@@ -174,16 +174,6 @@ export default function CommercialDashboardPage() {
         </div>
       </header>
 
-      {dashboard.reportingCoverage.limited && (
-        <div className="info-panel dashboard-coverage" role="status">
-          <strong>Limited reporting data</strong>
-          <span>
-            No submissions are available for the selected reporting period. Project health and KPI
-            cards use the latest validated reporting data available.
-          </span>
-        </div>
-      )}
-
       <section aria-labelledby="current-performance-title">
         <h2 id="current-performance-title" className="sr-only">
           Current performance
