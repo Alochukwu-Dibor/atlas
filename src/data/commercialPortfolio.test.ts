@@ -37,4 +37,21 @@ describe('Commercial Portfolio departments', () => {
         ?.projects.map((project) => project.id),
     ).toEqual(['prj_integrity', 'prj_wellwork']);
   });
+
+  it('maps department delivery scores to consistent health statuses', () => {
+    const departments = selectPortfolioDepartments(confirmedPlan());
+    for (const department of departments) {
+      const expectedStatus =
+        department.overallPercent >= 80
+          ? 'on_track'
+          : department.overallPercent >= 60
+            ? 'at_risk'
+            : 'critical';
+      expect(department.overallStatus).toBe(expectedStatus);
+    }
+    expect(departments.find((department) => department.id === 'finance')).toMatchObject({
+      overallPercent: 90,
+      overallStatus: 'on_track',
+    });
+  });
 });

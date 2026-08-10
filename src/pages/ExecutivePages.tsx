@@ -189,6 +189,8 @@ export function ExecutiveDashboard() {
                   description: risk.impact,
                   impact: risk.exposure,
                   status: risk.status,
+                  kind: 'risk',
+                  reference: projectFilter === 'all' ? 'the executive portfolio' : projectFilter,
                 });
               }}
             />
@@ -214,6 +216,9 @@ export function ExecutiveDashboard() {
                         description: insight.detail,
                         impact: insight.impact,
                         status: insight.status,
+                        kind: 'insight',
+                        reference:
+                          projectFilter === 'all' ? 'the executive portfolio' : projectFilter,
                       })
                     }
                   >
@@ -447,6 +452,8 @@ export function CfoDashboard() {
                 description: risk.impact,
                 impact: `${risk.exposure} · ${risk.mitigation}`,
                 status: risk.status,
+                kind: 'risk',
+                reference: projectFilter === 'all' ? 'the financial portfolio' : projectFilter,
               });
             }}
           />

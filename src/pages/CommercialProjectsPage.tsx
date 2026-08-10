@@ -317,6 +317,10 @@ function DepartmentsDashboard() {
                       description: risk.impact,
                       impact: `Linked project: ${department.projects.find((project) => project.id === risk.projectId)?.name ?? 'Confirmed project'}`,
                       status: risk.status,
+                      kind: 'risk',
+                      reference:
+                        department.projects.find((project) => project.id === risk.projectId)
+                          ?.name ?? department.name,
                     })
                   }
                 >
@@ -530,6 +534,8 @@ function ProjectWorkspace({ projectId }: { projectId: string }) {
                         description: insight.reason,
                         impact: `Project: ${project.name}`,
                         status: insight.status,
+                        kind: 'insight',
+                        reference: project.name,
                       })
                     }
                   >

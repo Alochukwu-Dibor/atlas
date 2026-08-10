@@ -4084,6 +4084,38 @@ tr.is-clickable:hover {
   color: var(--atlas-text-secondary);
 }
 
+.atlas-insight-analysis {
+  display: grid;
+  gap: 0;
+  border: 1px solid var(--atlas-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.atlas-insight-analysis > div {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--atlas-border);
+}
+
+.atlas-insight-analysis > div:last-child {
+  border-bottom: 0;
+}
+
+.atlas-insight-analysis span {
+  color: var(--atlas-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.atlas-insight-analysis p {
+  margin: 0;
+  line-height: 1.5;
+}
+
 .atlas-follow-up-presets {
   display: grid;
   gap: 8px;

@@ -349,7 +349,7 @@ export function selectPortfolioDepartments(
       goals,
       overallPercent,
       overallStatus:
-        overallPercent >= 95 ? 'on_track' : overallPercent >= 80 ? 'needs_attention' : 'at_risk',
+        overallPercent >= 80 ? 'on_track' : overallPercent >= 60 ? 'at_risk' : 'critical',
     };
   });
 }
