@@ -42,8 +42,8 @@ const projectViews: readonly { id: ProjectView; label: string }[] = [
 type PortfolioView = 'projects' | 'departments';
 
 const portfolioViews: readonly { id: PortfolioView; label: string }[] = [
+  { id: 'departments', label: 'Performance' },
   { id: 'projects', label: 'Projects' },
-  { id: 'departments', label: 'Departments' },
 ];
 
 function measureValue(value: number | string, unit: string) {
@@ -363,8 +363,7 @@ function DepartmentsDashboard() {
 function PortfolioList() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const view: PortfolioView =
-    searchParams.get('tab') === 'departments' ? 'departments' : 'projects';
+  const view: PortfolioView = searchParams.get('tab') === 'projects' ? 'projects' : 'departments';
   return (
     <>
       <PageHeader

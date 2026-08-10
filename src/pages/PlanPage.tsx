@@ -816,12 +816,17 @@ function ReviewPlan() {
             {format.usd(plan.projects.reduce((sum, item) => sum + item.budget.approvedAmount, 0))}{' '}
             approved budget
           </span>
-          <Button
-            disabled={issues.length > 0}
-            onClick={() => planDispatch({ type: 'SET_STAGE', stage: 'confirm' })}
-          >
-            Review confirmation summary
-          </Button>
+          <div className="form-actions">
+            <Button variant="secondary" onClick={() => planDispatch({ type: 'RESTART' })}>
+              Upload another plan
+            </Button>
+            <Button
+              disabled={issues.length > 0}
+              onClick={() => planDispatch({ type: 'SET_STAGE', stage: 'confirm' })}
+            >
+              Review confirmation summary
+            </Button>
+          </div>
         </div>
       </div>
       <Modal

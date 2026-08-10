@@ -145,8 +145,9 @@ describe('route architecture', () => {
     ).toBeVisible();
     const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
     expect(navigation).toBeVisible();
-    expect(navigation).toHaveTextContent('DashboardPlanPortfolioReporting');
-    expect(within(navigation).getAllByRole('link')).toHaveLength(4);
+    expect(navigation).toHaveTextContent('DashboardPortfolioReporting');
+    expect(within(navigation).getAllByRole('link')).toHaveLength(3);
+    expect(within(navigation).queryByRole('link', { name: 'Plan' })).not.toBeInTheDocument();
     expect(within(navigation).queryByRole('link', { name: 'Execution' })).not.toBeInTheDocument();
     expect(within(navigation).queryByRole('link', { name: 'Decisions' })).not.toBeInTheDocument();
     expect(within(navigation).queryByRole('link', { name: 'Outputs' })).not.toBeInTheDocument();
@@ -161,8 +162,28 @@ describe('route architecture', () => {
     expect(screen.getByRole('heading', { name: 'Today’s priorities' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Plan Delivery Trend' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Portfolio' })).toHaveAttribute('href', '/projects');
+    expect(screen.getByRole('button', { name: 'Update Plan' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Reset Atlas' })).toBeVisible();
     expect(
       screen.queryByRole('navigation', { name: 'Configuration navigation' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('opens the confirmed plan at review from the Dashboard action', async () => {
+    const user = userEvent.setup();
+    seedConfirmedPlan();
+    render(
+      <MemoryRouter initialEntries={['/commercial']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    await user.click(await screen.findByRole('button', { name: 'Update Plan' }));
+    expect(await screen.findByRole('heading', { name: 'Extraction review' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Upload another plan' })).toBeVisible();
+    expect(
+      screen.queryByRole('heading', { name: /Upload the externally approved/ }),
     ).not.toBeInTheDocument();
   });
 
@@ -290,15 +311,18 @@ describe('route architecture', () => {
   it('renders the new Commercial Projects workspace', async () => {
     seedConfirmedPlan();
     render(
-      <MemoryRouter initialEntries={['/projects']}>
+      <MemoryRouter initialEntries={['/projects?tab=projects']}>
         <AtlasProvider>
           <App />
         </AtlasProvider>
       </MemoryRouter>,
     );
     expect(await screen.findByRole('heading', { name: 'Portfolio' })).toBeVisible();
-    expect(screen.getByRole('tab', { name: 'Projects' })).toBeVisible();
-    expect(screen.getByRole('tab', { name: 'Departments' })).toBeVisible();
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+      'Performance',
+      'Projects',
+    ]);
+    expect(screen.getByRole('tab', { name: 'Projects' })).toHaveAttribute('aria-selected', 'true');
     const table = screen.getByRole('table', { name: 'Commercial project portfolio' });
     expect(table).toBeVisible();
     expect(
@@ -318,7 +342,7 @@ describe('route architecture', () => {
     );
     expect(
       await screen.findByRole('heading', {
-        name: 'Confirm an approved plan to activate Portfolio',
+        name: 'Confirm an approved plan to view department delivery',
       }),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Open Plan' })).toBeVisible();
@@ -439,7 +463,7 @@ describe('route architecture', () => {
     const user = userEvent.setup();
     seedConfirmedPlan();
     render(
-      <MemoryRouter initialEntries={['/projects']}>
+      <MemoryRouter initialEntries={['/projects?tab=projects']}>
         <AtlasProvider>
           <App />
         </AtlasProvider>
@@ -712,8 +736,8 @@ describe('route architecture', () => {
       screen.getByLabelText('Assigned project').querySelectorAll('option').length,
     ).toBeGreaterThan(1);
     const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
-    expect(within(navigation).getAllByRole('link')).toHaveLength(4);
-    expect(navigation).toHaveTextContent('DashboardPlanPortfolioReporting');
+    expect(within(navigation).getAllByRole('link')).toHaveLength(3);
+    expect(navigation).toHaveTextContent('DashboardPortfolioReporting');
     expect(screen.getByLabelText('Highlights from the Previous Week')).toBeVisible();
     expect(screen.getByLabelText('Ongoing Activities')).toBeVisible();
     expect(screen.getByLabelText('Risks')).toBeVisible();

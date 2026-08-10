@@ -1,4 +1,5 @@
 import { ArrowRight } from 'lucide-react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   CartesianGrid,
@@ -11,14 +12,26 @@ import {
   YAxis,
 } from 'recharts';
 import { ChartWrapper } from '../components/Charts';
-import { Button, KpiCard, PageHeader, Panel, StateView, StatusBadge } from '../components/Ui';
+import {
+  Button,
+  KpiCard,
+  Modal,
+  PageHeader,
+  Panel,
+  StateView,
+  StatusBadge,
+  useToast,
+} from '../components/Ui';
 import { getUser } from '../data/atlas';
 import { selectCommercialDashboard } from '../data/commercialDashboard';
 import { useAtlas } from '../state/AtlasContext';
 
 export default function CommercialDashboardPage() {
   const navigate = useNavigate();
-  const { plan, workflow, cycleId, scenarioId, activeUserId } = useAtlas();
+  const [resetWarningOpen, setResetWarningOpen] = useState(false);
+  const toast = useToast();
+  const { plan, planDispatch, resetAtlas, workflow, cycleId, scenarioId, activeUserId } =
+    useAtlas();
   const dashboard = selectCommercialDashboard(plan.confirmedPlan, workflow, cycleId, scenarioId);
 
   if (!dashboard) {
@@ -129,20 +142,35 @@ export default function CommercialDashboardPage() {
   return (
     <>
       <header className="commercial-dashboard-hero">
-        <h1 className="sr-only">Dashboard</h1>
-        <p>Portfolio overview</p>
-        <h2>Good morning, {firstName}</h2>
-        <div className="commercial-dashboard-hero__status" aria-label="Portfolio project status">
-          <span>Projects 7</span>
-          <span>
-            <i className="status-dot status-dot--success" />3 on track
-          </span>
-          <span>
-            <i className="status-dot status-dot--neutral" />2 delayed
-          </span>
-          <span>
-            <i className="status-dot status-dot--critical" />2 critical
-          </span>
+        <div>
+          <h1 className="sr-only">Dashboard</h1>
+          <p>Portfolio overview</p>
+          <h2>Good morning, {firstName}</h2>
+          <div className="commercial-dashboard-hero__status" aria-label="Portfolio project status">
+            <span>Projects 7</span>
+            <span>
+              <i className="status-dot status-dot--success" />3 on track
+            </span>
+            <span>
+              <i className="status-dot status-dot--neutral" />2 delayed
+            </span>
+            <span>
+              <i className="status-dot status-dot--critical" />2 critical
+            </span>
+          </div>
+        </div>
+        <div className="commercial-dashboard-hero__actions">
+          <Button
+            onClick={() => {
+              planDispatch({ type: 'SET_STAGE', stage: 'review' });
+              navigate('/plan?mode=review');
+            }}
+          >
+            Update Plan
+          </Button>
+          <Button variant="secondary" onClick={() => setResetWarningOpen(true)}>
+            Reset Atlas
+          </Button>
         </div>
       </header>
 
@@ -303,6 +331,34 @@ export default function CommercialDashboardPage() {
           </ChartWrapper>
         </Panel>
       </div>
+      <Modal
+        open={resetWarningOpen}
+        title="Reset Atlas and start from scratch?"
+        onClose={() => setResetWarningOpen(false)}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setResetWarningOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                resetAtlas();
+                setResetWarningOpen(false);
+                navigate('/plan', { replace: true });
+                toast('Atlas reset. Upload an approved plan to begin.');
+              }}
+            >
+              Reset and start over
+            </Button>
+          </>
+        }
+      >
+        <p>
+          This clears the confirmed plan and all local prototype data across Manager, Commercial
+          Manager, CEO and CFO views. Atlas will return to the approved-plan upload step.
+        </p>
+      </Modal>
     </>
   );
 }

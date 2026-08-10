@@ -3206,13 +3206,34 @@ tr.is-clickable:hover {
 
 /* Commercial portfolio dashboard */
 .commercial-dashboard-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
   margin-bottom: 36px;
 }
 
-.commercial-dashboard-hero > p {
+.commercial-dashboard-hero > div:first-child > p {
   margin: 0 0 10px;
   color: var(--atlas-text-secondary);
   font-size: 14px;
+}
+
+.commercial-dashboard-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+@media (max-width: 760px) {
+  .commercial-dashboard-hero {
+    flex-direction: column;
+  }
+
+  .commercial-dashboard-hero__actions {
+    justify-content: flex-start;
+  }
 }
 
 .commercial-dashboard-hero h2 {
