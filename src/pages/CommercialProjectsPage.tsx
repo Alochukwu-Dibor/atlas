@@ -193,10 +193,6 @@ function DepartmentsDashboard() {
     );
   }
 
-  const visibleProjects =
-    projectId === 'all'
-      ? department.projects
-      : department.projects.filter((project) => project.id === projectId);
   const visibleGoals =
     projectId === 'all'
       ? department.goals
@@ -204,13 +200,13 @@ function DepartmentsDashboard() {
   const visibleRisks = department.risks.filter(
     (risk) => projectId === 'all' || risk.projectId === projectId,
   );
-  const chartData = visibleProjects.map((project) => ({
-    project: project.name
+  const chartData = visibleGoals.map((goal) => ({
+    project: goal.projectName
       .replace('Compressor Station B ', '')
       .replace('Ughelli Export Line ', '')
       .replace('Kokori ', ''),
-    planned: project.plannedProgressPercent ?? 0,
-    actual: project.progressPercent,
+    planned: goal.plannedPercent,
+    actual: goal.progressPercent,
   }));
 
   const selectDepartment = (nextId: PortfolioDepartmentId) => {
@@ -281,7 +277,7 @@ function DepartmentsDashboard() {
           {chartData.length ? (
             <ChartWrapper
               title={`${department.name} project delivery`}
-              summary={`Planned and actual progress for ${visibleProjects.length} linked projects.`}
+              summary={`Planned and actual progress for ${visibleGoals.length} linked department goals.`}
               tableHeaders={['Project', 'Planned progress', 'Actual progress']}
               tableRows={chartData.map((point) => [
                 point.project,

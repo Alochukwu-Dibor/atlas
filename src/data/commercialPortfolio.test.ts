@@ -53,5 +53,33 @@ describe('Commercial Portfolio departments', () => {
       overallPercent: 90,
       overallStatus: 'on_track',
     });
+    expect(departments.find((department) => department.id === 'hse')).toMatchObject({
+      overallPercent: 68,
+      overallStatus: 'at_risk',
+    });
+    expect(departments.find((department) => department.id === 'legal')).toMatchObject({
+      overallPercent: 52,
+      overallStatus: 'critical',
+    });
+  });
+
+  it('keeps HSE and Legal goal delivery aligned with their department health', () => {
+    const departments = selectPortfolioDepartments(confirmedPlan());
+    expect(
+      departments
+        .find((department) => department.id === 'hse')
+        ?.goals.map((goal) => goal.progressPercent),
+    ).toEqual([62, 68, 74]);
+    expect(
+      departments
+        .find((department) => department.id === 'legal')
+        ?.goals.map((goal) => goal.progressPercent),
+    ).toEqual([44, 51, 61]);
+    expect(
+      departments.find((department) => department.id === 'hse')?.goals.map((goal) => goal.status),
+    ).toEqual(['at_risk', 'at_risk', 'at_risk']);
+    expect(
+      departments.find((department) => department.id === 'legal')?.goals.map((goal) => goal.status),
+    ).toEqual(['critical', 'critical', 'at_risk']);
   });
 });

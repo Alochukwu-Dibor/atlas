@@ -137,7 +137,7 @@ function metricsFor(
         label: 'TRIR',
         value: atlas.hse.kpis.trir.toFixed(2),
         context: `Target ≤ ${atlas.hse.kpis.trirTarget.toFixed(2)}`,
-        status: 'critical',
+        status: 'on_track',
       },
       {
         label: 'Recordable incidents',
@@ -149,7 +149,7 @@ function metricsFor(
         label: 'Compliance score',
         value: `${atlas.hse.compliance.scorePercent}%`,
         context: `${atlas.hse.compliance.overdueFindings} overdue findings`,
-        status: 'needs_attention',
+        status: 'at_risk',
       },
     ],
     legal: [
@@ -157,13 +157,13 @@ function metricsFor(
         label: 'Regulatory compliance',
         value: `${atlas.legalRegulatory.kpis.compliancePercent}%`,
         context: 'Against 100% approved target',
-        status: 'needs_attention',
+        status: 'critical',
       },
       {
         label: 'Open legal matters',
         value: String(atlas.legalRegulatory.kpis.openLegalMatters),
         context: `${atlas.legalRegulatory.kpis.criticalRisks} critical`,
-        status: 'at_risk',
+        status: 'critical',
       },
       {
         label: 'Estimated exposure',
@@ -263,10 +263,10 @@ function risksFor(
     legal: [
       {
         id: 'legal_metering_acceptance',
-        issue: 'Regulatory acceptance must precede custody-transfer handover',
+        issue: 'Custody-transfer regulatory acceptance is overdue',
         projectId: 'prj_metering',
-        impact: 'Commissioning approval',
-        status: 'due_soon',
+        impact: 'Commissioning and revenue recognition remain blocked',
+        status: 'critical',
       },
     ],
     community: [
@@ -286,6 +286,12 @@ export function selectPortfolioDepartments(
   confirmedPlan: ConfirmedPlanBaseline | null,
 ): PortfolioDepartment[] {
   const confirmedProjects = selectCommercialProjects(confirmedPlan);
+  const departmentPerformance: Partial<
+    Record<PortfolioDepartmentId, { score: number; goalProgress: number[] }>
+  > = {
+    hse: { score: 68, goalProgress: [62, 68, 74] },
+    legal: { score: 52, goalProgress: [44, 51, 61] },
+  };
   const goalNames: Record<PortfolioDepartmentId, string[]> = {
     finance: [
       'Maintain project spend within the approved annual funding envelope',
@@ -323,16 +329,21 @@ export function selectPortfolioDepartments(
     const projects = confirmedProjects.filter((project) =>
       definition.projectIds.includes(project.id),
     );
-    const goals = projects.map((project, index) => ({
-      id: `${definition.id}:${project.id}`,
-      name: goalNames[definition.id][index % goalNames[definition.id].length],
-      projectId: project.id,
-      projectName: project.name,
-      progressPercent: project.progressPercent,
-      plannedPercent: project.plannedProgressPercent ?? 0,
-      status: project.health,
-    }));
-    const overallPercent = goals.length
+    const performance = departmentPerformance[definition.id];
+    const goals = projects.map((project, index) => {
+      const progressPercent = performance?.goalProgress[index] ?? project.progressPercent;
+      const plannedPercent = project.plannedProgressPercent ?? 0;
+      return {
+        id: `${definition.id}:${project.id}`,
+        name: goalNames[definition.id][index % goalNames[definition.id].length],
+        projectId: project.id,
+        projectName: project.name,
+        progressPercent,
+        plannedPercent,
+        status: progressPercent >= 80 ? 'on_track' : progressPercent >= 60 ? 'at_risk' : 'critical',
+      };
+    });
+    const derivedPercent = goals.length
       ? Math.round(
           goals.reduce(
             (sum, goal) =>
@@ -341,6 +352,7 @@ export function selectPortfolioDepartments(
           ) / goals.length,
         )
       : 0;
+    const overallPercent = performance?.score ?? derivedPercent;
     return {
       ...definition,
       projects,
