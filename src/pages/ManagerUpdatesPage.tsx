@@ -22,7 +22,8 @@ import {
   canEditUpdate,
   canResubmitUpdate,
   canViewUpdate,
-  extractChartValues,
+  createEmptyStructuredSections,
+  createManagerMetricInputs,
   isUpdatePastDeadline,
   selectAssignedProjectIds,
   selectManagerUpdates,
@@ -30,6 +31,8 @@ import {
   type GeneratedChart,
   type ManagerAttachment,
   type ManagerChartType,
+  type ManagerMetricInput,
+  type ManagerStructuredSections,
   type ManagerUpdateComment,
   type ManagerUpdateSections,
   type ManagerWeeklyUpdate,
@@ -101,7 +104,7 @@ function ChartPreview({ chart }: { chart: GeneratedChart }) {
   return (
     <ChartWrapper
       title={chart.title}
-      summary={`Deterministic preview created from ${chart.values.length} numeric values in Highlights.`}
+      summary={`Deterministic preview created from ${chart.values.length} structured reporting values.`}
       tableHeaders={['Extracted value', 'Value']}
       tableRows={chart.values.map((value) => [value.label, String(value.value)])}
     >
@@ -130,6 +133,70 @@ function ChartPreview({ chart }: { chart: GeneratedChart }) {
         </LineChart>
       )}
     </ChartWrapper>
+  );
+}
+
+function StructuredSectionSummary({
+  update,
+  section,
+}: {
+  update: ManagerWeeklyUpdate;
+  section: keyof ManagerStructuredSections;
+}) {
+  const value = update.structuredSections?.[section];
+  if (!value) return null;
+  const objective = atlas.strategicObjectives.find(
+    (item) => item.id === value.strategicObjectiveId,
+  );
+  const kpi = atlas.kpiDefinitions.find((item) => item.id === value.kpiId);
+  const milestone = atlas.milestones.find((item) => item.id === value.milestoneId);
+  const rows: [string, string][] = [
+    ['Goal', objective?.name ?? 'Not linked'],
+    ['KPI', kpi?.name ?? 'Not linked'],
+    ['Milestone', milestone?.name ?? 'Not linked'],
+  ];
+  if (section === 'highlights') {
+    const highlight = update.structuredSections!.highlights;
+    rows.push(
+      ['Expected outcome', highlight.expectedOutcome || 'Not provided'],
+      ['Planned value', `${highlight.plannedValue || '—'} ${highlight.unit}`.trim()],
+      ['Actual value', `${highlight.actualValue || '—'} ${highlight.unit}`.trim()],
+      ['Outcome', highlight.outcomeStatus.replaceAll('_', ' ')],
+    );
+  } else if (section === 'ongoingActivities') {
+    const activity = update.structuredSections!.ongoingActivities;
+    rows.push(
+      ['Activity', activity.activity || 'Not provided'],
+      ['Status', activity.status.replaceAll('_', ' ')],
+      ['Progress', activity.progressPercent ? `${activity.progressPercent}%` : 'Not provided'],
+      ['Forecast completion', activity.forecastCompletion || 'Not provided'],
+    );
+  } else if (section === 'risks') {
+    const risk = update.structuredSections!.risks;
+    rows.push(
+      ['Risk', risk.riskTitle || 'Not provided'],
+      ['Severity', risk.severity],
+      ['Quantified impact', risk.quantifiedImpact || 'Not provided'],
+      ['Mitigation', risk.mitigation || 'Not provided'],
+    );
+  } else {
+    const plan = update.structuredSections!.plansForWeek;
+    rows.push(
+      ['Commitment', plan.commitment || 'Not provided'],
+      ['Expected outcome', plan.expectedOutcome || 'Not provided'],
+      ['Planned value', `${plan.plannedValue || '—'} ${plan.unit}`.trim()],
+      ['Due date', plan.dueDate || 'Not provided'],
+    );
+  }
+  return (
+    <dl className="manager-structured-summary">
+      {rows.map(([label, content]) => (
+        <div key={label}>
+          <dt>{label}</dt>
+          <dd>{content}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
@@ -236,6 +303,7 @@ export function ManagerWeeklyUpdatesPage() {
   const showToast = useToast();
   const fileInput = useRef<HTMLInputElement>(null);
   const [searchParams] = useSearchParams();
+  const creatingAnother = searchParams.has('new');
   const { activeUserId, departmentId, managerUpdates, managerUpdatesDispatch, plan, role } =
     useAtlas();
   const actorRole = role as ManagerUpdateComment['authorRole'];
@@ -261,6 +329,12 @@ export function ManagerWeeklyUpdatesPage() {
   const [sections, setSections] = useState<ManagerUpdateSections>(
     requestedUpdate?.sections ?? emptySections,
   );
+  const [structuredSections, setStructuredSections] = useState<ManagerStructuredSections>(
+    requestedUpdate?.structuredSections ?? createEmptyStructuredSections(),
+  );
+  const [metricInputs, setMetricInputs] = useState<ManagerMetricInput[]>(
+    requestedUpdate?.metricInputs ?? createManagerMetricInputs(departmentId),
+  );
   const [attachments, setAttachments] = useState<ManagerAttachment[]>(
     requestedUpdate?.attachments ?? [],
   );
@@ -276,28 +350,89 @@ export function ManagerWeeklyUpdatesPage() {
   const [submittedId, setSubmittedId] = useState<string | null>(null);
 
   const period = atlas.reportingCycles.find((cycle) => cycle.id === periodId);
-  const existing = managerUpdates.updates.find(
-    (update) =>
-      update.creatorId === activeUserId &&
-      update.projectId === projectId &&
-      update.reportingPeriodId === periodId,
-  );
-  const closed = period?.status !== 'open';
-  const editingSubmitted = requestedUpdate?.status === 'submitted';
-  const chartValues = extractChartValues(sections.highlights);
-
-  const loadContext = (nextPeriodId: string, nextProjectId: string) => {
-    const saved = managerUpdates.updates.find(
+  const matchingUpdates = managerUpdates.updates
+    .filter(
       (update) =>
         update.creatorId === activeUserId &&
-        update.projectId === nextProjectId &&
-        update.reportingPeriodId === nextPeriodId,
-    );
+        update.projectId === projectId &&
+        update.reportingPeriodId === periodId,
+    )
+    .sort((a, b) => b.savedAt.localeCompare(a.savedAt));
+  const existing =
+    requestedUpdate ??
+    (creatingAnother ? undefined : matchingUpdates.find((update) => update.status === 'draft'));
+  const previousUpdates = managerUpdates.updates
+    .filter(
+      (update) =>
+        update.creatorId === activeUserId &&
+        update.projectId === projectId &&
+        update.reportingPeriodId !== periodId &&
+        update.status === 'submitted',
+    )
+    .sort((a, b) => b.savedAt.localeCompare(a.savedAt));
+  const selectedProject = projects.find((project) => project.id === projectId);
+  const objectiveOptions = atlas.strategicObjectives.filter((objective) =>
+    selectedProject?.strategicObjectiveIds.includes(objective.id),
+  );
+  const kpiOptions = selectedProject?.kpis ?? [];
+  const milestoneOptions = selectedProject?.milestones ?? [];
+  const targetOptions = selectedProject?.targets ?? [];
+  const closed = period?.status !== 'open';
+  const editingSubmitted = requestedUpdate?.status === 'submitted';
+  const structuredChartValues = [
+    { label: 'Plan', value: Number(structuredSections.highlights.plannedValue) },
+    { label: 'Actual', value: Number(structuredSections.highlights.actualValue) },
+  ].filter((value) => Number.isFinite(value.value) && value.value !== 0);
+  const metricChartValues = metricInputs
+    .filter((input) => input.value.trim() && Number.isFinite(Number(input.value)))
+    .slice(0, 6)
+    .map((input) => ({ label: input.label, value: Number(input.value) }));
+  const chartValues = structuredChartValues.length ? structuredChartValues : metricChartValues;
+
+  const loadContext = (nextPeriodId: string, nextProjectId: string) => {
+    const saved = creatingAnother
+      ? undefined
+      : managerUpdates.updates
+          .filter(
+            (update) =>
+              update.creatorId === activeUserId &&
+              update.projectId === nextProjectId &&
+              update.reportingPeriodId === nextPeriodId &&
+              update.status === 'draft',
+          )
+          .sort((a, b) => b.savedAt.localeCompare(a.savedAt))[0];
     setSections(saved?.sections ?? emptySections);
+    setStructuredSections(saved?.structuredSections ?? createEmptyStructuredSections());
+    setMetricInputs(saved?.metricInputs ?? createManagerMetricInputs(departmentId));
     setAttachments(saved?.attachments ?? []);
     setPastedText(saved?.pastedText ?? '');
     setChart(saved?.chart ?? null);
     setErrors({});
+  };
+
+  const updateStructuredSection = <K extends keyof ManagerStructuredSections>(
+    key: K,
+    values: Partial<ManagerStructuredSections[K]>,
+  ) => {
+    setStructuredSections((current) => ({
+      ...current,
+      [key]: { ...current[key], ...values },
+    }));
+  };
+
+  const startAnotherUpdate = () => {
+    setSections(emptySections);
+    setStructuredSections(createEmptyStructuredSections());
+    setMetricInputs(createManagerMetricInputs(departmentId));
+    setAttachments([]);
+    setPastedText('');
+    setChart(null);
+    setPendingChart(null);
+    setErrors({});
+    setSubmittedId(null);
+    navigate(
+      `${isCommercial ? '/reviews/weekly-update' : '/manager/weekly-updates'}?new=${managerUpdates.updates.length + 1}`,
+    );
   };
 
   const buildUpdate = (status: 'draft' | 'submitted') => {
@@ -306,13 +441,17 @@ export function ManagerWeeklyUpdatesPage() {
       managerUpdates.updates.length + 1 + (existing?.status === 'submitted' ? 20 : 0),
     );
     return {
-      id: existing?.id ?? `manager_update_${activeUserId}_${projectId}_${periodId}`,
+      id:
+        existing?.id ??
+        `manager_update_${activeUserId}_${projectId}_${periodId}_${managerUpdates.updates.length + 1}`,
       creatorId: activeUserId,
       departmentId,
       projectId,
       reportingPeriodId: periodId,
       reportingDeadline: period.dueDate,
       sections,
+      structuredSections,
+      metricInputs,
       chart,
       attachments: attachments.filter((attachment) => attachment.status === 'uploaded'),
       pastedText: pastedText.trim(),
@@ -343,6 +482,27 @@ export function ManagerWeeklyUpdatesPage() {
         .map((section) => [section.key, `${section.title} is required.`]),
     );
     if (!periodId || !projectId) nextErrors.context = 'Select a reporting period and project.';
+    if (!metricInputs.some((input) => input.value.trim())) {
+      nextErrors.metrics = 'Enter at least one department performance value.';
+    }
+    if (
+      !structuredSections.highlights.strategicObjectiveId &&
+      !structuredSections.highlights.kpiId
+    ) {
+      nextErrors.highlightsLink = 'Link the highlight to a goal or KPI.';
+    }
+    if (!structuredSections.highlights.actualValue.trim()) {
+      nextErrors.highlightsActual = 'Enter the actual result.';
+    }
+    if (!structuredSections.ongoingActivities.activity.trim()) {
+      nextErrors.activity = 'Enter the ongoing activity.';
+    }
+    if (!structuredSections.risks.riskTitle.trim()) {
+      nextErrors.risk = 'Enter a risk, or state that no material risk was identified.';
+    }
+    if (!structuredSections.plansForWeek.commitment.trim()) {
+      nextErrors.plan = 'Enter the plan or commitment for the week.';
+    }
     if (Object.keys(nextErrors).length) {
       setErrors(nextErrors);
       return;
@@ -352,6 +512,81 @@ export function ManagerWeeklyUpdatesPage() {
     managerUpdatesDispatch({ type: 'UPSERT_UPDATE', update });
     setErrors({});
     setSubmittedId(update.id);
+  };
+
+  const renderPlanLinks = (key: keyof ManagerStructuredSections) => {
+    const link = structuredSections[key];
+    const linkedTarget = targetOptions.find((target) => target.id === link.targetId);
+    return (
+      <>
+        <div className="manager-plan-links">
+          <Field
+            label="Related goal"
+            error={key === 'highlights' ? errors.highlightsLink : undefined}
+          >
+            <select
+              aria-label={`${sectionDefinitions.find((section) => section.key === key)?.title} related goal`}
+              value={link.strategicObjectiveId}
+              onChange={(event) =>
+                updateStructuredSection(key, { strategicObjectiveId: event.target.value })
+              }
+            >
+              <option value="">Select approved goal</option>
+              {objectiveOptions.map((objective) => (
+                <option key={objective.id} value={objective.id}>
+                  {objective.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Related KPI">
+            <select
+              aria-label={`${sectionDefinitions.find((section) => section.key === key)?.title} related KPI`}
+              value={link.kpiId}
+              onChange={(event) => {
+                const kpiId = event.target.value;
+                const target = targetOptions.find((item) => item.kpiId === kpiId);
+                const kpi = kpiOptions.find((item) => item.id === kpiId);
+                updateStructuredSection(key, {
+                  kpiId,
+                  targetId: target?.id ?? '',
+                  ...('unit' in link && kpi ? { unit: kpi.unit } : {}),
+                });
+              }}
+            >
+              <option value="">Select approved KPI</option>
+              {kpiOptions.map((kpi) => (
+                <option key={kpi.id} value={kpi.id}>
+                  {kpi.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Related milestone">
+            <select
+              aria-label={`${sectionDefinitions.find((section) => section.key === key)?.title} related milestone`}
+              value={link.milestoneId}
+              onChange={(event) =>
+                updateStructuredSection(key, { milestoneId: event.target.value })
+              }
+            >
+              <option value="">No milestone</option>
+              {milestoneOptions.map((milestone) => (
+                <option key={milestone.id} value={milestone.id}>
+                  {milestone.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+        {linkedTarget && (
+          <p className="manager-plan-baseline">
+            Approved baseline: <strong>{format.number(linkedTarget.approvedBaseline)}</strong>{' '}
+            {linkedTarget.unit}
+          </p>
+        )}
+      </>
+    );
   };
 
   if (!plan.confirmedPlan) {
@@ -399,6 +634,9 @@ export function ManagerWeeklyUpdatesPage() {
         action={
           <div className="form-actions">
             <Button onClick={() => navigate(detailPath(submittedId))}>View Submission</Button>
+            <Button variant="secondary" onClick={startAnotherUpdate}>
+              Start Another Update
+            </Button>
             <Button variant="secondary" onClick={() => navigate(submissionsPath)}>
               Return to Submissions
             </Button>
@@ -473,15 +711,6 @@ export function ManagerWeeklyUpdatesPage() {
           title="Reporting period closed"
           message="New updates cannot be created for a closed reporting period. Select an open period to continue."
         />
-      ) : existing?.status === 'submitted' && !editingSubmitted ? (
-        <StateView
-          type="locked"
-          title="Update already submitted"
-          message="A submitted update already exists for this project and reporting period."
-          action={
-            <Button onClick={() => navigate(detailPath(existing.id))}>View Submission</Button>
-          }
-        />
       ) : (
         <>
           {existing?.status === 'draft' && (
@@ -492,11 +721,293 @@ export function ManagerWeeklyUpdatesPage() {
               </span>
             </div>
           )}
+          <Panel title="Department Performance Inputs" className="section manager-metric-inputs">
+            <p className="panel-intro">
+              Enter the base values your department owns. Atlas retains the approved plan as the
+              baseline and uses these values to calculate performance measures.
+            </p>
+            <div className="manager-metric-grid">
+              {metricInputs.map((input) => (
+                <Field key={input.id} label={input.label}>
+                  <div className="manager-value-input">
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      value={input.value}
+                      aria-label={input.label}
+                      onChange={(event) =>
+                        setMetricInputs((current) =>
+                          current.map((item) =>
+                            item.id === input.id ? { ...item, value: event.target.value } : item,
+                          ),
+                        )
+                      }
+                    />
+                    <span>{input.unit}</span>
+                  </div>
+                </Field>
+              ))}
+            </div>
+            {errors.metrics && <p className="field__error">{errors.metrics}</p>}
+          </Panel>
           <div className="manager-update-sections section">
             {sectionDefinitions.map((section) => (
               <Panel title={section.title} key={section.key}>
                 <p className="panel-intro">{section.instruction}</p>
-                <Field label={section.title} error={errors[section.key]}>
+                {renderPlanLinks(section.key)}
+                {section.key === 'highlights' && (
+                  <>
+                    <Field label="Previous plan for comparison">
+                      <select
+                        aria-label="Previous plan for comparison"
+                        value={structuredSections.highlights.previousPlanUpdateId}
+                        onChange={(event) => {
+                          const previous = previousUpdates.find(
+                            (update) => update.id === event.target.value,
+                          );
+                          updateStructuredSection('highlights', {
+                            previousPlanUpdateId: event.target.value,
+                            expectedOutcome:
+                              previous?.structuredSections?.plansForWeek.expectedOutcome ?? '',
+                            plannedValue:
+                              previous?.structuredSections?.plansForWeek.plannedValue ?? '',
+                            unit: previous?.structuredSections?.plansForWeek.unit ?? '',
+                            strategicObjectiveId:
+                              previous?.structuredSections?.plansForWeek.strategicObjectiveId ??
+                              structuredSections.highlights.strategicObjectiveId,
+                            kpiId:
+                              previous?.structuredSections?.plansForWeek.kpiId ??
+                              structuredSections.highlights.kpiId,
+                            targetId:
+                              previous?.structuredSections?.plansForWeek.targetId ??
+                              structuredSections.highlights.targetId,
+                          });
+                        }}
+                      >
+                        <option value="">Unplanned highlight</option>
+                        {previousUpdates.map((update) => (
+                          <option key={update.id} value={update.id}>
+                            {getCycle(update.reportingPeriodId).label} —{' '}
+                            {update.structuredSections?.plansForWeek.commitment ||
+                              update.sections.plansForWeek.slice(0, 64)}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <div className="manager-structured-grid">
+                      <Field label="Expected outcome">
+                        <input
+                          value={structuredSections.highlights.expectedOutcome}
+                          onChange={(event) =>
+                            updateStructuredSection('highlights', {
+                              expectedOutcome: event.target.value,
+                            })
+                          }
+                        />
+                      </Field>
+                      <Field label="Outcome status">
+                        <select
+                          value={structuredSections.highlights.outcomeStatus}
+                          onChange={(event) =>
+                            updateStructuredSection('highlights', {
+                              outcomeStatus: event.target
+                                .value as ManagerStructuredSections['highlights']['outcomeStatus'],
+                            })
+                          }
+                        >
+                          <option value="achieved">Achieved</option>
+                          <option value="partially_achieved">Partially achieved</option>
+                          <option value="not_achieved">Not achieved</option>
+                          <option value="deferred">Deferred</option>
+                        </select>
+                      </Field>
+                      <Field label="Previous plan value">
+                        <input
+                          type="number"
+                          aria-label="Highlight previous plan value"
+                          value={structuredSections.highlights.plannedValue}
+                          onChange={(event) =>
+                            updateStructuredSection('highlights', {
+                              plannedValue: event.target.value,
+                            })
+                          }
+                        />
+                      </Field>
+                      <Field label="Actual value" error={errors.highlightsActual}>
+                        <input
+                          type="number"
+                          aria-label="Highlight actual value"
+                          value={structuredSections.highlights.actualValue}
+                          onChange={(event) =>
+                            updateStructuredSection('highlights', {
+                              actualValue: event.target.value,
+                            })
+                          }
+                        />
+                      </Field>
+                    </div>
+                  </>
+                )}
+                {section.key === 'ongoingActivities' && (
+                  <div className="manager-structured-grid">
+                    <Field label="Activity" error={errors.activity}>
+                      <input
+                        aria-label="Ongoing activity"
+                        value={structuredSections.ongoingActivities.activity}
+                        onChange={(event) =>
+                          updateStructuredSection('ongoingActivities', {
+                            activity: event.target.value,
+                          })
+                        }
+                      />
+                    </Field>
+                    <Field label="Status">
+                      <select
+                        value={structuredSections.ongoingActivities.status}
+                        onChange={(event) =>
+                          updateStructuredSection('ongoingActivities', {
+                            status: event.target
+                              .value as ManagerStructuredSections['ongoingActivities']['status'],
+                          })
+                        }
+                      >
+                        <option value="not_started">Not started</option>
+                        <option value="in_progress">In progress</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                    </Field>
+                    <Field label="Progress (%)">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={structuredSections.ongoingActivities.progressPercent}
+                        onChange={(event) =>
+                          updateStructuredSection('ongoingActivities', {
+                            progressPercent: event.target.value,
+                          })
+                        }
+                      />
+                    </Field>
+                    <Field label="Forecast completion">
+                      <input
+                        type="date"
+                        value={structuredSections.ongoingActivities.forecastCompletion}
+                        onChange={(event) =>
+                          updateStructuredSection('ongoingActivities', {
+                            forecastCompletion: event.target.value,
+                          })
+                        }
+                      />
+                    </Field>
+                  </div>
+                )}
+                {section.key === 'risks' && (
+                  <div className="manager-structured-grid">
+                    <Field label="Risk" error={errors.risk}>
+                      <input
+                        aria-label="Risk title"
+                        value={structuredSections.risks.riskTitle}
+                        placeholder="Enter a material risk or state none"
+                        onChange={(event) =>
+                          updateStructuredSection('risks', { riskTitle: event.target.value })
+                        }
+                      />
+                    </Field>
+                    <Field label="Severity">
+                      <select
+                        value={structuredSections.risks.severity}
+                        onChange={(event) =>
+                          updateStructuredSection('risks', {
+                            severity: event.target
+                              .value as ManagerStructuredSections['risks']['severity'],
+                          })
+                        }
+                      >
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="critical">Critical</option>
+                      </select>
+                    </Field>
+                    <Field label="Quantified impact">
+                      <input
+                        value={structuredSections.risks.quantifiedImpact}
+                        placeholder="e.g. 3 days or USD 250,000"
+                        onChange={(event) =>
+                          updateStructuredSection('risks', {
+                            quantifiedImpact: event.target.value,
+                          })
+                        }
+                      />
+                    </Field>
+                    <Field label="Target resolution date">
+                      <input
+                        type="date"
+                        value={structuredSections.risks.targetResolutionDate}
+                        onChange={(event) =>
+                          updateStructuredSection('risks', {
+                            targetResolutionDate: event.target.value,
+                          })
+                        }
+                      />
+                    </Field>
+                    <Field label="Mitigation">
+                      <input
+                        value={structuredSections.risks.mitigation}
+                        onChange={(event) =>
+                          updateStructuredSection('risks', { mitigation: event.target.value })
+                        }
+                      />
+                    </Field>
+                  </div>
+                )}
+                {section.key === 'plansForWeek' && (
+                  <div className="manager-structured-grid">
+                    <Field label="Plan or commitment" error={errors.plan}>
+                      <input
+                        aria-label="Weekly plan or commitment"
+                        value={structuredSections.plansForWeek.commitment}
+                        onChange={(event) =>
+                          updateStructuredSection('plansForWeek', {
+                            commitment: event.target.value,
+                          })
+                        }
+                      />
+                    </Field>
+                    <Field label="Expected outcome">
+                      <input
+                        value={structuredSections.plansForWeek.expectedOutcome}
+                        onChange={(event) =>
+                          updateStructuredSection('plansForWeek', {
+                            expectedOutcome: event.target.value,
+                          })
+                        }
+                      />
+                    </Field>
+                    <Field label="Next-week planned value">
+                      <input
+                        type="number"
+                        value={structuredSections.plansForWeek.plannedValue}
+                        onChange={(event) =>
+                          updateStructuredSection('plansForWeek', {
+                            plannedValue: event.target.value,
+                          })
+                        }
+                      />
+                    </Field>
+                    <Field label="Due date">
+                      <input
+                        type="date"
+                        value={structuredSections.plansForWeek.dueDate}
+                        onChange={(event) =>
+                          updateStructuredSection('plansForWeek', { dueDate: event.target.value })
+                        }
+                      />
+                    </Field>
+                  </div>
+                )}
+                <Field label={`${section.title} context`} error={errors[section.key]}>
                   <textarea
                     aria-label={section.title}
                     rows={5}
@@ -715,7 +1226,7 @@ export function ManagerWeeklyUpdatesPage() {
                   setPendingChart({
                     id: `chart_${activeUserId}_${projectId}_${periodId}`,
                     type: chartType,
-                    title: 'Highlights chart',
+                    title: 'Plan and actual performance',
                     values: chartValues,
                     generatedAt: prototypeTime(managerUpdates.updates.length + 1),
                   })
@@ -739,7 +1250,10 @@ export function ManagerWeeklyUpdatesPage() {
           </select>
         </Field>
         {!pendingChart ? (
-          <p>Atlas found {chartValues.length} numeric values in Highlights for this preview.</p>
+          <p>
+            Atlas found {chartValues.length} structured numeric values for this preview. Enter plan
+            and actual values, or department performance inputs, to generate the chart.
+          </p>
         ) : (
           <ChartPreview chart={pendingChart} />
         )}
@@ -764,7 +1278,7 @@ export function ManagerSubmissionsPage() {
   const safePage = Math.min(page, totalPages - 1);
   const pageUpdates = filteredUpdates.slice(safePage * pageSize, (safePage + 1) * pageSize);
   const isCommercial = role === 'commercial_manager';
-  const createPath = isCommercial ? '/reviews/weekly-update' : '/manager/weekly-updates';
+  const createPath = `${isCommercial ? '/reviews/weekly-update' : '/manager/weekly-updates'}?new=${managerUpdates.updates.length + 1}`;
   const detailPath = (id: string) =>
     isCommercial ? `/reviews/weekly-updates/${id}` : `/manager/submissions/${id}`;
   return (
@@ -974,6 +1488,17 @@ export function ManagerSubmissionDetailPage() {
           </div>
         </dl>
       </Panel>
+      {update.metricInputs?.some((input) => input.value) && (
+        <Panel title="Department Performance Inputs" className="section">
+          <DataTable
+            caption="Submitted department performance values"
+            headers={['Measure', 'Actual value', 'Unit']}
+            rows={update.metricInputs
+              .filter((input) => input.value)
+              .map((input) => [input.label, input.value, input.unit])}
+          />
+        </Panel>
+      )}
       {deadlinePassed && update.status === 'submitted' && update.creatorId === activeUserId && (
         <div className="info-panel section" role="status">
           <strong>Reporting deadline passed</strong>
@@ -981,6 +1506,7 @@ export function ManagerSubmissionDetailPage() {
         </div>
       )}
       <Panel title="Highlights from the Previous Week" className="section">
+        <StructuredSectionSummary update={update} section="highlights" />
         <p>{update.sections.highlights || 'No content added.'}</p>
       </Panel>
       {update.chart && (
@@ -991,6 +1517,7 @@ export function ManagerSubmissionDetailPage() {
       <div className="manager-submission-sections section">
         {sectionDefinitions.slice(1).map((section) => (
           <Panel title={section.title} key={section.key}>
+            <StructuredSectionSummary update={update} section={section.key} />
             <p>{update.sections[section.key] || 'No content added.'}</p>
           </Panel>
         ))}

@@ -7,6 +7,8 @@ import {
   canViewDraft,
   canViewUpdate,
   createInitialManagerUpdatesState,
+  createEmptyStructuredSections,
+  createManagerMetricInputs,
   extractChartValues,
   managerUpdatesReducer,
   selectAssignedProjectIds,
@@ -62,6 +64,34 @@ describe('Manager Weekly Update state', () => {
     const updates = selectManagerUpdates(state, 'usr_operations');
     expect(updates).toHaveLength(1);
     expect(updates[0].sections.risks).toMatch(/rotor/i);
+  });
+
+  it('allows distinct updates for the same project and period while preserving stable records', () => {
+    let state = managerUpdatesReducer(createInitialManagerUpdatesState(), {
+      type: 'UPSERT_UPDATE',
+      update: draft({ id: 'manager_update_operations_compressor_w31_1' }),
+    });
+    state = managerUpdatesReducer(state, {
+      type: 'UPSERT_UPDATE',
+      update: draft({ id: 'manager_update_operations_compressor_w31_2' }),
+    });
+    expect(
+      selectManagerUpdates(state, 'usr_operations').filter(
+        (update) =>
+          update.projectId === 'prj_compressor' && update.reportingPeriodId === 'cycle_2026_w31',
+      ),
+    ).toHaveLength(2);
+  });
+
+  it('creates department-specific base inputs and plan-linked structured sections', () => {
+    expect(createManagerMetricInputs('dept_finance').map((input) => input.id)).toContain(
+      'opening_cash',
+    );
+    expect(createManagerMetricInputs('dept_hse').map((input) => input.id)).toContain(
+      'hours_worked',
+    );
+    expect(createEmptyStructuredSections().highlights.outcomeStatus).toBe('achieved');
+    expect(createEmptyStructuredSections().plansForWeek.strategicObjectiveId).toBe('');
   });
 
   it('keeps drafts private and exposes only submitted updates to authorised roles', () => {

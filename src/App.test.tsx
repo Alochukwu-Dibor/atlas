@@ -672,11 +672,24 @@ describe('route architecture', () => {
     await user.type(screen.getByLabelText('Ongoing Activities'), 'Rotor installation is active.');
     await user.type(screen.getByLabelText('Risks'), 'Delivery float is limited to two days.');
     await user.type(screen.getByLabelText('Plans for the Week'), 'Complete alignment and testing.');
+    await user.type(screen.getByLabelText('Gross oil produced'), '96800');
+    await user.selectOptions(
+      screen.getByLabelText('Highlights from the Previous Week related goal'),
+      'obj_secure_production',
+    );
+    await user.type(screen.getByLabelText('Highlight previous plan value'), '100000');
+    await user.type(screen.getByLabelText('Highlight actual value'), '96800');
+    await user.type(screen.getByLabelText('Ongoing activity'), 'Install replacement rotor');
+    await user.type(screen.getByLabelText('Risk title'), 'Delivery float');
+    await user.type(
+      screen.getByLabelText('Weekly plan or commitment'),
+      'Complete alignment and testing',
+    );
     await user.click(screen.getByRole('button', { name: 'Generate Chart' }));
     const dialog = screen.getByRole('dialog', { name: 'Generate chart from Highlights' });
     await user.selectOptions(within(dialog).getByLabelText('Chart type'), 'line');
     await user.click(within(dialog).getByRole('button', { name: 'Generate Preview' }));
-    expect(within(dialog).getByLabelText('Highlights chart')).toBeVisible();
+    expect(within(dialog).getByLabelText('Plan and actual performance')).toBeVisible();
     await user.click(within(dialog).getByRole('button', { name: 'Keep Chart' }));
 
     await user.upload(
@@ -702,6 +715,38 @@ describe('route architecture', () => {
     expect(
       await screen.findByText('Rotor installation and alignment are now complete.'),
     ).toBeVisible();
+  }, 10_000);
+
+  it('starts another clean Weekly Update without resetting submitted data', async () => {
+    const user = userEvent.setup();
+    seedConfirmedPlan();
+    render(
+      <MemoryRouter initialEntries={['/commercial']}>
+        <AtlasProvider>
+          <App />
+        </AtlasProvider>
+      </MemoryRouter>,
+    );
+    await user.selectOptions(screen.getByLabelText('Active demo persona'), 'manager');
+    await user.type(screen.getByLabelText('Highlights from the Previous Week'), 'Result context');
+    await user.type(screen.getByLabelText('Ongoing Activities'), 'Activity context');
+    await user.type(screen.getByLabelText('Risks'), 'Risk context');
+    await user.type(screen.getByLabelText('Plans for the Week'), 'Plan context');
+    await user.type(screen.getByLabelText('Gross oil produced'), '96800');
+    await user.selectOptions(
+      screen.getByLabelText('Highlights from the Previous Week related goal'),
+      'obj_secure_production',
+    );
+    await user.type(screen.getByLabelText('Highlight actual value'), '96800');
+    await user.type(screen.getByLabelText('Ongoing activity'), 'Restore compressor');
+    await user.type(screen.getByLabelText('Risk title'), 'Rotor delay');
+    await user.type(screen.getByLabelText('Weekly plan or commitment'), 'Complete commissioning');
+    await user.click(screen.getByRole('button', { name: 'Submit Update' }));
+    expect(await screen.findByRole('heading', { name: 'Weekly Update submitted' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Start Another Update' }));
+    expect(await screen.findByRole('heading', { name: 'Weekly Updates' })).toBeVisible();
+    expect(screen.getByLabelText('Highlights from the Previous Week')).toHaveValue('');
+    expect(screen.getByLabelText('Gross oil produced')).toHaveValue(null);
   });
 
   it('blocks creation in a closed Manager reporting period', async () => {

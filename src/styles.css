@@ -3793,7 +3793,7 @@ tr.is-clickable:hover {
 .manager-update-sections,
 .manager-submission-sections {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 24px;
 }
 
@@ -3803,7 +3803,75 @@ tr.is-clickable:hover {
 }
 
 .manager-update-sections textarea {
-  min-height: 150px;
+  min-height: 110px;
+}
+
+.manager-metric-grid,
+.manager-plan-links,
+.manager-structured-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.manager-metric-grid,
+.manager-plan-links {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.manager-structured-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
+.manager-plan-links {
+  margin: 18px 0;
+  padding: 18px;
+  border-radius: 10px;
+  background: var(--atlas-surface-subtle);
+}
+
+.manager-plan-baseline {
+  margin: -8px 0 18px;
+  color: var(--atlas-text-secondary);
+  font-size: 0.875rem;
+}
+
+.manager-value-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.manager-value-input span {
+  color: var(--atlas-text-secondary);
+  font-size: 0.875rem;
+}
+
+.manager-structured-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 18px;
+}
+
+.manager-structured-summary div {
+  min-width: 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--atlas-surface-subtle);
+}
+
+.manager-structured-summary dt {
+  color: var(--atlas-text-secondary);
+  font-size: 0.75rem;
+}
+
+.manager-structured-summary dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+  text-transform: capitalize;
 }
 
 .manager-update-sections .chart-wrapper,
@@ -3924,7 +3992,10 @@ tr.is-clickable:hover {
 @media (max-width: 900px) {
   .manager-update-context .form-grid,
   .manager-update-sections,
-  .manager-submission-sections {
+  .manager-submission-sections,
+  .manager-metric-grid,
+  .manager-plan-links,
+  .manager-structured-summary {
     grid-template-columns: 1fr;
   }
 }
@@ -3933,6 +4004,10 @@ tr.is-clickable:hover {
   .manager-period-status {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .manager-structured-grid {
+    grid-template-columns: 1fr;
   }
 
   .manager-attachment-list li {

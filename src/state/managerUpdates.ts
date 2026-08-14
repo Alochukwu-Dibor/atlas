@@ -16,6 +16,55 @@ export interface ManagerUpdateSections {
   plansForWeek: string;
 }
 
+export type UpdateOutcomeStatus = 'achieved' | 'partially_achieved' | 'not_achieved' | 'deferred';
+export type ActivityStatus = 'not_started' | 'in_progress' | 'completed';
+export type RiskSeverity = 'low' | 'medium' | 'high' | 'critical';
+
+export interface ManagerPlanLink {
+  strategicObjectiveId: string;
+  kpiId: string;
+  targetId: string;
+  milestoneId: string;
+}
+
+export interface ManagerMetricInput {
+  id: string;
+  label: string;
+  unit: string;
+  value: string;
+}
+
+export interface ManagerStructuredSections {
+  highlights: ManagerPlanLink & {
+    previousPlanUpdateId: string;
+    expectedOutcome: string;
+    plannedValue: string;
+    actualValue: string;
+    unit: string;
+    outcomeStatus: UpdateOutcomeStatus;
+  };
+  ongoingActivities: ManagerPlanLink & {
+    activity: string;
+    status: ActivityStatus;
+    progressPercent: string;
+    forecastCompletion: string;
+  };
+  risks: ManagerPlanLink & {
+    riskTitle: string;
+    severity: RiskSeverity;
+    quantifiedImpact: string;
+    mitigation: string;
+    targetResolutionDate: string;
+  };
+  plansForWeek: ManagerPlanLink & {
+    commitment: string;
+    expectedOutcome: string;
+    plannedValue: string;
+    unit: string;
+    dueDate: string;
+  };
+}
+
 export interface GeneratedChart {
   id: string;
   type: ManagerChartType;
@@ -49,6 +98,8 @@ export interface ManagerWeeklyUpdate {
   reportingPeriodId: string;
   reportingDeadline: string;
   sections: ManagerUpdateSections;
+  structuredSections?: ManagerStructuredSections;
+  metricInputs?: ManagerMetricInput[];
   chart: GeneratedChart | null;
   attachments: ManagerAttachment[];
   pastedText?: string;
@@ -60,7 +111,7 @@ export interface ManagerWeeklyUpdate {
 }
 
 export interface ManagerUpdatesState {
-  version: 2;
+  version: 3;
   updates: ManagerWeeklyUpdate[];
   lastError: string | null;
 }
@@ -75,6 +126,109 @@ export type ManagerUpdatesAction =
 
 export const managerUpdatesStorageKey = 'atlas.manager-updates.v1';
 export const managerPrototypeNow = '2026-08-03T12:00:00+01:00';
+
+const sharedMetricDefinitions: Record<string, { id: string; label: string; unit: string }[]> = {
+  dept_operations: [
+    { id: 'gross_oil_produced', label: 'Gross oil produced', unit: 'bbl' },
+    { id: 'average_daily_production', label: 'Average daily production', unit: 'bopd' },
+    { id: 'production_downtime', label: 'Production downtime', unit: 'hours' },
+    { id: 'deferred_production', label: 'Deferred production', unit: 'bbl' },
+    { id: 'facility_availability', label: 'Facility availability', unit: '%' },
+  ],
+  dept_finance: [
+    { id: 'opening_cash', label: 'Opening cash', unit: 'USD' },
+    { id: 'cash_receipts', label: 'Cash receipts', unit: 'USD' },
+    { id: 'operating_payments', label: 'Operating payments', unit: 'USD' },
+    { id: 'capital_payments', label: 'Capital payments', unit: 'USD' },
+    { id: 'committed_spend', label: 'Committed spend', unit: 'USD' },
+    { id: 'receivables_outstanding', label: 'Receivables outstanding', unit: 'USD' },
+  ],
+  dept_hse: [
+    { id: 'hours_worked', label: 'Hours worked', unit: 'hours' },
+    { id: 'recordable_incidents', label: 'Recordable incidents', unit: 'count' },
+    { id: 'lost_time_incidents', label: 'Lost-time incidents', unit: 'count' },
+    { id: 'near_misses', label: 'Near misses', unit: 'count' },
+    { id: 'corrective_actions_closed', label: 'Corrective actions closed', unit: 'count' },
+  ],
+  dept_legal: [
+    { id: 'obligations_due', label: 'Regulatory obligations due', unit: 'count' },
+    { id: 'obligations_completed', label: 'Obligations completed on time', unit: 'count' },
+    { id: 'permits_renewed', label: 'Permits renewed', unit: 'count' },
+    { id: 'active_disputes', label: 'Active disputes', unit: 'count' },
+    { id: 'legal_exposure', label: 'Estimated legal exposure', unit: 'USD' },
+  ],
+  dept_projects: [
+    { id: 'physical_progress', label: 'Physical progress', unit: '%' },
+    { id: 'planned_work_complete', label: 'Planned work completed', unit: '%' },
+    { id: 'milestones_completed', label: 'Milestones completed', unit: 'count' },
+    { id: 'schedule_variance', label: 'Schedule variance', unit: 'days' },
+    { id: 'actual_cost', label: 'Actual cost', unit: 'USD' },
+  ],
+  dept_supply_chain: [
+    { id: 'purchase_orders_due', label: 'Purchase orders due', unit: 'count' },
+    { id: 'purchase_orders_delivered', label: 'Purchase orders delivered', unit: 'count' },
+    { id: 'on_time_delivery', label: 'On-time delivery', unit: '%' },
+    { id: 'committed_procurement', label: 'Committed procurement spend', unit: 'USD' },
+  ],
+  dept_community: [
+    { id: 'commitments_due', label: 'Community commitments due', unit: 'count' },
+    { id: 'commitments_completed', label: 'Community commitments completed', unit: 'count' },
+    { id: 'engagements_held', label: 'Community engagements held', unit: 'count' },
+    { id: 'grievances_opened', label: 'Grievances opened', unit: 'count' },
+    { id: 'grievances_resolved', label: 'Grievances resolved', unit: 'count' },
+  ],
+  dept_commercial: [
+    { id: 'gas_available_hours', label: 'Available gas handling hours', unit: 'hours' },
+    { id: 'gas_planned_hours', label: 'Planned gas handling hours', unit: 'hours' },
+    { id: 'allocated_volume', label: 'Allocated gas volume', unit: 'mmscf' },
+    { id: 'reconciled_volume', label: 'Reconciled gas volume', unit: 'mmscf' },
+  ],
+};
+
+export function createEmptyStructuredSections(): ManagerStructuredSections {
+  const link = { strategicObjectiveId: '', kpiId: '', targetId: '', milestoneId: '' };
+  return {
+    highlights: {
+      ...link,
+      previousPlanUpdateId: '',
+      expectedOutcome: '',
+      plannedValue: '',
+      actualValue: '',
+      unit: '',
+      outcomeStatus: 'achieved',
+    },
+    ongoingActivities: {
+      ...link,
+      activity: '',
+      status: 'in_progress',
+      progressPercent: '',
+      forecastCompletion: '',
+    },
+    risks: {
+      ...link,
+      riskTitle: '',
+      severity: 'medium',
+      quantifiedImpact: '',
+      mitigation: '',
+      targetResolutionDate: '',
+    },
+    plansForWeek: {
+      ...link,
+      commitment: '',
+      expectedOutcome: '',
+      plannedValue: '',
+      unit: '',
+      dueDate: '',
+    },
+  };
+}
+
+export function createManagerMetricInputs(departmentId: string): ManagerMetricInput[] {
+  return (sharedMetricDefinitions[departmentId] ?? []).map((definition) => ({
+    ...definition,
+    value: '',
+  }));
+}
 
 export const projectAssignments: ProjectAssignment[] = [
   {
@@ -177,11 +331,11 @@ function initialUpdates(): ManagerWeeklyUpdate[] {
 }
 
 export function createInitialManagerUpdatesState(): ManagerUpdatesState {
-  return { version: 2, updates: initialUpdates(), lastError: null };
+  return { version: 3, updates: initialUpdates(), lastError: null };
 }
 
 export function createEmptyManagerUpdatesState(): ManagerUpdatesState {
-  return { version: 2, updates: [], lastError: null };
+  return { version: 3, updates: [], lastError: null };
 }
 
 export function loadManagerUpdatesState(): ManagerUpdatesState {
@@ -190,13 +344,16 @@ export function loadManagerUpdatesState(): ManagerUpdatesState {
     const stored = window.localStorage.getItem(managerUpdatesStorageKey);
     if (!stored) return createInitialManagerUpdatesState();
     const parsed = JSON.parse(stored) as
-      ManagerUpdatesState | (Omit<ManagerUpdatesState, 'version'> & { version: 1 });
-    if (parsed.version === 2) return parsed;
-    if (parsed.version === 1) {
+      ManagerUpdatesState | (Omit<ManagerUpdatesState, 'version'> & { version: 1 | 2 });
+    if (parsed.version === 3) return parsed;
+    if (parsed.version === 1 || parsed.version === 2) {
       return {
         ...parsed,
-        version: 2,
-        updates: parsed.updates.map((update) => ({ ...update, comments: [] })),
+        version: 3,
+        updates: parsed.updates.map((update) => ({
+          ...update,
+          comments: 'comments' in update ? update.comments : [],
+        })),
       };
     }
     return createInitialManagerUpdatesState();
@@ -236,19 +393,6 @@ export function managerUpdatesReducer(
           : item,
       ),
       lastError: null,
-    };
-  }
-  const duplicate = state.updates.find(
-    (update) =>
-      update.creatorId === action.update.creatorId &&
-      update.projectId === action.update.projectId &&
-      update.reportingPeriodId === action.update.reportingPeriodId &&
-      update.id !== action.update.id,
-  );
-  if (duplicate) {
-    return {
-      ...state,
-      lastError: 'An update already exists for this project and reporting period.',
     };
   }
   const exists = state.updates.some((update) => update.id === action.update.id);
