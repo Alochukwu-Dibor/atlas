@@ -20,6 +20,7 @@ import {
   createManagerMetricInputs,
   deriveProjectHealthFromUpdates,
   managerUpdatesReducer,
+  projectAssignments,
   selectAssignedProjectIds,
   selectManagerUpdates,
   selectVisibleSubmittedUpdates,
@@ -131,6 +132,21 @@ describe('Manager Weekly Update state', () => {
       variance: '-5.0%',
       status: 'on_track',
     });
+  });
+
+  it('provides plan-derived performance measures for every Manager department assignment', () => {
+    const plan = confirmedPlan();
+    for (const assignment of projectAssignments) {
+      const project = plan.projects.find((item) => item.id === assignment.projectIds[0]);
+      expect(
+        project,
+        `${assignment.departmentId} should have a confirmed assigned project`,
+      ).toBeDefined();
+      expect(
+        createInheritedPerformanceMeasures(project!, assignment.departmentId),
+        `${assignment.departmentId} should have performance-against-plan data`,
+      ).not.toHaveLength(0);
+    }
   });
 
   it('rolls previous commitments forward and derives project health from structured submissions', () => {

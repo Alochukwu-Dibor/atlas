@@ -377,81 +377,103 @@ export function createInheritedPerformanceMeasures(
   previousUpdate?: ManagerWeeklyUpdate,
 ): ManagerPerformanceMeasure[] {
   const previousMeasures = previousUpdate?.performanceMeasures ?? [];
-  const kpis = project.kpis
-    .filter((kpi) => kpi.departmentId === departmentId || departmentId === 'dept_commercial')
-    .map((kpi) => {
-      const target = project.targets.find((item) => item.kpiId === kpi.id);
-      const previous = previousMeasures.find((item) => item.planItemId === kpi.id);
-      const latestValidated = atlas.kpiTargets.find((item) => item.kpiId === kpi.id);
-      return calculateMeasure({
-        id: `measure_${kpi.id}_${project.id}`,
-        planItemId: kpi.id,
-        type: 'KPI',
-        name: kpi.name,
-        projectId: project.id,
-        departmentId: kpi.departmentId,
-        unit: kpi.unit,
-        approvedValue: String(target?.approvedBaseline ?? ''),
-        previousValue: previous?.currentValue ?? String(latestValidated?.actual ?? ''),
-        currentValue: '',
-        plannedCompletion: '',
-        previousStatus:
-          previous?.status ??
-          (latestValidated?.status === 'on_track'
-            ? 'on_track'
-            : latestValidated?.status === 'at_risk'
-              ? 'at_risk'
-              : latestValidated?.status === 'off_track'
-                ? 'critical'
-                : 'not_started'),
-        currentStatus: 'not_started',
-        currentProgress: '',
-        forecastCompletion: '',
-        variance: 'Awaiting update',
-        status: 'not_started',
-        evidenceIds: [],
-        reviewStatus: 'draft',
-        revisions: previous?.revisions ?? [],
-        addChart: false,
-      });
-    });
-  const milestones = project.milestones
+  const projectKpis = project.kpis.filter(
+    (kpi) => kpi.departmentId === departmentId || departmentId === 'dept_commercial',
+  );
+  const departmentKpis = atlas.kpiTargets
     .filter(
-      (milestone) => milestone.departmentId === departmentId || departmentId === 'dept_commercial',
+      (target) =>
+        target.departmentId === departmentId &&
+        (target.projectId === null || target.projectId === project.id),
     )
-    .map((milestone) => {
-      const previous = previousMeasures.find((item) => item.planItemId === milestone.id);
-      const latestValidated = atlas.milestones.find((item) => item.id === milestone.id);
-      return calculateMeasure({
-        id: `measure_${milestone.id}_${project.id}`,
-        planItemId: milestone.id,
-        type: 'Milestone',
-        name: milestone.name,
-        projectId: project.id,
-        departmentId: milestone.departmentId,
-        unit: '',
-        approvedValue: milestone.dueDate,
-        previousValue: previous?.currentValue ?? '',
-        currentValue: '',
-        plannedCompletion: milestone.dueDate,
-        previousStatus:
-          previous?.currentStatus ??
-          (latestValidated?.status === 'complete'
-            ? 'completed'
-            : latestValidated?.status === 'in_progress'
-              ? 'in_progress'
-              : 'not_started'),
-        currentStatus: 'not_started',
-        currentProgress: '',
-        forecastCompletion: milestone.dueDate,
-        variance: 'Awaiting update',
-        status: 'not_started',
-        evidenceIds: [],
-        reviewStatus: 'draft',
-        revisions: previous?.revisions ?? [],
-        addChart: false,
-      });
+    .flatMap((target) => {
+      const definition = atlas.kpiDefinitions.find((kpi) => kpi.id === target.kpiId);
+      return definition
+        ? [
+            {
+              id: definition.id,
+              projectId: project.id,
+              departmentId,
+              name: definition.name,
+              unit: definition.unit,
+            },
+          ]
+        : [];
     });
+  const relevantKpis = [...projectKpis, ...departmentKpis].filter(
+    (kpi, index, items) => items.findIndex((item) => item.id === kpi.id) === index,
+  );
+  const kpis = relevantKpis.map((kpi) => {
+    const target =
+      project.targets.find((item) => item.kpiId === kpi.id) ??
+      atlas.kpiTargets.find((item) => item.kpiId === kpi.id);
+    const previous = previousMeasures.find((item) => item.planItemId === kpi.id);
+    const latestValidated = atlas.kpiTargets.find((item) => item.kpiId === kpi.id);
+    return calculateMeasure({
+      id: `measure_${kpi.id}_${project.id}`,
+      planItemId: kpi.id,
+      type: 'KPI',
+      name: kpi.name,
+      projectId: project.id,
+      departmentId: kpi.departmentId,
+      unit: kpi.unit,
+      approvedValue: String(target?.approvedBaseline ?? ''),
+      previousValue: previous?.currentValue ?? String(latestValidated?.actual ?? ''),
+      currentValue: '',
+      plannedCompletion: '',
+      previousStatus:
+        previous?.status ??
+        (latestValidated?.status === 'on_track'
+          ? 'on_track'
+          : latestValidated?.status === 'at_risk'
+            ? 'at_risk'
+            : latestValidated?.status === 'off_track'
+              ? 'critical'
+              : 'not_started'),
+      currentStatus: 'not_started',
+      currentProgress: '',
+      forecastCompletion: '',
+      variance: 'Awaiting update',
+      status: 'not_started',
+      evidenceIds: [],
+      reviewStatus: 'draft',
+      revisions: previous?.revisions ?? [],
+      addChart: false,
+    });
+  });
+  const milestones = project.milestones.map((milestone) => {
+    const previous = previousMeasures.find((item) => item.planItemId === milestone.id);
+    const latestValidated = atlas.milestones.find((item) => item.id === milestone.id);
+    return calculateMeasure({
+      id: `measure_${milestone.id}_${project.id}`,
+      planItemId: milestone.id,
+      type: 'Milestone',
+      name: milestone.name,
+      projectId: project.id,
+      departmentId: milestone.departmentId,
+      unit: '',
+      approvedValue: milestone.dueDate,
+      previousValue: previous?.currentValue ?? '',
+      currentValue: '',
+      plannedCompletion: milestone.dueDate,
+      previousStatus:
+        previous?.currentStatus ??
+        (latestValidated?.status === 'complete'
+          ? 'completed'
+          : latestValidated?.status === 'in_progress'
+            ? 'in_progress'
+            : 'not_started'),
+      currentStatus: 'not_started',
+      currentProgress: '',
+      forecastCompletion: milestone.dueDate,
+      variance: 'Awaiting update',
+      status: 'not_started',
+      evidenceIds: [],
+      reviewStatus: 'draft',
+      revisions: previous?.revisions ?? [],
+      addChart: false,
+    });
+  });
   return [...kpis, ...milestones];
 }
 

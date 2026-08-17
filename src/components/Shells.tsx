@@ -71,6 +71,7 @@ function PersonaControl() {
 
 function DepartmentControl() {
   const { role, departmentId, setDepartmentId, setActiveUserId } = useAtlas();
+  const navigate = useNavigate();
   return (
     <Select
       label="Department workspace"
@@ -80,7 +81,10 @@ function DepartmentControl() {
         const managerId = atlas.departments.find(
           (department) => department.id === nextDepartmentId,
         )?.managerId;
-        if (role === 'department_manager' && managerId) setActiveUserId(managerId);
+        if (role === 'department_manager' && managerId) {
+          setActiveUserId(managerId);
+          if (nextDepartmentId === 'dept_commercial') navigate('/reviews');
+        }
       }}
       options={atlas.departments.map((department) => ({
         value: department.id,

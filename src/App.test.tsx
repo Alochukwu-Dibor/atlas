@@ -616,6 +616,9 @@ describe('route architecture', () => {
     expect(department).toHaveDisplayValue('Supply Chain');
     expect(screen.getAllByText('Amina Yusuf')[0]).toBeVisible();
     expect(screen.getByLabelText('Assigned project')).toHaveTextContent('Fiscal Metering Upgrade');
+    await user.selectOptions(department, 'dept_commercial');
+    expect(await screen.findByRole('heading', { name: 'Reporting' })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: 'No access' })).not.toBeInTheDocument();
   });
 
   it('saves and reopens a partial Manager Weekly Update draft', async () => {
