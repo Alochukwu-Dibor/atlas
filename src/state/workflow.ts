@@ -413,6 +413,38 @@ export function fieldsForDepartment(departmentId: string): StandardField[] {
       },
     ];
   }
+  if (departmentId === 'dept_subsea') {
+    const integrityProject = atlas.projects.find((project) => project.id === 'prj_integrity')!;
+    const meteringProject = atlas.projects.find((project) => project.id === 'prj_metering')!;
+    return [
+      {
+        key: 'flowlineInspectionProgress',
+        label: 'Flowline inspection progress',
+        value: String(integrityProject.progressPercent),
+        unit: '%',
+        required: true,
+        sourceIds: [sourceId],
+        confidence: 0.97,
+      },
+      {
+        key: 'subseaMeteringReadiness',
+        label: 'Subsea metering readiness',
+        value: String(meteringProject.progressPercent),
+        unit: '%',
+        required: true,
+        sourceIds: [sourceId],
+        confidence: 0.96,
+      },
+      {
+        key: 'integrityForecastDate',
+        label: 'Integrity inspection forecast date',
+        value: integrityProject.targetDate,
+        required: true,
+        sourceIds: [sourceId],
+        confidence: 0.94,
+      },
+    ];
+  }
   if (departmentId === 'dept_commercial') {
     return [
       {
@@ -440,67 +472,6 @@ export function fieldsForDepartment(departmentId: string): StandardField[] {
         required: true,
         sourceIds: [sourceId],
         confidence: 0.98,
-      },
-    ];
-  }
-  if (departmentId === 'dept_supply_chain') {
-    const commitment = atlas.finance.commitments.find((item) => item.id === 'com_integrity')!;
-    return [
-      {
-        key: 'remainingCommitmentUsd',
-        label: 'Facilities and integrity commitment remaining',
-        value: String(commitment.remainingUsd),
-        unit: 'USD',
-        required: true,
-        sourceIds: [sourceId],
-        confidence: 0.97,
-      },
-      {
-        key: 'due30DaysUsd',
-        label: 'Commitment due within 30 days',
-        value: String(commitment.due30DaysUsd),
-        unit: 'USD',
-        required: true,
-        sourceIds: [sourceId],
-        confidence: 0.97,
-      },
-      {
-        key: 'supplyStatus',
-        label: 'Critical materials status',
-        value: commitment.status,
-        required: true,
-        sourceIds: [sourceId],
-        confidence: 0.94,
-      },
-    ];
-  }
-  if (departmentId === 'dept_community') {
-    const communityRisk = atlas.legalRegulatory.risks[0];
-    return [
-      {
-        key: 'communityExposureUsd',
-        label: 'Community claim exposure',
-        value: String(communityRisk.estimatedExposureUsd),
-        unit: 'USD',
-        required: true,
-        sourceIds: [sourceId],
-        confidence: 0.96,
-      },
-      {
-        key: 'accessResponseDeadline',
-        label: 'Community access response deadline',
-        value: communityRisk.dueDate,
-        required: true,
-        sourceIds: [sourceId],
-        confidence: 1,
-      },
-      {
-        key: 'engagementStatus',
-        label: 'Community engagement status',
-        value: communityRisk.status,
-        required: true,
-        sourceIds: [sourceId],
-        confidence: 0.94,
       },
     ];
   }

@@ -605,16 +605,26 @@ describe('route architecture', () => {
     expect(within(navigation).getAllByRole('link')).toHaveLength(2);
     expect(navigation).toHaveTextContent('Weekly UpdatesSubmissions');
     const department = screen.getByLabelText('Department workspace');
-    expect(department).toHaveDisplayValue('Operations');
-    expect(department.querySelectorAll('option')).toHaveLength(8);
+    expect(department).toHaveDisplayValue('Production');
+    expect(
+      Array.from(department.querySelectorAll('option')).map((option) => option.textContent),
+    ).toEqual([
+      'Production',
+      'Subsea',
+      'Engineering & Projects',
+      'Commercial & Planning',
+      'Finance',
+      'HSE',
+      'Legal & Regulatory',
+    ]);
     await user.selectOptions(department, 'dept_finance');
     expect(department).toHaveDisplayValue('Finance');
     expect(screen.getByLabelText('Assigned project')).toHaveTextContent(
       'Compressor Station B Restoration',
     );
-    await user.selectOptions(department, 'dept_supply_chain');
-    expect(department).toHaveDisplayValue('Supply Chain');
-    expect(screen.getAllByText('Amina Yusuf')[0]).toBeVisible();
+    await user.selectOptions(department, 'dept_subsea');
+    expect(department).toHaveDisplayValue('Subsea');
+    expect(screen.getAllByText('Tonye Amachree')[0]).toBeVisible();
     expect(screen.getByLabelText('Assigned project')).toHaveTextContent('Fiscal Metering Upgrade');
     await user.selectOptions(department, 'dept_commercial');
     expect(await screen.findByRole('heading', { name: 'Reporting' })).toBeVisible();

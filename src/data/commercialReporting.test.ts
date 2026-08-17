@@ -39,11 +39,11 @@ describe('Commercial Reporting selectors', () => {
       createInitialWorkflowState(),
       'cycle_2026_w31',
     )!;
-    expect(result.totalExpected).toBe(8);
+    expect(result.totalExpected).toBe(7);
     expect(result.receivedCount).toBe(1);
-    expect(result.completenessPercent).toBe(13);
+    expect(result.completenessPercent).toBe(14);
     expect(result.needsReview.map((item) => item.id)).toEqual(['rpt_hse_w31']);
-    expect(result.followUp).toHaveLength(8);
+    expect(result.followUp).toHaveLength(7);
   });
 
   it('shows a sent reminder from persisted workflow activity', () => {

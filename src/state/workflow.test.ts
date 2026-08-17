@@ -35,13 +35,12 @@ describe('Atlas reporting workflow', () => {
     const state = createInitialWorkflowState();
     const departments = [
       'dept_operations',
+      'dept_subsea',
+      'dept_projects',
+      'dept_commercial',
       'dept_finance',
       'dept_hse',
       'dept_legal',
-      'dept_projects',
-      'dept_commercial',
-      'dept_supply_chain',
-      'dept_community',
     ];
     for (const departmentId of departments) {
       expect(
@@ -53,6 +52,7 @@ describe('Atlas reporting workflow', () => {
     }
     expect(fieldsForDepartment('dept_finance')[0].label).toBe('Available liquidity');
     expect(fieldsForDepartment('dept_hse')[0].label).toBe('Total recordable incident rate');
+    expect(fieldsForDepartment('dept_subsea')[0].label).toBe('Flowline inspection progress');
     expect(fieldsForDepartment('dept_projects')[0].label).toContain('restoration progress');
     expect(
       state.reports.some(

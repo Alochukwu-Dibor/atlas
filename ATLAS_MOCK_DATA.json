@@ -40,9 +40,16 @@
     {
       "id": "usr_operations",
       "name": "Ifeanyi Eze",
-      "title": "Operations Manager",
+      "title": "Production Manager",
       "role": "department_manager",
       "departmentId": "dept_operations"
+    },
+    {
+      "id": "usr_subsea",
+      "name": "Tonye Amachree",
+      "title": "Subsea Manager",
+      "role": "department_manager",
+      "departmentId": "dept_subsea"
     },
     {
       "id": "usr_finance",
@@ -68,34 +75,19 @@
     {
       "id": "usr_projects",
       "name": "Chinedu Nwosu",
-      "title": "Projects Manager",
+      "title": "Engineering & Projects Manager",
       "role": "department_manager",
       "departmentId": "dept_projects"
-    },
-    {
-      "id": "usr_supply_chain",
-      "name": "Amina Yusuf",
-      "title": "Supply Chain Manager",
-      "role": "department_manager",
-      "departmentId": "dept_supply_chain"
-    },
-    {
-      "id": "usr_community",
-      "name": "Ebiere Okon",
-      "title": "Community Relations Manager",
-      "role": "department_manager",
-      "departmentId": "dept_community"
     }
   ],
   "departments": [
-    { "id": "dept_operations", "name": "Operations", "required": true, "managerId": "usr_operations" },
+    { "id": "dept_operations", "name": "Production", "required": true, "managerId": "usr_operations" },
+    { "id": "dept_subsea", "name": "Subsea", "required": true, "managerId": "usr_subsea" },
+    { "id": "dept_projects", "name": "Engineering & Projects", "required": true, "managerId": "usr_projects" },
+    { "id": "dept_commercial", "name": "Commercial & Planning", "required": true, "managerId": "usr_commercial" },
     { "id": "dept_finance", "name": "Finance", "required": true, "managerId": "usr_finance" },
     { "id": "dept_hse", "name": "HSE", "required": true, "managerId": "usr_hse" },
-    { "id": "dept_legal", "name": "Legal & Regulatory", "required": true, "managerId": "usr_legal" },
-    { "id": "dept_projects", "name": "Projects", "required": true, "managerId": "usr_projects" },
-    { "id": "dept_commercial", "name": "Commercial", "required": true, "managerId": "usr_commercial" },
-    { "id": "dept_supply_chain", "name": "Supply Chain", "required": true, "managerId": "usr_supply_chain" },
-    { "id": "dept_community", "name": "Community Relations", "required": true, "managerId": "usr_community" }
+    { "id": "dept_legal", "name": "Legal & Regulatory", "required": true, "managerId": "usr_legal" }
   ],
   "reportingCycles": [
     {

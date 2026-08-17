@@ -235,6 +235,12 @@ const sharedMetricDefinitions: Record<string, { id: string; label: string; unit:
     { id: 'deferred_production', label: 'Deferred production', unit: 'bbl' },
     { id: 'facility_availability', label: 'Facility availability', unit: '%' },
   ],
+  dept_subsea: [
+    { id: 'subsea_system_availability', label: 'Subsea system availability', unit: '%' },
+    { id: 'flowline_inspection_progress', label: 'Flowline inspection progress', unit: '%' },
+    { id: 'subsea_integrity_actions', label: 'Subsea integrity actions closed', unit: 'count' },
+    { id: 'intervention_readiness', label: 'Intervention readiness', unit: '%' },
+  ],
   dept_finance: [
     { id: 'opening_cash', label: 'Opening cash', unit: 'USD' },
     { id: 'cash_receipts', label: 'Cash receipts', unit: 'USD' },
@@ -263,19 +269,6 @@ const sharedMetricDefinitions: Record<string, { id: string; label: string; unit:
     { id: 'milestones_completed', label: 'Milestones completed', unit: 'count' },
     { id: 'schedule_variance', label: 'Schedule variance', unit: 'days' },
     { id: 'actual_cost', label: 'Actual cost', unit: 'USD' },
-  ],
-  dept_supply_chain: [
-    { id: 'purchase_orders_due', label: 'Purchase orders due', unit: 'count' },
-    { id: 'purchase_orders_delivered', label: 'Purchase orders delivered', unit: 'count' },
-    { id: 'on_time_delivery', label: 'On-time delivery', unit: '%' },
-    { id: 'committed_procurement', label: 'Committed procurement spend', unit: 'USD' },
-  ],
-  dept_community: [
-    { id: 'commitments_due', label: 'Community commitments due', unit: 'count' },
-    { id: 'commitments_completed', label: 'Community commitments completed', unit: 'count' },
-    { id: 'engagements_held', label: 'Community engagements held', unit: 'count' },
-    { id: 'grievances_opened', label: 'Grievances opened', unit: 'count' },
-    { id: 'grievances_resolved', label: 'Grievances resolved', unit: 'count' },
   ],
   dept_commercial: [
     { id: 'gas_available_hours', label: 'Available gas handling hours', unit: 'hours' },
@@ -521,6 +514,11 @@ export const projectAssignments: ProjectAssignment[] = [
     projectIds: ['prj_compressor', 'prj_wellwork'],
   },
   {
+    userId: 'usr_subsea',
+    departmentId: 'dept_subsea',
+    projectIds: ['prj_integrity', 'prj_metering'],
+  },
+  {
     userId: 'usr_finance',
     departmentId: 'dept_finance',
     projectIds: ['prj_compressor', 'prj_metering'],
@@ -539,16 +537,6 @@ export const projectAssignments: ProjectAssignment[] = [
     userId: 'usr_projects',
     departmentId: 'dept_projects',
     projectIds: atlas.projects.map((project) => project.id),
-  },
-  {
-    userId: 'usr_supply_chain',
-    departmentId: 'dept_supply_chain',
-    projectIds: ['prj_compressor', 'prj_metering'],
-  },
-  {
-    userId: 'usr_community',
-    departmentId: 'dept_community',
-    projectIds: ['prj_integrity', 'prj_wellwork'],
   },
   {
     userId: 'usr_commercial',
