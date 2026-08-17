@@ -1,5 +1,10 @@
 import { atlas, format, getCycle, getDepartment, getUser, phase1Domain } from './atlas';
 import type { ConfirmedPlanBaseline } from '../state/plan';
+import {
+  deriveProjectHealthFromUpdates,
+  selectLatestSubmittedMeasure,
+  type ManagerUpdatesState,
+} from '../state/managerUpdates';
 import { reportDepartmentName, selectSubmissionQueue, type WorkflowState } from '../state/workflow';
 
 export type PortfolioHealthStatus = 'on_track' | 'at_risk' | 'critical';
@@ -57,6 +62,7 @@ export function selectCommercialDashboard(
   workflow: WorkflowState,
   cycleId: string,
   scenarioId: string = 'canonical',
+  managerUpdates?: ManagerUpdatesState,
 ) {
   if (!confirmedPlan) return null;
 
@@ -76,10 +82,14 @@ export function selectCommercialDashboard(
     }
     const plannedProgress = actual.planPercent ?? actual.progressPercent;
     const variancePoints = actual.progressPercent - plannedProgress;
+    const fallbackStatus = normaliseProjectHealth(actual.status);
+    const derived = managerUpdates
+      ? deriveProjectHealthFromUpdates(managerUpdates, baseline.id, fallbackStatus)
+      : { status: fallbackStatus };
     return {
       id: actual.id,
       name: baseline.name,
-      status: normaliseProjectHealth(actual.status),
+      status: derived.status,
       progressPercent: actual.progressPercent,
       plannedProgressPercent: plannedProgress,
       variancePoints,
@@ -118,12 +128,24 @@ export function selectCommercialDashboard(
   const reportedLegal = phase1Domain.kpiTargets.find(
     (target) => target.kpiId === 'kpi_regulatory_compliance',
   );
+  const submittedProduction = managerUpdates
+    ? selectLatestSubmittedMeasure(managerUpdates, 'kpi_gross_production')
+    : undefined;
+  const submittedLegal = managerUpdates
+    ? selectLatestSubmittedMeasure(managerUpdates, 'kpi_regulatory_compliance')
+    : undefined;
+  const productionActual = submittedProduction?.currentValue
+    ? Number(submittedProduction.currentValue)
+    : reportedProduction?.actual;
+  const legalActual = submittedLegal?.currentValue
+    ? Number(submittedLegal.currentValue)
+    : reportedLegal?.actual;
   const productionTarget = confirmedTarget(confirmedPlan, 'kpi_gross_production');
   const hseTarget = confirmedTarget(confirmedPlan, 'kpi_trir');
   const legalTarget = confirmedTarget(confirmedPlan, 'kpi_regulatory_compliance');
   const productionVariance =
-    productionTarget && reportedProduction
-      ? ((reportedProduction.actual - productionTarget.approvedBaseline) /
+    productionTarget && productionActual !== undefined
+      ? ((productionActual - productionTarget.approvedBaseline) /
           productionTarget.approvedBaseline) *
         100
       : null;
@@ -132,12 +154,13 @@ export function selectCommercialDashboard(
     {
       id: 'production',
       title: 'Production capacity',
-      result: reportedProduction ? `${format.number(reportedProduction.actual)} bopd` : 'No report',
+      result:
+        productionActual !== undefined ? `${format.number(productionActual)} bopd` : 'No report',
       context:
-        productionTarget && reportedProduction
+        productionTarget && productionActual !== undefined
           ? `${format.number(productionTarget.approvedBaseline)} bopd plan · ${format.percent(productionVariance ?? 0)} variance`
           : 'Awaiting confirmed target and weekly actual',
-      status: reportedProduction?.status ?? 'missing_inputs',
+      status: submittedProduction?.status ?? reportedProduction?.status ?? 'missing_inputs',
       destination: projectDestination(
         productionTarget?.projectId ?? confirmedPlan.projects[0]?.id ?? 'prj_compressor',
       ),
@@ -166,12 +189,12 @@ export function selectCommercialDashboard(
     {
       id: 'legal',
       title: 'Legal',
-      result: reportedLegal ? `${reportedLegal.actual}% on time` : 'No report',
+      result: legalActual !== undefined ? `${legalActual}% on time` : 'No report',
       context:
-        legalTarget && reportedLegal
+        legalTarget && legalActual !== undefined
           ? `${legalTarget.approvedBaseline}% approved target · community access issue unresolved`
           : 'Awaiting confirmed legal target and weekly actual',
-      status: reportedLegal?.status ?? 'missing_inputs',
+      status: submittedLegal?.status ?? reportedLegal?.status ?? 'missing_inputs',
       destination: projectDestination(legalTarget?.projectId ?? 'prj_integrity'),
     },
   ];

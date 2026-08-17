@@ -3806,6 +3806,145 @@ tr.is-clickable:hover {
   min-height: 110px;
 }
 
+.manager-performance-table-wrap {
+  margin-top: 18px;
+  overflow-x: auto;
+  border: 1px solid var(--atlas-border);
+  border-radius: 10px;
+}
+
+.manager-performance-table {
+  width: 100%;
+  min-width: 1080px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.manager-performance-table th,
+.manager-performance-table td {
+  padding: 13px 12px;
+  border-bottom: 1px solid var(--atlas-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.manager-performance-table thead th {
+  color: var(--atlas-text-secondary);
+  background: var(--atlas-surface-subtle);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.manager-performance-table tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+.manager-performance-table tbody th {
+  max-width: 220px;
+  font-weight: 600;
+}
+
+.manager-performance-table input,
+.manager-performance-table select {
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--atlas-border);
+  border-radius: 7px;
+  background: #fff;
+  font: inherit;
+}
+
+.manager-measure-current,
+.manager-measure-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.manager-measure-current {
+  min-width: 160px;
+}
+
+.manager-measure-actions .button {
+  justify-content: flex-start;
+  min-height: auto;
+  padding: 2px 0;
+}
+
+.manager-repeatable-list {
+  display: grid;
+  gap: 16px;
+  margin: 18px 0;
+}
+
+.manager-repeatable-record {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--atlas-border);
+  border-radius: 10px;
+  background: var(--atlas-surface-subtle);
+}
+
+.manager-record-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.manager-record-grid > .field:first-child,
+.manager-record-grid > .manager-record-heading,
+.manager-record-grid > .manager-narrative-field {
+  grid-column: 1 / -1;
+}
+
+.manager-record-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.manager-record-heading h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.manager-plan-tags {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.manager-plan-tags label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-weight: 400;
+}
+
+.manager-chart-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.manager-detail-list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.manager-detail-list li {
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--atlas-border);
+}
+
+.manager-detail-list li:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
 .manager-metric-grid,
 .manager-plan-links,
 .manager-structured-grid {
@@ -3995,8 +4134,16 @@ tr.is-clickable:hover {
   .manager-submission-sections,
   .manager-metric-grid,
   .manager-plan-links,
-  .manager-structured-summary {
+  .manager-structured-summary,
+  .manager-record-grid,
+  .manager-chart-controls {
     grid-template-columns: 1fr;
+  }
+
+  .manager-record-grid > .field:first-child,
+  .manager-record-grid > .manager-record-heading,
+  .manager-record-grid > .manager-narrative-field {
+    grid-column: auto;
   }
 }
 

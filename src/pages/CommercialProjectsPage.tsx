@@ -112,10 +112,10 @@ function ProjectMeasureTable({
 }
 
 function ProjectsList() {
-  const { plan } = useAtlas();
+  const { plan, managerUpdates } = useAtlas();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
-  const projects = selectCommercialProjects(plan.confirmedPlan);
+  const projects = selectCommercialProjects(plan.confirmedPlan, managerUpdates);
 
   if (!plan.confirmedPlan) {
     return (
@@ -382,7 +382,7 @@ function PortfolioList() {
 }
 
 function ProjectWorkspace({ projectId }: { projectId: string }) {
-  const { plan, workflow } = useAtlas();
+  const { plan, workflow, managerUpdates } = useAtlas();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [drawerContext, setDrawerContext] = useState<AtlasInsightContext | null>(null);
@@ -391,7 +391,12 @@ function ProjectWorkspace({ projectId }: { projectId: string }) {
     ? (requestedView as ProjectView)
     : 'overview';
   const focusedMeasure = searchParams.get('measure');
-  const project = selectCommercialProjectWorkspace(plan.confirmedPlan, workflow, projectId);
+  const project = selectCommercialProjectWorkspace(
+    plan.confirmedPlan,
+    workflow,
+    projectId,
+    managerUpdates,
+  );
 
   if (!plan.confirmedPlan) {
     return (

@@ -1,4 +1,4 @@
-import { BarChart3, ClipboardPaste, FileCheck2, FileUp, Trash2 } from 'lucide-react';
+import { ClipboardPaste, FileCheck2, FileUp, Plus, Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from 'recharts';
@@ -22,28 +22,73 @@ import {
   canEditUpdate,
   canResubmitUpdate,
   canViewUpdate,
-  createEmptyStructuredSections,
-  createManagerMetricInputs,
+  calculateMeasure,
+  createCommitmentOutcomes,
+  createInheritedPerformanceMeasures,
   isUpdatePastDeadline,
+  latestPreviousManagerUpdate,
   selectAssignedProjectIds,
   selectManagerUpdates,
   selectVisibleSubmittedUpdates,
   type GeneratedChart,
   type ManagerAttachment,
   type ManagerChartType,
-  type ManagerMetricInput,
+  type ManagerActivityRecord,
+  type ManagerCommitmentOutcome,
+  type ManagerCommitmentRecord,
+  type ManagerHighlightRecord,
+  type ManagerPerformanceMeasure,
+  type ManagerRiskRecord,
   type ManagerStructuredSections,
   type ManagerUpdateComment,
   type ManagerUpdateSections,
   type ManagerWeeklyUpdate,
 } from '../state/managerUpdates';
 
-const emptySections: ManagerUpdateSections = {
-  highlights: '',
-  ongoingActivities: '',
-  risks: '',
-  plansForWeek: '',
-};
+function emptyHighlight(index = 1): ManagerHighlightRecord {
+  return { id: `highlight_${index}`, text: '', linkedPlanItemIds: [] };
+}
+
+function emptyActivity(index = 1): ManagerActivityRecord {
+  return {
+    id: `activity_${index}`,
+    activity: '',
+    status: 'in_progress',
+    progressPercent: '',
+    expectedCompletion: '',
+    linkedPlanItemId: '',
+    blocker: '',
+    narrative: '',
+  };
+}
+
+function emptyCommitment(ownerId: string, index = 1): ManagerCommitmentRecord {
+  return {
+    id: `commitment_${index}`,
+    commitment: '',
+    expectedOutcome: '',
+    ownerId,
+    dueDate: '',
+    linkedPlanItemId: '',
+    dependency: '',
+    status: 'not_started',
+  };
+}
+
+function emptyRisk(ownerId: string, index = 1): ManagerRiskRecord {
+  return {
+    id: `risk_${index}`,
+    risk: '',
+    impact: '',
+    likelihood: 'medium',
+    linkedPlanItemId: '',
+    potentialImpact: '',
+    mitigation: '',
+    ownerId,
+    targetResolution: '',
+    comment: '',
+  };
+}
 
 const sectionDefinitions: {
   key: keyof ManagerUpdateSections;
@@ -101,12 +146,17 @@ function formatTimestamp(value: string) {
 }
 
 function ChartPreview({ chart }: { chart: GeneratedChart }) {
+  const hasPlanSeries = chart.values.some((value) => value.planValue !== undefined);
   return (
     <ChartWrapper
       title={chart.title}
       summary={`Deterministic preview created from ${chart.values.length} structured reporting values.`}
-      tableHeaders={['Extracted value', 'Value']}
-      tableRows={chart.values.map((value) => [value.label, String(value.value)])}
+      tableHeaders={hasPlanSeries ? ['Period', 'Actual', 'Approved plan'] : ['Measure', 'Value']}
+      tableRows={chart.values.map((value) => [
+        value.label,
+        String(value.value),
+        ...(hasPlanSeries ? [String(value.planValue ?? '')] : []),
+      ])}
     >
       {chart.type === 'bar' ? (
         <BarChart data={chart.values} margin={{ top: 12, right: 16, left: 0, bottom: 0 }}>
@@ -114,6 +164,9 @@ function ChartPreview({ chart }: { chart: GeneratedChart }) {
           <XAxis dataKey="label" tickLine={false} axisLine={false} />
           <YAxis tickLine={false} axisLine={false} />
           <Tooltip />
+          {hasPlanSeries && (
+            <Bar dataKey="planValue" name="Approved plan" fill="#cbd5e1" radius={[4, 4, 0, 0]} />
+          )}
           <Bar dataKey="value" name="Extracted value" fill="#2563eb" radius={[4, 4, 0, 0]} />
         </BarChart>
       ) : (
@@ -122,6 +175,17 @@ function ChartPreview({ chart }: { chart: GeneratedChart }) {
           <XAxis dataKey="label" tickLine={false} axisLine={false} />
           <YAxis tickLine={false} axisLine={false} />
           <Tooltip />
+          {hasPlanSeries && (
+            <Line
+              type="monotone"
+              dataKey="planValue"
+              name="Approved plan"
+              stroke="#64748b"
+              strokeWidth={2}
+              strokeDasharray="5 4"
+              dot={false}
+            />
+          )}
           <Line
             type="monotone"
             dataKey="value"
@@ -326,15 +390,52 @@ export function ManagerWeeklyUpdatesPage() {
     requestedUpdate?.reportingPeriodId ?? atlas.demoStates.defaultOpenCycleId,
   );
   const [projectId, setProjectId] = useState(requestedUpdate?.projectId ?? projects[0]?.id ?? '');
-  const [sections, setSections] = useState<ManagerUpdateSections>(
-    requestedUpdate?.sections ?? emptySections,
+  const initialProject = projects.find(
+    (project) => project.id === (requestedUpdate?.projectId ?? projects[0]?.id),
   );
-  const [structuredSections, setStructuredSections] = useState<ManagerStructuredSections>(
-    requestedUpdate?.structuredSections ?? createEmptyStructuredSections(),
+  const initialPreviousUpdate = latestPreviousManagerUpdate(
+    managerUpdates.updates,
+    activeUserId,
+    initialProject?.id ?? '',
+    requestedUpdate?.reportingPeriodId ?? atlas.demoStates.defaultOpenCycleId,
   );
-  const [metricInputs, setMetricInputs] = useState<ManagerMetricInput[]>(
-    requestedUpdate?.metricInputs ?? createManagerMetricInputs(departmentId),
+  const [performanceMeasures, setPerformanceMeasures] = useState<ManagerPerformanceMeasure[]>(
+    requestedUpdate?.performanceMeasures ??
+      (initialProject
+        ? createInheritedPerformanceMeasures(initialProject, departmentId, initialPreviousUpdate)
+        : []),
   );
+  const [highlights, setHighlights] = useState<ManagerHighlightRecord[]>(
+    requestedUpdate?.highlights ?? [
+      { ...emptyHighlight(), text: requestedUpdate?.sections.highlights ?? '' },
+    ],
+  );
+  const [activities, setActivities] = useState<ManagerActivityRecord[]>(
+    requestedUpdate?.activities ?? [
+      {
+        ...emptyActivity(),
+        activity: requestedUpdate?.sections.ongoingActivities ?? '',
+        narrative: requestedUpdate?.sections.ongoingActivities ?? '',
+      },
+    ],
+  );
+  const [previousCommitmentOutcomes, setPreviousCommitmentOutcomes] = useState<
+    ManagerCommitmentOutcome[]
+  >(requestedUpdate?.previousCommitmentOutcomes ?? createCommitmentOutcomes(initialPreviousUpdate));
+  const [commitments, setCommitments] = useState<ManagerCommitmentRecord[]>(
+    requestedUpdate?.commitments ?? [
+      {
+        ...emptyCommitment(activeUserId),
+        commitment: requestedUpdate?.sections.plansForWeek ?? '',
+      },
+    ],
+  );
+  const [structuredRisks, setStructuredRisks] = useState<ManagerRiskRecord[]>(
+    requestedUpdate?.structuredRisks ?? [
+      { ...emptyRisk(activeUserId), risk: requestedUpdate?.sections.risks ?? '' },
+    ],
+  );
+  const [supportRequired, setSupportRequired] = useState(requestedUpdate?.supportRequired ?? '');
   const [attachments, setAttachments] = useState<ManagerAttachment[]>(
     requestedUpdate?.attachments ?? [],
   );
@@ -346,6 +447,8 @@ export function ManagerWeeklyUpdatesPage() {
     requestedUpdate?.chart?.type ?? 'bar',
   );
   const [pendingChart, setPendingChart] = useState<GeneratedChart | null>(null);
+  const [selectedChartMeasureId, setSelectedChartMeasureId] = useState('');
+  const [chartRange, setChartRange] = useState('4');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submittedId, setSubmittedId] = useState<string | null>(null);
 
@@ -361,33 +464,55 @@ export function ManagerWeeklyUpdatesPage() {
   const existing =
     requestedUpdate ??
     (creatingAnother ? undefined : matchingUpdates.find((update) => update.status === 'draft'));
-  const previousUpdates = managerUpdates.updates
-    .filter(
-      (update) =>
-        update.creatorId === activeUserId &&
-        update.projectId === projectId &&
-        update.reportingPeriodId !== periodId &&
-        update.status === 'submitted',
-    )
-    .sort((a, b) => b.savedAt.localeCompare(a.savedAt));
   const selectedProject = projects.find((project) => project.id === projectId);
-  const objectiveOptions = atlas.strategicObjectives.filter((objective) =>
-    selectedProject?.strategicObjectiveIds.includes(objective.id),
-  );
-  const kpiOptions = selectedProject?.kpis ?? [];
-  const milestoneOptions = selectedProject?.milestones ?? [];
-  const targetOptions = selectedProject?.targets ?? [];
   const closed = period?.status !== 'open';
   const editingSubmitted = requestedUpdate?.status === 'submitted';
-  const structuredChartValues = [
-    { label: 'Plan', value: Number(structuredSections.highlights.plannedValue) },
-    { label: 'Actual', value: Number(structuredSections.highlights.actualValue) },
-  ].filter((value) => Number.isFinite(value.value) && value.value !== 0);
-  const metricChartValues = metricInputs
-    .filter((input) => input.value.trim() && Number.isFinite(Number(input.value)))
-    .slice(0, 6)
-    .map((input) => ({ label: input.label, value: Number(input.value) }));
-  const chartValues = structuredChartValues.length ? structuredChartValues : metricChartValues;
+  const chartableMeasures = performanceMeasures.filter(
+    (measure) => measure.type !== 'Milestone' && Number.isFinite(Number(measure.approvedValue)),
+  );
+  const selectedChartMeasure =
+    chartableMeasures.find((measure) => measure.id === selectedChartMeasureId) ??
+    chartableMeasures[0];
+  const allChartValues = selectedChartMeasure
+    ? [
+        ...managerUpdates.updates
+          .filter(
+            (update) =>
+              update.projectId === projectId &&
+              update.status === 'submitted' &&
+              update.performanceMeasures?.some(
+                (measure) =>
+                  measure.planItemId === selectedChartMeasure.planItemId &&
+                  measure.currentValue.trim() &&
+                  Number.isFinite(Number(measure.currentValue)),
+              ),
+          )
+          .map((update) => {
+            const measure = update.performanceMeasures!.find(
+              (item) => item.planItemId === selectedChartMeasure.planItemId,
+            )!;
+            return {
+              label: getCycle(update.reportingPeriodId).label.replace(/^.*·\s*/, ''),
+              value: Number(measure.currentValue),
+              planValue: Number(measure.approvedValue),
+            };
+          }),
+        ...(selectedChartMeasure.currentValue.trim() &&
+        Number.isFinite(Number(selectedChartMeasure.currentValue))
+          ? [
+              {
+                label: period?.label.replace(/^.*·\s*/, '') ?? 'Current',
+                value: Number(selectedChartMeasure.currentValue),
+                planValue: Number(selectedChartMeasure.approvedValue),
+              },
+            ]
+          : []),
+      ]
+    : [];
+  const chartValues =
+    chartRange === 'quarter'
+      ? allChartValues
+      : allChartValues.slice(-Math.max(1, Number(chartRange) || 4));
 
   const loadContext = (nextPeriodId: string, nextProjectId: string) => {
     const saved = creatingAnother
@@ -401,29 +526,68 @@ export function ManagerWeeklyUpdatesPage() {
               update.status === 'draft',
           )
           .sort((a, b) => b.savedAt.localeCompare(a.savedAt))[0];
-    setSections(saved?.sections ?? emptySections);
-    setStructuredSections(saved?.structuredSections ?? createEmptyStructuredSections());
-    setMetricInputs(saved?.metricInputs ?? createManagerMetricInputs(departmentId));
+    const nextProject = projects.find((project) => project.id === nextProjectId);
+    const previous = latestPreviousManagerUpdate(
+      managerUpdates.updates,
+      activeUserId,
+      nextProjectId,
+      nextPeriodId,
+    );
+    setPerformanceMeasures(
+      saved?.performanceMeasures ??
+        (nextProject
+          ? createInheritedPerformanceMeasures(nextProject, departmentId, previous)
+          : []),
+    );
+    setHighlights(
+      saved?.highlights ?? [{ ...emptyHighlight(), text: saved?.sections.highlights ?? '' }],
+    );
+    setActivities(
+      saved?.activities ?? [
+        {
+          ...emptyActivity(),
+          activity: saved?.sections.ongoingActivities ?? '',
+          narrative: saved?.sections.ongoingActivities ?? '',
+        },
+      ],
+    );
+    setPreviousCommitmentOutcomes(
+      saved?.previousCommitmentOutcomes ?? createCommitmentOutcomes(previous),
+    );
+    setCommitments(
+      saved?.commitments ?? [
+        { ...emptyCommitment(activeUserId), commitment: saved?.sections.plansForWeek ?? '' },
+      ],
+    );
+    setStructuredRisks(
+      saved?.structuredRisks ?? [{ ...emptyRisk(activeUserId), risk: saved?.sections.risks ?? '' }],
+    );
+    setSupportRequired(saved?.supportRequired ?? '');
     setAttachments(saved?.attachments ?? []);
     setPastedText(saved?.pastedText ?? '');
     setChart(saved?.chart ?? null);
+    setSelectedChartMeasureId('');
     setErrors({});
   };
 
-  const updateStructuredSection = <K extends keyof ManagerStructuredSections>(
-    key: K,
-    values: Partial<ManagerStructuredSections[K]>,
-  ) => {
-    setStructuredSections((current) => ({
-      ...current,
-      [key]: { ...current[key], ...values },
-    }));
-  };
-
   const startAnotherUpdate = () => {
-    setSections(emptySections);
-    setStructuredSections(createEmptyStructuredSections());
-    setMetricInputs(createManagerMetricInputs(departmentId));
+    const previous = latestPreviousManagerUpdate(
+      managerUpdates.updates,
+      activeUserId,
+      projectId,
+      periodId,
+    );
+    setPerformanceMeasures(
+      selectedProject
+        ? createInheritedPerformanceMeasures(selectedProject, departmentId, previous)
+        : [],
+    );
+    setHighlights([emptyHighlight()]);
+    setActivities([emptyActivity()]);
+    setPreviousCommitmentOutcomes(createCommitmentOutcomes(previous));
+    setCommitments([emptyCommitment(activeUserId)]);
+    setStructuredRisks([emptyRisk(activeUserId)]);
+    setSupportRequired('');
     setAttachments([]);
     setPastedText('');
     setChart(null);
@@ -440,6 +604,49 @@ export function ManagerWeeklyUpdatesPage() {
     const now = prototypeTime(
       managerUpdates.updates.length + 1 + (existing?.status === 'submitted' ? 20 : 0),
     );
+    const savedAttachments = attachments.filter((attachment) => attachment.status === 'uploaded');
+    const evidenceIds = savedAttachments.map((attachment) => attachment.id);
+    const canonicalSections: ManagerUpdateSections = {
+      highlights: highlights
+        .map((highlight) => highlight.text.trim())
+        .filter(Boolean)
+        .join('\n\n'),
+      ongoingActivities: activities
+        .map((activity) => activity.narrative.trim() || activity.activity.trim())
+        .filter(Boolean)
+        .join('\n\n'),
+      risks: structuredRisks
+        .map((risk) => risk.comment.trim() || risk.risk.trim())
+        .filter(Boolean)
+        .join('\n\n'),
+      plansForWeek: commitments
+        .map((commitment) => commitment.commitment.trim())
+        .filter(Boolean)
+        .join('\n\n'),
+    };
+    const tracedMeasures = performanceMeasures.map((measure) => {
+      const calculated = calculateMeasure({
+        ...measure,
+        evidenceIds,
+        reviewStatus: status,
+      });
+      if (status !== 'submitted' || !calculated.currentValue.trim()) return calculated;
+      return {
+        ...calculated,
+        revisions: [
+          ...calculated.revisions,
+          {
+            id: `revision_${calculated.planItemId}_${periodId}_${calculated.revisions.length + 1}`,
+            reportingPeriodId: periodId,
+            managerId: activeUserId,
+            previousValue: calculated.previousValue,
+            currentValue: calculated.currentValue,
+            variance: calculated.variance,
+            recordedAt: now,
+          },
+        ],
+      };
+    });
     return {
       id:
         existing?.id ??
@@ -449,11 +656,21 @@ export function ManagerWeeklyUpdatesPage() {
       projectId,
       reportingPeriodId: periodId,
       reportingDeadline: period.dueDate,
-      sections,
-      structuredSections,
-      metricInputs,
+      sections: canonicalSections,
+      structuredSections: existing?.structuredSections,
+      metricInputs: existing?.metricInputs,
+      performanceMeasures: tracedMeasures,
+      highlights,
+      activities,
+      previousCommitmentOutcomes: previousCommitmentOutcomes.map((outcome) => ({
+        ...outcome,
+        evidenceIds,
+      })),
+      commitments,
+      structuredRisks,
+      supportRequired: supportRequired.trim(),
       chart,
-      attachments: attachments.filter((attachment) => attachment.status === 'uploaded'),
+      attachments: savedAttachments,
       pastedText: pastedText.trim(),
       status,
       savedAt: now,
@@ -476,33 +693,26 @@ export function ManagerWeeklyUpdatesPage() {
   };
 
   const submit = () => {
-    const nextErrors = Object.fromEntries(
-      sectionDefinitions
-        .filter((section) => !sections[section.key].trim())
-        .map((section) => [section.key, `${section.title} is required.`]),
-    );
+    const nextErrors: Record<string, string> = {};
     if (!periodId || !projectId) nextErrors.context = 'Select a reporting period and project.';
-    if (!metricInputs.some((input) => input.value.trim())) {
-      nextErrors.metrics = 'Enter at least one department performance value.';
-    }
     if (
-      !structuredSections.highlights.strategicObjectiveId &&
-      !structuredSections.highlights.kpiId
-    ) {
-      nextErrors.highlightsLink = 'Link the highlight to a goal or KPI.';
-    }
-    if (!structuredSections.highlights.actualValue.trim()) {
-      nextErrors.highlightsActual = 'Enter the actual result.';
-    }
-    if (!structuredSections.ongoingActivities.activity.trim()) {
-      nextErrors.activity = 'Enter the ongoing activity.';
-    }
-    if (!structuredSections.risks.riskTitle.trim()) {
-      nextErrors.risk = 'Enter a risk, or state that no material risk was identified.';
-    }
-    if (!structuredSections.plansForWeek.commitment.trim()) {
-      nextErrors.plan = 'Enter the plan or commitment for the week.';
-    }
+      performanceMeasures.length > 0 &&
+      !performanceMeasures.some(
+        (measure) =>
+          measure.currentValue.trim() ||
+          measure.currentProgress.trim() ||
+          measure.currentStatus !== 'not_started',
+      )
+    )
+      nextErrors.performance = 'Update at least one approved measure.';
+    if (!highlights.some((highlight) => highlight.text.trim()))
+      nextErrors.highlights = 'Add at least one highlight from last week.';
+    if (!activities.some((activity) => activity.activity.trim()))
+      nextErrors.activities = 'Add at least one ongoing activity.';
+    if (!commitments.some((commitment) => commitment.commitment.trim()))
+      nextErrors.commitments = 'Add at least one commitment for next week.';
+    if (!structuredRisks.some((risk) => risk.risk.trim()))
+      nextErrors.risks = 'Add a risk or record “No material risks”.';
     if (Object.keys(nextErrors).length) {
       setErrors(nextErrors);
       return;
@@ -512,81 +722,6 @@ export function ManagerWeeklyUpdatesPage() {
     managerUpdatesDispatch({ type: 'UPSERT_UPDATE', update });
     setErrors({});
     setSubmittedId(update.id);
-  };
-
-  const renderPlanLinks = (key: keyof ManagerStructuredSections) => {
-    const link = structuredSections[key];
-    const linkedTarget = targetOptions.find((target) => target.id === link.targetId);
-    return (
-      <>
-        <div className="manager-plan-links">
-          <Field
-            label="Related goal"
-            error={key === 'highlights' ? errors.highlightsLink : undefined}
-          >
-            <select
-              aria-label={`${sectionDefinitions.find((section) => section.key === key)?.title} related goal`}
-              value={link.strategicObjectiveId}
-              onChange={(event) =>
-                updateStructuredSection(key, { strategicObjectiveId: event.target.value })
-              }
-            >
-              <option value="">Select approved goal</option>
-              {objectiveOptions.map((objective) => (
-                <option key={objective.id} value={objective.id}>
-                  {objective.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Related KPI">
-            <select
-              aria-label={`${sectionDefinitions.find((section) => section.key === key)?.title} related KPI`}
-              value={link.kpiId}
-              onChange={(event) => {
-                const kpiId = event.target.value;
-                const target = targetOptions.find((item) => item.kpiId === kpiId);
-                const kpi = kpiOptions.find((item) => item.id === kpiId);
-                updateStructuredSection(key, {
-                  kpiId,
-                  targetId: target?.id ?? '',
-                  ...('unit' in link && kpi ? { unit: kpi.unit } : {}),
-                });
-              }}
-            >
-              <option value="">Select approved KPI</option>
-              {kpiOptions.map((kpi) => (
-                <option key={kpi.id} value={kpi.id}>
-                  {kpi.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Related milestone">
-            <select
-              aria-label={`${sectionDefinitions.find((section) => section.key === key)?.title} related milestone`}
-              value={link.milestoneId}
-              onChange={(event) =>
-                updateStructuredSection(key, { milestoneId: event.target.value })
-              }
-            >
-              <option value="">No milestone</option>
-              {milestoneOptions.map((milestone) => (
-                <option key={milestone.id} value={milestone.id}>
-                  {milestone.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-        {linkedTarget && (
-          <p className="manager-plan-baseline">
-            Approved baseline: <strong>{format.number(linkedTarget.approvedBaseline)}</strong>{' '}
-            {linkedTarget.unit}
-          </p>
-        )}
-      </>
-    );
   };
 
   if (!plan.confirmedPlan) {
@@ -721,330 +856,844 @@ export function ManagerWeeklyUpdatesPage() {
               </span>
             </div>
           )}
-          <Panel title="Department Performance Inputs" className="section manager-metric-inputs">
+          <Panel title="Performance against plan" className="section manager-performance-panel">
             <p className="panel-intro">
-              Enter the base values your department owns. Atlas retains the approved plan as the
-              baseline and uses these values to calculate performance measures.
+              Atlas loaded the approved measures assigned to this department and project. Update
+              only the current value or status; plan relationships and variance are inherited.
             </p>
-            <div className="manager-metric-grid">
-              {metricInputs.map((input) => (
-                <Field key={input.id} label={input.label}>
-                  <div className="manager-value-input">
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      value={input.value}
-                      aria-label={input.label}
+            {performanceMeasures.length ? (
+              <div className="manager-performance-table-wrap">
+                <table className="manager-performance-table">
+                  <caption className="sr-only">Approved performance measures</caption>
+                  <thead>
+                    <tr>
+                      <th>Measure</th>
+                      <th>Type</th>
+                      <th>Approved plan</th>
+                      <th>Previous</th>
+                      <th>Current</th>
+                      <th>Variance</th>
+                      <th>Status</th>
+                      <th>Trend</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {performanceMeasures.map((measure) => (
+                      <tr key={measure.id}>
+                        <th scope="row">{measure.name}</th>
+                        <td>{measure.type}</td>
+                        <td>
+                          {measure.approvedValue} {measure.unit}
+                        </td>
+                        <td>
+                          {measure.type === 'Milestone'
+                            ? measure.previousStatus.replaceAll('_', ' ')
+                            : `${measure.previousValue || '—'} ${measure.unit}`}
+                        </td>
+                        <td>
+                          {measure.type === 'Milestone' ? (
+                            <div className="manager-measure-current">
+                              <select
+                                aria-label={`${measure.name} current status`}
+                                value={measure.currentStatus}
+                                onChange={(event) =>
+                                  setPerformanceMeasures((current) =>
+                                    current.map((item) =>
+                                      item.id === measure.id
+                                        ? calculateMeasure({
+                                            ...item,
+                                            currentStatus: event.target
+                                              .value as ManagerPerformanceMeasure['currentStatus'],
+                                          })
+                                        : item,
+                                    ),
+                                  )
+                                }
+                              >
+                                <option value="not_started">Not started</option>
+                                <option value="in_progress">In progress</option>
+                                <option value="completed">Completed</option>
+                              </select>
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                aria-label={`${measure.name} current progress`}
+                                placeholder="Progress %"
+                                value={measure.currentProgress}
+                                onChange={(event) =>
+                                  setPerformanceMeasures((current) =>
+                                    current.map((item) =>
+                                      item.id === measure.id
+                                        ? calculateMeasure({
+                                            ...item,
+                                            currentProgress: event.target.value,
+                                          })
+                                        : item,
+                                    ),
+                                  )
+                                }
+                              />
+                              <input
+                                type="date"
+                                aria-label={`${measure.name} forecast completion`}
+                                value={measure.forecastCompletion}
+                                onChange={(event) =>
+                                  setPerformanceMeasures((current) =>
+                                    current.map((item) =>
+                                      item.id === measure.id
+                                        ? { ...item, forecastCompletion: event.target.value }
+                                        : item,
+                                    ),
+                                  )
+                                }
+                              />
+                            </div>
+                          ) : (
+                            <div className="manager-value-input">
+                              <input
+                                type="number"
+                                inputMode="decimal"
+                                aria-label={`${measure.name} current value`}
+                                value={measure.currentValue}
+                                onChange={(event) =>
+                                  setPerformanceMeasures((current) =>
+                                    current.map((item) =>
+                                      item.id === measure.id
+                                        ? calculateMeasure({
+                                            ...item,
+                                            currentValue: event.target.value,
+                                          })
+                                        : item,
+                                    ),
+                                  )
+                                }
+                              />
+                              <span>{measure.unit}</span>
+                            </div>
+                          )}
+                        </td>
+                        <td>{measure.variance}</td>
+                        <td>
+                          <StatusBadge status={measure.status} />
+                        </td>
+                        <td>
+                          {measure.type !== 'Milestone' && (
+                            <div className="manager-measure-actions">
+                              <Button
+                                variant="tertiary"
+                                onClick={() => {
+                                  setSelectedChartMeasureId(measure.id);
+                                  setPendingChart(null);
+                                  setChartModalOpen(true);
+                                }}
+                              >
+                                View trend
+                              </Button>
+                              <Button
+                                variant="tertiary"
+                                onClick={() => {
+                                  setSelectedChartMeasureId(measure.id);
+                                  setPendingChart(null);
+                                  setChartModalOpen(true);
+                                }}
+                              >
+                                Add chart
+                              </Button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="empty-copy">
+                No approved KPI, target, or milestone is assigned to this context.
+              </p>
+            )}
+            {errors.performance && <p className="field__error">{errors.performance}</p>}
+          </Panel>
+
+          <Panel title="Highlights from last week" className="section">
+            <p className="panel-intro">
+              Add narrative context first. Link approved plan items only where they help explain the
+              highlight.
+            </p>
+            <div className="manager-repeatable-list">
+              {highlights.map((highlight, index) => (
+                <div className="manager-repeatable-record" key={highlight.id}>
+                  <Field label={`Highlight ${index + 1}`}>
+                    <textarea
+                      aria-label={`Highlight ${index + 1}`}
+                      rows={3}
+                      value={highlight.text}
                       onChange={(event) =>
-                        setMetricInputs((current) =>
+                        setHighlights((current) =>
                           current.map((item) =>
-                            item.id === input.id ? { ...item, value: event.target.value } : item,
+                            item.id === highlight.id ? { ...item, text: event.target.value } : item,
                           ),
                         )
                       }
                     />
-                    <span>{input.unit}</span>
-                  </div>
-                </Field>
+                  </Field>
+                  <details>
+                    <summary>Link plan items</summary>
+                    <div className="manager-plan-tags">
+                      {performanceMeasures.map((measure) => (
+                        <label key={measure.id}>
+                          <input
+                            type="checkbox"
+                            checked={highlight.linkedPlanItemIds.includes(measure.planItemId)}
+                            onChange={(event) =>
+                              setHighlights((current) =>
+                                current.map((item) =>
+                                  item.id === highlight.id
+                                    ? {
+                                        ...item,
+                                        linkedPlanItemIds: event.target.checked
+                                          ? [...item.linkedPlanItemIds, measure.planItemId]
+                                          : item.linkedPlanItemIds.filter(
+                                              (id) => id !== measure.planItemId,
+                                            ),
+                                      }
+                                    : item,
+                                ),
+                              )
+                            }
+                          />
+                          {measure.name}
+                        </label>
+                      ))}
+                    </div>
+                  </details>
+                  {highlights.length > 1 && (
+                    <Button
+                      variant="tertiary"
+                      onClick={() =>
+                        setHighlights((current) =>
+                          current.filter((item) => item.id !== highlight.id),
+                        )
+                      }
+                    >
+                      <Trash2 aria-hidden="true" /> Remove
+                    </Button>
+                  )}
+                </div>
               ))}
             </div>
-            {errors.metrics && <p className="field__error">{errors.metrics}</p>}
+            {errors.highlights && <p className="field__error">{errors.highlights}</p>}
+            <Button
+              variant="secondary"
+              onClick={() =>
+                setHighlights((current) => [...current, emptyHighlight(current.length + 1)])
+              }
+            >
+              <Plus aria-hidden="true" /> Add highlight
+            </Button>
           </Panel>
-          <div className="manager-update-sections section">
-            {sectionDefinitions.map((section) => (
-              <Panel title={section.title} key={section.key}>
-                <p className="panel-intro">{section.instruction}</p>
-                {renderPlanLinks(section.key)}
-                {section.key === 'highlights' && (
-                  <>
-                    <Field label="Previous plan for comparison">
-                      <select
-                        aria-label="Previous plan for comparison"
-                        value={structuredSections.highlights.previousPlanUpdateId}
-                        onChange={(event) => {
-                          const previous = previousUpdates.find(
-                            (update) => update.id === event.target.value,
-                          );
-                          updateStructuredSection('highlights', {
-                            previousPlanUpdateId: event.target.value,
-                            expectedOutcome:
-                              previous?.structuredSections?.plansForWeek.expectedOutcome ?? '',
-                            plannedValue:
-                              previous?.structuredSections?.plansForWeek.plannedValue ?? '',
-                            unit: previous?.structuredSections?.plansForWeek.unit ?? '',
-                            strategicObjectiveId:
-                              previous?.structuredSections?.plansForWeek.strategicObjectiveId ??
-                              structuredSections.highlights.strategicObjectiveId,
-                            kpiId:
-                              previous?.structuredSections?.plansForWeek.kpiId ??
-                              structuredSections.highlights.kpiId,
-                            targetId:
-                              previous?.structuredSections?.plansForWeek.targetId ??
-                              structuredSections.highlights.targetId,
-                          });
-                        }}
-                      >
-                        <option value="">Unplanned highlight</option>
-                        {previousUpdates.map((update) => (
-                          <option key={update.id} value={update.id}>
-                            {getCycle(update.reportingPeriodId).label} —{' '}
-                            {update.structuredSections?.plansForWeek.commitment ||
-                              update.sections.plansForWeek.slice(0, 64)}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                    <div className="manager-structured-grid">
-                      <Field label="Expected outcome">
-                        <input
-                          value={structuredSections.highlights.expectedOutcome}
-                          onChange={(event) =>
-                            updateStructuredSection('highlights', {
-                              expectedOutcome: event.target.value,
-                            })
-                          }
-                        />
-                      </Field>
-                      <Field label="Outcome status">
-                        <select
-                          value={structuredSections.highlights.outcomeStatus}
-                          onChange={(event) =>
-                            updateStructuredSection('highlights', {
-                              outcomeStatus: event.target
-                                .value as ManagerStructuredSections['highlights']['outcomeStatus'],
-                            })
-                          }
-                        >
-                          <option value="achieved">Achieved</option>
-                          <option value="partially_achieved">Partially achieved</option>
-                          <option value="not_achieved">Not achieved</option>
-                          <option value="deferred">Deferred</option>
-                        </select>
-                      </Field>
-                      <Field label="Previous plan value">
-                        <input
-                          type="number"
-                          aria-label="Highlight previous plan value"
-                          value={structuredSections.highlights.plannedValue}
-                          onChange={(event) =>
-                            updateStructuredSection('highlights', {
-                              plannedValue: event.target.value,
-                            })
-                          }
-                        />
-                      </Field>
-                      <Field label="Actual value" error={errors.highlightsActual}>
-                        <input
-                          type="number"
-                          aria-label="Highlight actual value"
-                          value={structuredSections.highlights.actualValue}
-                          onChange={(event) =>
-                            updateStructuredSection('highlights', {
-                              actualValue: event.target.value,
-                            })
-                          }
-                        />
-                      </Field>
-                    </div>
-                  </>
-                )}
-                {section.key === 'ongoingActivities' && (
-                  <div className="manager-structured-grid">
-                    <Field label="Activity" error={errors.activity}>
-                      <input
-                        aria-label="Ongoing activity"
-                        value={structuredSections.ongoingActivities.activity}
-                        onChange={(event) =>
-                          updateStructuredSection('ongoingActivities', {
-                            activity: event.target.value,
-                          })
-                        }
-                      />
-                    </Field>
-                    <Field label="Status">
-                      <select
-                        value={structuredSections.ongoingActivities.status}
-                        onChange={(event) =>
-                          updateStructuredSection('ongoingActivities', {
-                            status: event.target
-                              .value as ManagerStructuredSections['ongoingActivities']['status'],
-                          })
-                        }
-                      >
-                        <option value="not_started">Not started</option>
-                        <option value="in_progress">In progress</option>
-                        <option value="completed">Completed</option>
-                      </select>
-                    </Field>
-                    <Field label="Progress (%)">
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={structuredSections.ongoingActivities.progressPercent}
-                        onChange={(event) =>
-                          updateStructuredSection('ongoingActivities', {
-                            progressPercent: event.target.value,
-                          })
-                        }
-                      />
-                    </Field>
-                    <Field label="Forecast completion">
-                      <input
-                        type="date"
-                        value={structuredSections.ongoingActivities.forecastCompletion}
-                        onChange={(event) =>
-                          updateStructuredSection('ongoingActivities', {
-                            forecastCompletion: event.target.value,
-                          })
-                        }
-                      />
-                    </Field>
-                  </div>
-                )}
-                {section.key === 'risks' && (
-                  <div className="manager-structured-grid">
-                    <Field label="Risk" error={errors.risk}>
-                      <input
-                        aria-label="Risk title"
-                        value={structuredSections.risks.riskTitle}
-                        placeholder="Enter a material risk or state none"
-                        onChange={(event) =>
-                          updateStructuredSection('risks', { riskTitle: event.target.value })
-                        }
-                      />
-                    </Field>
-                    <Field label="Severity">
-                      <select
-                        value={structuredSections.risks.severity}
-                        onChange={(event) =>
-                          updateStructuredSection('risks', {
-                            severity: event.target
-                              .value as ManagerStructuredSections['risks']['severity'],
-                          })
-                        }
-                      >
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                        <option value="critical">Critical</option>
-                      </select>
-                    </Field>
-                    <Field label="Quantified impact">
-                      <input
-                        value={structuredSections.risks.quantifiedImpact}
-                        placeholder="e.g. 3 days or USD 250,000"
-                        onChange={(event) =>
-                          updateStructuredSection('risks', {
-                            quantifiedImpact: event.target.value,
-                          })
-                        }
-                      />
-                    </Field>
-                    <Field label="Target resolution date">
-                      <input
-                        type="date"
-                        value={structuredSections.risks.targetResolutionDate}
-                        onChange={(event) =>
-                          updateStructuredSection('risks', {
-                            targetResolutionDate: event.target.value,
-                          })
-                        }
-                      />
-                    </Field>
-                    <Field label="Mitigation">
-                      <input
-                        value={structuredSections.risks.mitigation}
-                        onChange={(event) =>
-                          updateStructuredSection('risks', { mitigation: event.target.value })
-                        }
-                      />
-                    </Field>
-                  </div>
-                )}
-                {section.key === 'plansForWeek' && (
-                  <div className="manager-structured-grid">
-                    <Field label="Plan or commitment" error={errors.plan}>
-                      <input
-                        aria-label="Weekly plan or commitment"
-                        value={structuredSections.plansForWeek.commitment}
-                        onChange={(event) =>
-                          updateStructuredSection('plansForWeek', {
-                            commitment: event.target.value,
-                          })
-                        }
-                      />
-                    </Field>
-                    <Field label="Expected outcome">
-                      <input
-                        value={structuredSections.plansForWeek.expectedOutcome}
-                        onChange={(event) =>
-                          updateStructuredSection('plansForWeek', {
-                            expectedOutcome: event.target.value,
-                          })
-                        }
-                      />
-                    </Field>
-                    <Field label="Next-week planned value">
-                      <input
-                        type="number"
-                        value={structuredSections.plansForWeek.plannedValue}
-                        onChange={(event) =>
-                          updateStructuredSection('plansForWeek', {
-                            plannedValue: event.target.value,
-                          })
-                        }
-                      />
-                    </Field>
-                    <Field label="Due date">
-                      <input
-                        type="date"
-                        value={structuredSections.plansForWeek.dueDate}
-                        onChange={(event) =>
-                          updateStructuredSection('plansForWeek', { dueDate: event.target.value })
-                        }
-                      />
-                    </Field>
-                  </div>
-                )}
-                <Field label={`${section.title} context`} error={errors[section.key]}>
-                  <textarea
-                    aria-label={section.title}
-                    rows={5}
-                    value={sections[section.key]}
-                    onChange={(event) =>
-                      setSections((current) => ({
-                        ...current,
-                        [section.key]: event.target.value,
-                      }))
-                    }
-                  />
-                </Field>
-                {section.key === 'highlights' && (
-                  <div className="form-actions">
-                    <Button
-                      variant="secondary"
-                      disabled={chartValues.length === 0}
-                      onClick={() => {
-                        setPendingChart(null);
-                        setChartType(chart?.type ?? 'bar');
-                        setChartModalOpen(true);
-                      }}
+
+          <Panel title="Ongoing activities" className="section">
+            <div className="manager-repeatable-list">
+              {activities.map((activity, index) => (
+                <div className="manager-repeatable-record manager-record-grid" key={activity.id}>
+                  <Field label={`Activity ${index + 1}`}>
+                    <input
+                      value={activity.activity}
+                      onChange={(event) =>
+                        setActivities((current) =>
+                          current.map((item) =>
+                            item.id === activity.id
+                              ? { ...item, activity: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                  </Field>
+                  <Field label="Status">
+                    <select
+                      value={activity.status}
+                      onChange={(event) =>
+                        setActivities((current) =>
+                          current.map((item) =>
+                            item.id === activity.id
+                              ? {
+                                  ...item,
+                                  status: event.target.value as ManagerActivityRecord['status'],
+                                }
+                              : item,
+                          ),
+                        )
+                      }
                     >
-                      <BarChart3 aria-hidden="true" />
-                      {chart ? 'Regenerate Chart' : 'Generate Chart'}
+                      <option value="not_started">Not started</option>
+                      <option value="in_progress">In progress</option>
+                      <option value="completed">Completed</option>
+                    </select>
+                  </Field>
+                  <Field label="Progress (%)">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={activity.progressPercent}
+                      onChange={(event) =>
+                        setActivities((current) =>
+                          current.map((item) =>
+                            item.id === activity.id
+                              ? { ...item, progressPercent: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                  </Field>
+                  <Field label="Expected completion">
+                    <input
+                      type="date"
+                      value={activity.expectedCompletion}
+                      onChange={(event) =>
+                        setActivities((current) =>
+                          current.map((item) =>
+                            item.id === activity.id
+                              ? { ...item, expectedCompletion: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                  </Field>
+                  <Field label="Linked plan item (optional)">
+                    <select
+                      value={activity.linkedPlanItemId}
+                      onChange={(event) =>
+                        setActivities((current) =>
+                          current.map((item) =>
+                            item.id === activity.id
+                              ? { ...item, linkedPlanItemId: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    >
+                      <option value="">No link</option>
+                      {performanceMeasures.map((measure) => (
+                        <option key={measure.id} value={measure.planItemId}>
+                          {measure.name}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Blocker">
+                    <input
+                      value={activity.blocker}
+                      onChange={(event) =>
+                        setActivities((current) =>
+                          current.map((item) =>
+                            item.id === activity.id
+                              ? { ...item, blocker: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                  </Field>
+                  <Field label="Narrative update">
+                    <textarea
+                      rows={3}
+                      value={activity.narrative}
+                      onChange={(event) =>
+                        setActivities((current) =>
+                          current.map((item) =>
+                            item.id === activity.id
+                              ? { ...item, narrative: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                  </Field>
+                  {activities.length > 1 && (
+                    <Button
+                      variant="tertiary"
+                      onClick={() =>
+                        setActivities((current) =>
+                          current.filter((item) => item.id !== activity.id),
+                        )
+                      }
+                    >
+                      <Trash2 aria-hidden="true" /> Remove activity
                     </Button>
-                    {chart && (
-                      <Button variant="tertiary" onClick={() => setChart(null)}>
-                        Remove Chart
-                      </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+            {errors.activities && <p className="field__error">{errors.activities}</p>}
+            <Button
+              variant="secondary"
+              onClick={() =>
+                setActivities((current) => [...current, emptyActivity(current.length + 1)])
+              }
+            >
+              <Plus aria-hidden="true" /> Add activity
+            </Button>
+          </Panel>
+
+          <Panel title="Previous commitments and outcomes" className="section">
+            {previousCommitmentOutcomes.length ? (
+              <div className="manager-repeatable-list">
+                {previousCommitmentOutcomes.map((outcome) => (
+                  <div
+                    className="manager-repeatable-record manager-record-grid"
+                    key={outcome.commitmentId}
+                  >
+                    <div className="manager-record-heading">
+                      <strong>{outcome.commitment}</strong>
+                      <small>{outcome.expectedOutcome}</small>
+                    </div>
+                    <Field label="Current status">
+                      <select
+                        value={outcome.status}
+                        onChange={(event) =>
+                          setPreviousCommitmentOutcomes((current) =>
+                            current.map((item) =>
+                              item.commitmentId === outcome.commitmentId
+                                ? {
+                                    ...item,
+                                    status: event.target
+                                      .value as ManagerCommitmentOutcome['status'],
+                                  }
+                                : item,
+                            ),
+                          )
+                        }
+                      >
+                        <option value="completed">Completed</option>
+                        <option value="in_progress">In progress</option>
+                        <option value="delayed">Delayed</option>
+                        <option value="blocked">Blocked</option>
+                      </select>
+                    </Field>
+                    <Field label="Actual outcome">
+                      <textarea
+                        rows={2}
+                        value={outcome.actualOutcome}
+                        onChange={(event) =>
+                          setPreviousCommitmentOutcomes((current) =>
+                            current.map((item) =>
+                              item.commitmentId === outcome.commitmentId
+                                ? { ...item, actualOutcome: event.target.value }
+                                : item,
+                            ),
+                          )
+                        }
+                      />
+                    </Field>
+                    {(outcome.status === 'delayed' || outcome.status === 'blocked') && (
+                      <>
+                        <Field label="Delay or blocker reason">
+                          <input
+                            value={outcome.delayReason}
+                            onChange={(event) =>
+                              setPreviousCommitmentOutcomes((current) =>
+                                current.map((item) =>
+                                  item.commitmentId === outcome.commitmentId
+                                    ? { ...item, delayReason: event.target.value }
+                                    : item,
+                                ),
+                              )
+                            }
+                          />
+                        </Field>
+                        <Field label="Revised forecast">
+                          <input
+                            type="date"
+                            value={outcome.revisedForecast}
+                            onChange={(event) =>
+                              setPreviousCommitmentOutcomes((current) =>
+                                current.map((item) =>
+                                  item.commitmentId === outcome.commitmentId
+                                    ? { ...item, revisedForecast: event.target.value }
+                                    : item,
+                                ),
+                              )
+                            }
+                          />
+                        </Field>
+                      </>
                     )}
                   </div>
-                )}
-                {section.key === 'highlights' && chart && <ChartPreview chart={chart} />}
-              </Panel>
-            ))}
-          </div>
+                ))}
+              </div>
+            ) : (
+              <p className="empty-copy">
+                No commitments were carried forward from the previous period.
+              </p>
+            )}
+          </Panel>
+
+          <Panel title="Plans / new commitments for next week" className="section">
+            <div className="manager-repeatable-list">
+              {commitments.map((commitment, index) => (
+                <div className="manager-repeatable-record manager-record-grid" key={commitment.id}>
+                  <Field label={`Commitment ${index + 1}`}>
+                    <input
+                      value={commitment.commitment}
+                      onChange={(event) =>
+                        setCommitments((current) =>
+                          current.map((item) =>
+                            item.id === commitment.id
+                              ? { ...item, commitment: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                  </Field>
+                  <Field label="Expected outcome">
+                    <input
+                      value={commitment.expectedOutcome}
+                      onChange={(event) =>
+                        setCommitments((current) =>
+                          current.map((item) =>
+                            item.id === commitment.id
+                              ? { ...item, expectedOutcome: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                  </Field>
+                  <Field label="Owner">
+                    <select
+                      value={commitment.ownerId}
+                      onChange={(event) =>
+                        setCommitments((current) =>
+                          current.map((item) =>
+                            item.id === commitment.id
+                              ? { ...item, ownerId: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    >
+                      {atlas.users
+                        .filter(
+                          (user) => user.departmentId === departmentId || user.id === activeUserId,
+                        )
+                        .map((user) => (
+                          <option key={user.id} value={user.id}>
+                            {user.name}
+                          </option>
+                        ))}
+                    </select>
+                  </Field>
+                  <Field label="Due date">
+                    <input
+                      type="date"
+                      value={commitment.dueDate}
+                      onChange={(event) =>
+                        setCommitments((current) =>
+                          current.map((item) =>
+                            item.id === commitment.id
+                              ? { ...item, dueDate: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                  </Field>
+                  <Field label="Linked plan item (optional)">
+                    <select
+                      value={commitment.linkedPlanItemId}
+                      onChange={(event) =>
+                        setCommitments((current) =>
+                          current.map((item) =>
+                            item.id === commitment.id
+                              ? { ...item, linkedPlanItemId: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    >
+                      <option value="">No link</option>
+                      {performanceMeasures.map((measure) => (
+                        <option key={measure.id} value={measure.planItemId}>
+                          {measure.name}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Dependency">
+                    <input
+                      value={commitment.dependency}
+                      onChange={(event) =>
+                        setCommitments((current) =>
+                          current.map((item) =>
+                            item.id === commitment.id
+                              ? { ...item, dependency: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                  </Field>
+                  <Field label="Status">
+                    <select
+                      value={commitment.status}
+                      onChange={(event) =>
+                        setCommitments((current) =>
+                          current.map((item) =>
+                            item.id === commitment.id
+                              ? {
+                                  ...item,
+                                  status: event.target.value as ManagerCommitmentRecord['status'],
+                                }
+                              : item,
+                          ),
+                        )
+                      }
+                    >
+                      <option value="not_started">Not started</option>
+                      <option value="in_progress">In progress</option>
+                      <option value="completed">Completed</option>
+                      <option value="delayed">Delayed</option>
+                      <option value="blocked">Blocked</option>
+                    </select>
+                  </Field>
+                  {commitments.length > 1 && (
+                    <Button
+                      variant="tertiary"
+                      onClick={() =>
+                        setCommitments((current) =>
+                          current.filter((item) => item.id !== commitment.id),
+                        )
+                      }
+                    >
+                      <Trash2 aria-hidden="true" /> Remove commitment
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+            {errors.commitments && <p className="field__error">{errors.commitments}</p>}
+            <Button
+              variant="secondary"
+              onClick={() =>
+                setCommitments((current) => [
+                  ...current,
+                  emptyCommitment(activeUserId, current.length + 1),
+                ])
+              }
+            >
+              <Plus aria-hidden="true" /> Add commitment
+            </Button>
+          </Panel>
+
+          <Panel title="Risks and constraints" className="section">
+            <div className="manager-repeatable-list">
+              {structuredRisks.map((risk, index) => (
+                <div className="manager-repeatable-record manager-record-grid" key={risk.id}>
+                  <Field label={`Risk ${index + 1}`}>
+                    <input
+                      value={risk.risk}
+                      onChange={(event) =>
+                        setStructuredRisks((current) =>
+                          current.map((item) =>
+                            item.id === risk.id ? { ...item, risk: event.target.value } : item,
+                          ),
+                        )
+                      }
+                    />
+                  </Field>
+                  <Field label="Impact">
+                    <select
+                      value={risk.impact}
+                      onChange={(event) =>
+                        setStructuredRisks((current) =>
+                          current.map((item) =>
+                            item.id === risk.id ? { ...item, impact: event.target.value } : item,
+                          ),
+                        )
+                      }
+                    >
+                      <option value="">Select impact</option>
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="critical">Critical</option>
+                    </select>
+                  </Field>
+                  <Field label="Likelihood">
+                    <select
+                      value={risk.likelihood}
+                      onChange={(event) =>
+                        setStructuredRisks((current) =>
+                          current.map((item) =>
+                            item.id === risk.id
+                              ? {
+                                  ...item,
+                                  likelihood: event.target.value as ManagerRiskRecord['likelihood'],
+                                }
+                              : item,
+                          ),
+                        )
+                      }
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                    </select>
+                  </Field>
+                  <Field label="Affected plan item (optional)">
+                    <select
+                      value={risk.linkedPlanItemId}
+                      onChange={(event) =>
+                        setStructuredRisks((current) =>
+                          current.map((item) =>
+                            item.id === risk.id
+                              ? { ...item, linkedPlanItemId: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    >
+                      <option value="">Project-level risk</option>
+                      {performanceMeasures.map((measure) => (
+                        <option key={measure.id} value={measure.planItemId}>
+                          {measure.name}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Potential impact">
+                    <input
+                      value={risk.potentialImpact}
+                      onChange={(event) =>
+                        setStructuredRisks((current) =>
+                          current.map((item) =>
+                            item.id === risk.id
+                              ? { ...item, potentialImpact: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                  </Field>
+                  <Field label="Mitigation">
+                    <input
+                      value={risk.mitigation}
+                      onChange={(event) =>
+                        setStructuredRisks((current) =>
+                          current.map((item) =>
+                            item.id === risk.id
+                              ? { ...item, mitigation: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                  </Field>
+                  <Field label="Owner">
+                    <select
+                      value={risk.ownerId}
+                      onChange={(event) =>
+                        setStructuredRisks((current) =>
+                          current.map((item) =>
+                            item.id === risk.id ? { ...item, ownerId: event.target.value } : item,
+                          ),
+                        )
+                      }
+                    >
+                      {atlas.users
+                        .filter(
+                          (user) => user.departmentId === departmentId || user.id === activeUserId,
+                        )
+                        .map((user) => (
+                          <option key={user.id} value={user.id}>
+                            {user.name}
+                          </option>
+                        ))}
+                    </select>
+                  </Field>
+                  <Field label="Target resolution">
+                    <input
+                      type="date"
+                      value={risk.targetResolution}
+                      onChange={(event) =>
+                        setStructuredRisks((current) =>
+                          current.map((item) =>
+                            item.id === risk.id
+                              ? { ...item, targetResolution: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                  </Field>
+                  <Field label="Comment">
+                    <textarea
+                      rows={3}
+                      value={risk.comment}
+                      onChange={(event) =>
+                        setStructuredRisks((current) =>
+                          current.map((item) =>
+                            item.id === risk.id ? { ...item, comment: event.target.value } : item,
+                          ),
+                        )
+                      }
+                    />
+                  </Field>
+                  {structuredRisks.length > 1 && (
+                    <Button
+                      variant="tertiary"
+                      onClick={() =>
+                        setStructuredRisks((current) =>
+                          current.filter((item) => item.id !== risk.id),
+                        )
+                      }
+                    >
+                      <Trash2 aria-hidden="true" /> Remove risk
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+            {errors.risks && <p className="field__error">{errors.risks}</p>}
+            <Button
+              variant="secondary"
+              onClick={() =>
+                setStructuredRisks((current) => [
+                  ...current,
+                  emptyRisk(activeUserId, current.length + 1),
+                ])
+              }
+            >
+              <Plus aria-hidden="true" /> Add risk
+            </Button>
+          </Panel>
+
+          <Panel title="Support or decisions required" className="section">
+            <Field label="Support or decision required">
+              <textarea
+                rows={4}
+                value={supportRequired}
+                placeholder="Describe the decision, support, owner, and required timing."
+                onChange={(event) => setSupportRequired(event.target.value)}
+              />
+            </Field>
+          </Panel>
+
+          {chart && (
+            <Panel title="Chart added to update" className="section">
+              <ChartPreview chart={chart} />
+              <Button variant="tertiary" onClick={() => setChart(null)}>
+                Remove chart
+              </Button>
+            </Panel>
+          )}
 
           <Panel title="Supporting Documents" className="section manager-attachments">
             <p>Optionally attach supporting PDF, DOCX, XLSX, PNG or JPG files up to 10 MB.</p>
@@ -1181,7 +1830,7 @@ export function ManagerWeeklyUpdatesPage() {
 
       <Modal
         open={chartModalOpen}
-        title="Generate chart from Highlights"
+        title="KPI performance trend"
         onClose={() => setChartModalOpen(false)}
         footer={
           pendingChart ? (
@@ -1222,11 +1871,12 @@ export function ManagerWeeklyUpdatesPage() {
                 Cancel
               </Button>
               <Button
+                disabled={!selectedChartMeasure || chartValues.length === 0}
                 onClick={() =>
                   setPendingChart({
                     id: `chart_${activeUserId}_${projectId}_${periodId}`,
                     type: chartType,
-                    title: 'Plan and actual performance',
+                    title: `${selectedChartMeasure?.name ?? 'KPI'} — plan vs actual`,
                     values: chartValues,
                     generatedAt: prototypeTime(managerUpdates.updates.length + 1),
                   })
@@ -1238,21 +1888,57 @@ export function ManagerWeeklyUpdatesPage() {
           )
         }
       >
-        <Field label="Chart type">
-          <select
-            aria-label="Chart type"
-            value={chartType}
-            onChange={(event) => setChartType(event.target.value as ManagerChartType)}
-            disabled={Boolean(pendingChart)}
-          >
-            <option value="bar">Bar chart</option>
-            <option value="line">Line chart</option>
-          </select>
-        </Field>
+        <div className="manager-chart-controls">
+          <Field label="KPI">
+            <select
+              aria-label="KPI to visualise"
+              value={selectedChartMeasure?.id ?? ''}
+              onChange={(event) => {
+                setSelectedChartMeasureId(event.target.value);
+                setPendingChart(null);
+              }}
+              disabled={Boolean(pendingChart)}
+            >
+              {chartableMeasures.map((measure) => (
+                <option key={measure.id} value={measure.id}>
+                  {measure.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Time range">
+            <select
+              aria-label="Chart time range"
+              value={chartRange}
+              onChange={(event) => {
+                setChartRange(event.target.value);
+                setPendingChart(null);
+              }}
+              disabled={Boolean(pendingChart)}
+            >
+              <option value="4">Last 4 weeks</option>
+              <option value="6">Last 6 weeks</option>
+              <option value="8">Last 8 weeks</option>
+              <option value="quarter">Quarter / available history</option>
+            </select>
+          </Field>
+          <Field label="Chart type">
+            <select
+              aria-label="Chart type"
+              value={chartType}
+              onChange={(event) => setChartType(event.target.value as ManagerChartType)}
+              disabled={Boolean(pendingChart)}
+            >
+              <option value="line">Line chart</option>
+              <option value="bar">Bar chart</option>
+            </select>
+          </Field>
+        </div>
         {!pendingChart ? (
           <p>
-            Atlas found {chartValues.length} structured numeric values for this preview. Enter plan
-            and actual values, or department performance inputs, to generate the chart.
+            {chartValues.length
+              ? `Atlas found ${chartValues.length} validated or current reporting values. The approved plan is shown as a separate series.`
+              : 'Enter a current KPI value, or select a KPI with submitted history, to generate this chart.'}
           </p>
         ) : (
           <ChartPreview chart={pendingChart} />
@@ -1488,7 +2174,35 @@ export function ManagerSubmissionDetailPage() {
           </div>
         </dl>
       </Panel>
-      {update.metricInputs?.some((input) => input.value) && (
+      {update.performanceMeasures?.length ? (
+        <Panel title="Performance against plan" className="section">
+          <DataTable
+            caption="Submitted performance against approved plan"
+            headers={[
+              'Measure',
+              'Type',
+              'Approved plan',
+              'Previous',
+              'Current',
+              'Variance',
+              'Status',
+            ]}
+            rows={update.performanceMeasures.map((measure) => [
+              measure.name,
+              measure.type,
+              `${measure.approvedValue} ${measure.unit}`.trim(),
+              measure.type === 'Milestone'
+                ? measure.previousStatus.replaceAll('_', ' ')
+                : `${measure.previousValue || '—'} ${measure.unit}`.trim(),
+              measure.type === 'Milestone'
+                ? `${measure.currentStatus.replaceAll('_', ' ')} · ${measure.currentProgress || 0}%`
+                : `${measure.currentValue || '—'} ${measure.unit}`.trim(),
+              measure.variance,
+              <StatusBadge status={measure.status} />,
+            ])}
+          />
+        </Panel>
+      ) : update.metricInputs?.some((input) => input.value) ? (
         <Panel title="Department Performance Inputs" className="section">
           <DataTable
             caption="Submitted department performance values"
@@ -1498,30 +2212,140 @@ export function ManagerSubmissionDetailPage() {
               .map((input) => [input.label, input.value, input.unit])}
           />
         </Panel>
-      )}
+      ) : null}
       {deadlinePassed && update.status === 'submitted' && update.creatorId === activeUserId && (
         <div className="info-panel section" role="status">
           <strong>Reporting deadline passed</strong>
           <span>This submission is view only, but its discussion remains open.</span>
         </div>
       )}
-      <Panel title="Highlights from the Previous Week" className="section">
-        <StructuredSectionSummary update={update} section="highlights" />
-        <p>{update.sections.highlights || 'No content added.'}</p>
+      <Panel title="Highlights from last week" className="section">
+        {update.highlights?.length ? (
+          <ul className="manager-detail-list">
+            {update.highlights.map((highlight) => (
+              <li key={highlight.id}>
+                <p>{highlight.text}</p>
+                {highlight.linkedPlanItemIds.length > 0 && (
+                  <small>
+                    Linked:{' '}
+                    {highlight.linkedPlanItemIds
+                      .map(
+                        (id) =>
+                          update.performanceMeasures?.find((measure) => measure.planItemId === id)
+                            ?.name ?? id,
+                      )
+                      .join(' · ')}
+                  </small>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <>
+            <StructuredSectionSummary update={update} section="highlights" />
+            <p>{update.sections.highlights || 'No content added.'}</p>
+          </>
+        )}
       </Panel>
       {update.chart && (
         <Panel title="Generated Chart" className="section">
           <ChartPreview chart={update.chart} />
         </Panel>
       )}
-      <div className="manager-submission-sections section">
-        {sectionDefinitions.slice(1).map((section) => (
-          <Panel title={section.title} key={section.key}>
-            <StructuredSectionSummary update={update} section={section.key} />
-            <p>{update.sections[section.key] || 'No content added.'}</p>
-          </Panel>
-        ))}
-      </div>
+      {update.activities ? (
+        <Panel title="Ongoing activities" className="section">
+          <DataTable
+            caption="Submitted ongoing activities"
+            headers={['Activity', 'Status', 'Progress', 'Expected completion', 'Blocker', 'Update']}
+            rows={update.activities.map((activity) => [
+              activity.activity,
+              <StatusBadge status={activity.status} />,
+              activity.progressPercent ? `${activity.progressPercent}%` : '—',
+              activity.expectedCompletion || '—',
+              activity.blocker || 'None',
+              activity.narrative || '—',
+            ])}
+          />
+        </Panel>
+      ) : null}
+      {update.previousCommitmentOutcomes && (
+        <Panel title="Previous commitments and outcomes" className="section">
+          {update.previousCommitmentOutcomes.length ? (
+            <DataTable
+              caption="Previous commitment outcomes"
+              headers={[
+                'Commitment',
+                'Status',
+                'Actual outcome',
+                'Delay / blocker',
+                'Revised forecast',
+              ]}
+              rows={update.previousCommitmentOutcomes.map((outcome) => [
+                outcome.commitment,
+                <StatusBadge status={outcome.status} />,
+                outcome.actualOutcome || '—',
+                outcome.delayReason || '—',
+                outcome.revisedForecast || '—',
+              ])}
+            />
+          ) : (
+            <p className="empty-copy">No commitments were carried forward.</p>
+          )}
+        </Panel>
+      )}
+      {update.commitments ? (
+        <Panel title="Plans / new commitments for next week" className="section">
+          <DataTable
+            caption="New weekly commitments"
+            headers={[
+              'Commitment',
+              'Expected outcome',
+              'Owner',
+              'Due date',
+              'Dependency',
+              'Status',
+            ]}
+            rows={update.commitments.map((commitment) => [
+              commitment.commitment,
+              commitment.expectedOutcome,
+              getUser(commitment.ownerId)?.name ?? 'Unassigned',
+              commitment.dueDate || '—',
+              commitment.dependency || 'None',
+              <StatusBadge status={commitment.status} />,
+            ])}
+          />
+        </Panel>
+      ) : null}
+      {update.structuredRisks ? (
+        <Panel title="Risks and constraints" className="section">
+          <DataTable
+            caption="Submitted risks and constraints"
+            headers={['Risk', 'Impact', 'Likelihood', 'Potential impact', 'Mitigation', 'Owner']}
+            rows={update.structuredRisks.map((risk) => [
+              risk.risk,
+              risk.impact || '—',
+              risk.likelihood,
+              risk.potentialImpact || '—',
+              risk.mitigation || '—',
+              getUser(risk.ownerId)?.name ?? 'Unassigned',
+            ])}
+          />
+        </Panel>
+      ) : (
+        <div className="manager-submission-sections section">
+          {sectionDefinitions.slice(1).map((section) => (
+            <Panel title={section.title} key={section.key}>
+              <StructuredSectionSummary update={update} section={section.key} />
+              <p>{update.sections[section.key] || 'No content added.'}</p>
+            </Panel>
+          ))}
+        </div>
+      )}
+      {update.supportRequired && (
+        <Panel title="Support or decisions required" className="section">
+          <p>{update.supportRequired}</p>
+        </Panel>
+      )}
       <Panel title="Supporting Documents" className="section">
         {update.attachments.length ? (
           <ul className="manager-attachment-list">

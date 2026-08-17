@@ -1,15 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getApprovedPlanFixtureFile,
+  initialPlanState,
+  planReducer,
+  type ConfirmedPlanBaseline,
+} from './plan';
+import {
+  calculateMeasure,
   canCommentOnUpdate,
   canDeleteUpdate,
   canEditUpdate,
   canResubmitUpdate,
   canViewDraft,
   canViewUpdate,
+  createCommitmentOutcomes,
   createInitialManagerUpdatesState,
   createEmptyStructuredSections,
+  createInheritedPerformanceMeasures,
   createManagerMetricInputs,
-  extractChartValues,
+  deriveProjectHealthFromUpdates,
   managerUpdatesReducer,
   selectAssignedProjectIds,
   selectManagerUpdates,
@@ -17,6 +26,21 @@ import {
   isUpdatePastDeadline,
   type ManagerWeeklyUpdate,
 } from './managerUpdates';
+
+function confirmedPlan(): ConfirmedPlanBaseline {
+  let state = planReducer(initialPlanState(), {
+    type: 'SELECT_FILE',
+    file: getApprovedPlanFixtureFile(),
+  });
+  state = planReducer(state, { type: 'START_EXTRACTION' });
+  state = planReducer(state, { type: 'COMPLETE_EXTRACTION' });
+  state = planReducer(state, {
+    type: 'CONFIRM_PLAN',
+    actorId: 'usr_commercial',
+    now: '2026-08-06T10:00:00+01:00',
+  });
+  return state.confirmedPlan!;
+}
 
 function draft(overrides: Partial<ManagerWeeklyUpdate> = {}): ManagerWeeklyUpdate {
   return {
@@ -92,6 +116,80 @@ describe('Manager Weekly Update state', () => {
     );
     expect(createEmptyStructuredSections().highlights.outcomeStatus).toBe('achieved');
     expect(createEmptyStructuredSections().plansForWeek.strategicObjectiveId).toBe('');
+  });
+
+  it('inherits assigned approved measures and calculates current variance without editable links', () => {
+    const project = confirmedPlan().projects.find((item) => item.id === 'prj_compressor')!;
+    const measures = createInheritedPerformanceMeasures(project, 'dept_operations');
+    const production = measures.find((measure) => measure.planItemId === 'kpi_gross_production')!;
+    expect(production).toMatchObject({
+      type: 'KPI',
+      approvedValue: '120000',
+      previousValue: '96800',
+    });
+    expect(calculateMeasure({ ...production, currentValue: '114000' })).toMatchObject({
+      variance: '-5.0%',
+      status: 'on_track',
+    });
+  });
+
+  it('rolls previous commitments forward and derives project health from structured submissions', () => {
+    const previous = draft({
+      commitments: [
+        {
+          id: 'commitment_1',
+          commitment: 'Complete rotor alignment',
+          expectedOutcome: 'Compressor ready for test',
+          ownerId: 'usr_operations',
+          dueDate: '2026-08-07',
+          linkedPlanItemId: 'milestone_compressor_install',
+          dependency: '',
+          status: 'in_progress',
+        },
+      ],
+    });
+    expect(createCommitmentOutcomes(previous)[0]).toMatchObject({
+      commitment: 'Complete rotor alignment',
+      actualOutcome: '',
+      revisedForecast: '2026-08-07',
+    });
+
+    const state = managerUpdatesReducer(createInitialManagerUpdatesState(), {
+      type: 'UPSERT_UPDATE',
+      update: draft({
+        status: 'submitted',
+        visibleToRoles: ['commercial_manager', 'ceo', 'cfo'],
+        performanceMeasures: [
+          {
+            id: 'measure_1',
+            planItemId: 'kpi_gross_production',
+            type: 'KPI',
+            name: 'Gross oil production',
+            projectId: 'prj_compressor',
+            departmentId: 'dept_operations',
+            unit: 'bopd',
+            approvedValue: '120000',
+            previousValue: '96800',
+            currentValue: '90000',
+            plannedCompletion: '',
+            previousStatus: 'at_risk',
+            currentStatus: 'not_started',
+            currentProgress: '',
+            forecastCompletion: '',
+            variance: '-25.0%',
+            status: 'critical',
+            evidenceIds: [],
+            reviewStatus: 'submitted',
+            revisions: [],
+            addChart: false,
+          },
+        ],
+      }),
+    });
+    expect(deriveProjectHealthFromUpdates(state, 'prj_compressor')).toMatchObject({
+      status: 'critical',
+      score: 25,
+    });
   });
 
   it('keeps drafts private and exposes only submitted updates to authorised roles', () => {
@@ -225,14 +323,5 @@ describe('Manager Weekly Update state', () => {
     const state = managerUpdatesReducer(createInitialManagerUpdatesState(), { type: 'CLEAR_ALL' });
     expect(state.updates).toEqual([]);
     expect(state.lastError).toBeNull();
-  });
-
-  it('derives deterministic chart values from numeric Highlights content', () => {
-    expect(extractChartValues('Output was 96,800 bopd, 3.5% below a 100000 plan.')).toEqual([
-      { label: 'Value 1', value: 96800 },
-      { label: 'Value 2', value: 3.5 },
-      { label: 'Value 3', value: 100000 },
-    ]);
-    expect(extractChartValues('No measurable values yet.')).toEqual([]);
   });
 });

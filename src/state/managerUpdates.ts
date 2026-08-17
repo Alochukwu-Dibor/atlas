@@ -1,4 +1,5 @@
 import { atlas } from '../data/atlas';
+import type { ProjectBaseline } from './plan';
 
 export type ManagerSubmissionStatus = 'draft' | 'submitted';
 export type ManagerChartType = 'bar' | 'line';
@@ -32,6 +33,98 @@ export interface ManagerMetricInput {
   label: string;
   unit: string;
   value: string;
+}
+
+export type ManagerMeasureType = 'KPI' | 'Target' | 'Milestone';
+export type MeasureStatus =
+  'not_started' | 'in_progress' | 'completed' | 'on_track' | 'at_risk' | 'critical';
+
+export interface ManagerMeasureRevision {
+  id: string;
+  reportingPeriodId: string;
+  managerId: string;
+  previousValue: string;
+  currentValue: string;
+  variance: string;
+  recordedAt: string;
+}
+
+export interface ManagerPerformanceMeasure {
+  id: string;
+  planItemId: string;
+  type: ManagerMeasureType;
+  name: string;
+  projectId: string;
+  departmentId: string;
+  unit: string;
+  approvedValue: string;
+  previousValue: string;
+  currentValue: string;
+  plannedCompletion: string;
+  previousStatus: string;
+  currentStatus: MeasureStatus;
+  currentProgress: string;
+  forecastCompletion: string;
+  variance: string;
+  status: MeasureStatus;
+  evidenceIds: string[];
+  reviewStatus: 'draft' | 'submitted' | 'reviewed';
+  revisions: ManagerMeasureRevision[];
+  addChart: boolean;
+}
+
+export interface ManagerHighlightRecord {
+  id: string;
+  text: string;
+  linkedPlanItemIds: string[];
+}
+
+export interface ManagerActivityRecord {
+  id: string;
+  activity: string;
+  status: ActivityStatus;
+  progressPercent: string;
+  expectedCompletion: string;
+  linkedPlanItemId: string;
+  blocker: string;
+  narrative: string;
+}
+
+export type CommitmentStatus = 'not_started' | 'in_progress' | 'completed' | 'delayed' | 'blocked';
+
+export interface ManagerCommitmentRecord {
+  id: string;
+  commitment: string;
+  expectedOutcome: string;
+  ownerId: string;
+  dueDate: string;
+  linkedPlanItemId: string;
+  dependency: string;
+  status: CommitmentStatus;
+}
+
+export interface ManagerCommitmentOutcome {
+  commitmentId: string;
+  commitment: string;
+  expectedOutcome: string;
+  status: CommitmentStatus;
+  actualOutcome: string;
+  delayReason: string;
+  revisedForecast: string;
+  evidenceIds: string[];
+}
+
+export interface ManagerRiskRecord {
+  id: string;
+  risk: string;
+  impact: string;
+  likelihood: 'low' | 'medium' | 'high';
+  linkedPlanItemId: string;
+  potentialImpact: string;
+  mitigation: string;
+  ownerId: string;
+  targetResolution: string;
+  comment: string;
 }
 
 export interface ManagerStructuredSections {
@@ -69,7 +162,7 @@ export interface GeneratedChart {
   id: string;
   type: ManagerChartType;
   title: string;
-  values: { label: string; value: number }[];
+  values: { label: string; value: number; planValue?: number }[];
   generatedAt: string;
 }
 
@@ -100,6 +193,13 @@ export interface ManagerWeeklyUpdate {
   sections: ManagerUpdateSections;
   structuredSections?: ManagerStructuredSections;
   metricInputs?: ManagerMetricInput[];
+  performanceMeasures?: ManagerPerformanceMeasure[];
+  highlights?: ManagerHighlightRecord[];
+  activities?: ManagerActivityRecord[];
+  previousCommitmentOutcomes?: ManagerCommitmentOutcome[];
+  commitments?: ManagerCommitmentRecord[];
+  structuredRisks?: ManagerRiskRecord[];
+  supportRequired?: string;
   chart: GeneratedChart | null;
   attachments: ManagerAttachment[];
   pastedText?: string;
@@ -228,6 +328,168 @@ export function createManagerMetricInputs(departmentId: string): ManagerMetricIn
     ...definition,
     value: '',
   }));
+}
+
+function measureHealth(planItemId: string, approved: number, current: number): MeasureStatus {
+  if (!Number.isFinite(current)) return 'not_started';
+  const adherence =
+    planItemId === 'kpi_trir'
+      ? current <= 0
+        ? 100
+        : (approved / current) * 100
+      : approved === 0
+        ? Math.max(0, 100 - Math.abs(current) * 10)
+        : (current / approved) * 100;
+  if (adherence >= 95) return 'on_track';
+  if (adherence >= 85) return 'at_risk';
+  return 'critical';
+}
+
+export function calculateMeasure(measure: ManagerPerformanceMeasure): ManagerPerformanceMeasure {
+  if (measure.type === 'Milestone') {
+    return {
+      ...measure,
+      variance:
+        measure.currentStatus === 'completed'
+          ? 'Completed'
+          : measure.currentProgress
+            ? `${measure.currentProgress}% complete`
+            : 'Awaiting update',
+      status: measure.currentStatus,
+    };
+  }
+  const approved = Number(measure.approvedValue);
+  const current = Number(measure.currentValue);
+  if (!measure.currentValue.trim() || !Number.isFinite(approved) || !Number.isFinite(current)) {
+    return { ...measure, variance: 'Awaiting update', status: 'not_started' };
+  }
+  const variancePercent = approved === 0 ? current : ((current - approved) / approved) * 100;
+  return {
+    ...measure,
+    variance: `${variancePercent >= 0 ? '+' : ''}${variancePercent.toFixed(1)}%`,
+    status: measureHealth(measure.planItemId, approved, current),
+  };
+}
+
+export function createInheritedPerformanceMeasures(
+  project: ProjectBaseline,
+  departmentId: string,
+  previousUpdate?: ManagerWeeklyUpdate,
+): ManagerPerformanceMeasure[] {
+  const previousMeasures = previousUpdate?.performanceMeasures ?? [];
+  const kpis = project.kpis
+    .filter((kpi) => kpi.departmentId === departmentId || departmentId === 'dept_commercial')
+    .map((kpi) => {
+      const target = project.targets.find((item) => item.kpiId === kpi.id);
+      const previous = previousMeasures.find((item) => item.planItemId === kpi.id);
+      const latestValidated = atlas.kpiTargets.find((item) => item.kpiId === kpi.id);
+      return calculateMeasure({
+        id: `measure_${kpi.id}_${project.id}`,
+        planItemId: kpi.id,
+        type: 'KPI',
+        name: kpi.name,
+        projectId: project.id,
+        departmentId: kpi.departmentId,
+        unit: kpi.unit,
+        approvedValue: String(target?.approvedBaseline ?? ''),
+        previousValue: previous?.currentValue ?? String(latestValidated?.actual ?? ''),
+        currentValue: '',
+        plannedCompletion: '',
+        previousStatus:
+          previous?.status ??
+          (latestValidated?.status === 'on_track'
+            ? 'on_track'
+            : latestValidated?.status === 'at_risk'
+              ? 'at_risk'
+              : latestValidated?.status === 'off_track'
+                ? 'critical'
+                : 'not_started'),
+        currentStatus: 'not_started',
+        currentProgress: '',
+        forecastCompletion: '',
+        variance: 'Awaiting update',
+        status: 'not_started',
+        evidenceIds: [],
+        reviewStatus: 'draft',
+        revisions: previous?.revisions ?? [],
+        addChart: false,
+      });
+    });
+  const milestones = project.milestones
+    .filter(
+      (milestone) => milestone.departmentId === departmentId || departmentId === 'dept_commercial',
+    )
+    .map((milestone) => {
+      const previous = previousMeasures.find((item) => item.planItemId === milestone.id);
+      const latestValidated = atlas.milestones.find((item) => item.id === milestone.id);
+      return calculateMeasure({
+        id: `measure_${milestone.id}_${project.id}`,
+        planItemId: milestone.id,
+        type: 'Milestone',
+        name: milestone.name,
+        projectId: project.id,
+        departmentId: milestone.departmentId,
+        unit: '',
+        approvedValue: milestone.dueDate,
+        previousValue: previous?.currentValue ?? '',
+        currentValue: '',
+        plannedCompletion: milestone.dueDate,
+        previousStatus:
+          previous?.currentStatus ??
+          (latestValidated?.status === 'complete'
+            ? 'completed'
+            : latestValidated?.status === 'in_progress'
+              ? 'in_progress'
+              : 'not_started'),
+        currentStatus: 'not_started',
+        currentProgress: '',
+        forecastCompletion: milestone.dueDate,
+        variance: 'Awaiting update',
+        status: 'not_started',
+        evidenceIds: [],
+        reviewStatus: 'draft',
+        revisions: previous?.revisions ?? [],
+        addChart: false,
+      });
+    });
+  return [...kpis, ...milestones];
+}
+
+export function createCommitmentOutcomes(
+  previousUpdate?: ManagerWeeklyUpdate,
+): ManagerCommitmentOutcome[] {
+  return (previousUpdate?.commitments ?? []).map((commitment) => ({
+    commitmentId: commitment.id,
+    commitment: commitment.commitment,
+    expectedOutcome: commitment.expectedOutcome,
+    status: commitment.status,
+    actualOutcome: '',
+    delayReason: '',
+    revisedForecast: commitment.dueDate,
+    evidenceIds: [],
+  }));
+}
+
+export function latestPreviousManagerUpdate(
+  updates: ManagerWeeklyUpdate[],
+  creatorId: string,
+  projectId: string,
+  reportingPeriodId: string,
+) {
+  const currentEnd =
+    atlas.reportingCycles.find((cycle) => cycle.id === reportingPeriodId)?.endDate ?? '';
+  return updates
+    .filter((update) => {
+      const updateEnd =
+        atlas.reportingCycles.find((cycle) => cycle.id === update.reportingPeriodId)?.endDate ?? '';
+      return (
+        update.creatorId === creatorId &&
+        update.projectId === projectId &&
+        update.status === 'submitted' &&
+        updateEnd < currentEnd
+      );
+    })
+    .sort((left, right) => right.savedAt.localeCompare(left.savedAt))[0];
 }
 
 export const projectAssignments: ProjectAssignment[] = [
@@ -434,11 +696,75 @@ export function selectVisibleSubmittedUpdates(
     });
 }
 
-export function extractChartValues(highlights: string) {
-  return (highlights.match(/-?\d[\d,]*(?:\.\d+)?/g) ?? []).slice(0, 6).map((value, index) => ({
-    label: `Value ${index + 1}`,
-    value: Number(value.replaceAll(',', '')),
-  }));
+export function deriveProjectHealthFromUpdates(
+  state: ManagerUpdatesState,
+  projectId: string,
+  fallback: 'on_track' | 'at_risk' | 'critical' = 'at_risk',
+) {
+  const latest = state.updates
+    .filter(
+      (update) =>
+        update.projectId === projectId &&
+        update.status === 'submitted' &&
+        Boolean(update.performanceMeasures?.length),
+    )
+    .sort((left, right) => right.savedAt.localeCompare(left.savedAt))[0];
+  if (!latest?.performanceMeasures?.length) {
+    return {
+      status: fallback,
+      score: fallback === 'on_track' ? 100 : fallback === 'at_risk' ? 65 : 25,
+    };
+  }
+  const statuses = latest.performanceMeasures
+    .map((measure) => calculateMeasure(measure).status)
+    .filter((status) => status !== 'not_started');
+  const hasCriticalMeasure = statuses.includes('critical');
+  const hasAtRiskMeasure = statuses.includes('at_risk');
+  const hasCriticalRisk = latest.structuredRisks?.some(
+    (risk) => risk.impact === 'critical' || (risk.impact === 'high' && risk.likelihood === 'high'),
+  );
+  const hasBlockedCommitment = latest.commitments?.some(
+    (commitment) => commitment.status === 'blocked' || commitment.status === 'delayed',
+  );
+  const status =
+    hasCriticalMeasure || hasCriticalRisk
+      ? 'critical'
+      : hasAtRiskMeasure || hasBlockedCommitment
+        ? 'at_risk'
+        : statuses.length
+          ? 'on_track'
+          : fallback;
+  const measureScores = statuses.map((measureStatus) =>
+    measureStatus === 'on_track' || measureStatus === 'completed'
+      ? 100
+      : measureStatus === 'at_risk' || measureStatus === 'in_progress'
+        ? 65
+        : 25,
+  );
+  const score = measureScores.length
+    ? Math.round(measureScores.reduce((sum, value) => sum + value, 0) / measureScores.length)
+    : status === 'on_track'
+      ? 100
+      : status === 'at_risk'
+        ? 65
+        : 25;
+  return { status, score };
+}
+
+export function selectLatestSubmittedMeasure(
+  state: ManagerUpdatesState,
+  planItemId: string,
+  projectId?: string,
+) {
+  for (const update of [...state.updates]
+    .filter((item) => item.status === 'submitted' && (!projectId || item.projectId === projectId))
+    .sort((left, right) => right.savedAt.localeCompare(left.savedAt))) {
+    const measure = update.performanceMeasures?.find(
+      (item) => item.planItemId === planItemId && item.currentValue.trim(),
+    );
+    if (measure) return measure;
+  }
+  return undefined;
 }
 
 function getPeriodEnd(periodId: string) {

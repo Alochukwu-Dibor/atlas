@@ -1,4 +1,5 @@
 import type { ConfirmedPlanBaseline, ProjectBaseline } from '../state/plan';
+import { deriveProjectHealthFromUpdates, type ManagerUpdatesState } from '../state/managerUpdates';
 import type { WorkflowState } from '../state/workflow';
 import {
   atlas,
@@ -76,15 +77,21 @@ function healthPercent(status: PortfolioHealthStatus) {
   return status === 'on_track' ? 100 : status === 'at_risk' ? 65 : 25;
 }
 
-function projectListItem(baseline: ProjectBaseline): CommercialProjectListItem {
+function projectListItem(
+  baseline: ProjectBaseline,
+  managerUpdates?: ManagerUpdatesState,
+): CommercialProjectListItem {
   const reported = phase1Domain.projects.find((project) => project.id === baseline.id);
-  const health = normaliseProjectHealth(reported?.status ?? 'at_risk');
+  const fallbackHealth = normaliseProjectHealth(reported?.status ?? 'at_risk');
+  const derived = managerUpdates
+    ? deriveProjectHealthFromUpdates(managerUpdates, baseline.id, fallbackHealth)
+    : { status: fallbackHealth, score: healthPercent(fallbackHealth) };
   return {
     id: baseline.id,
     name: baseline.name,
     phase: reported?.phase ?? 'Awaiting first report',
-    health,
-    healthPercent: healthPercent(health),
+    health: derived.status,
+    healthPercent: derived.score,
     progressPercent: reported?.progressPercent ?? 0,
     plannedProgressPercent: reported?.planPercent ?? null,
     reportingAvailable: Boolean(reported),
@@ -93,8 +100,9 @@ function projectListItem(baseline: ProjectBaseline): CommercialProjectListItem {
 
 export function selectCommercialProjects(
   confirmedPlan: ConfirmedPlanBaseline | null,
+  managerUpdates?: ManagerUpdatesState,
 ): CommercialProjectListItem[] {
-  return confirmedPlan?.projects.map(projectListItem) ?? [];
+  return confirmedPlan?.projects.map((project) => projectListItem(project, managerUpdates)) ?? [];
 }
 
 function adherenceFor(kpiId: string, baseline: number, actual: number) {
@@ -569,12 +577,48 @@ export function selectCommercialProjectWorkspace(
   confirmedPlan: ConfirmedPlanBaseline | null,
   workflow: WorkflowState,
   projectId: string,
+  managerUpdates?: ManagerUpdatesState,
 ): CommercialProjectWorkspace | null {
   const baseline = confirmedPlan?.projects.find((project) => project.id === projectId);
   if (!confirmedPlan || !baseline) return null;
-  const listItem = projectListItem(baseline);
+  const listItem = projectListItem(baseline, managerUpdates);
   const reported = phase1Domain.projects.find((project) => project.id === baseline.id);
-  const measures = measuresFor(baseline);
+  const latestUpdate = managerUpdates?.updates
+    .filter(
+      (update) =>
+        update.projectId === projectId &&
+        update.status === 'submitted' &&
+        Boolean(update.performanceMeasures?.length),
+    )
+    .sort((left, right) => right.savedAt.localeCompare(left.savedAt))[0];
+  const measures = measuresFor(baseline).map((measure) => {
+    const linkedPlanItemId =
+      measure.type === 'Target'
+        ? (baseline.targets.find((target) => target.id === measure.sourceId)?.kpiId ??
+          measure.sourceId)
+        : measure.sourceId;
+    const updateMeasure = latestUpdate?.performanceMeasures?.find(
+      (item) => item.planItemId === linkedPlanItemId,
+    );
+    if (
+      !updateMeasure ||
+      (updateMeasure.type !== 'Milestone' && !updateMeasure.currentValue.trim()) ||
+      (updateMeasure.type === 'Milestone' && updateMeasure.currentStatus === 'not_started')
+    )
+      return measure;
+    const actual =
+      updateMeasure.type === 'Milestone'
+        ? updateMeasure.currentStatus.replaceAll('_', ' ')
+        : Number(updateMeasure.currentValue);
+    return {
+      ...measure,
+      actualValue: actual,
+      variance: updateMeasure.variance,
+      adherencePercent:
+        updateMeasure.status === 'on_track' ? 100 : updateMeasure.status === 'at_risk' ? 65 : 25,
+      status: updateMeasure.status,
+    };
+  });
   const targetMeasures = measures.filter((measure) => measure.type !== 'KPI');
   const targetAdherencePercent = targetMeasures.length
     ? Math.round(

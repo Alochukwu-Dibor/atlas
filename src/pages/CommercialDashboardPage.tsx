@@ -30,9 +30,23 @@ export default function CommercialDashboardPage() {
   const navigate = useNavigate();
   const [resetWarningOpen, setResetWarningOpen] = useState(false);
   const toast = useToast();
-  const { plan, planDispatch, resetAtlas, workflow, cycleId, scenarioId, activeUserId } =
-    useAtlas();
-  const dashboard = selectCommercialDashboard(plan.confirmedPlan, workflow, cycleId, scenarioId);
+  const {
+    plan,
+    planDispatch,
+    resetAtlas,
+    workflow,
+    cycleId,
+    scenarioId,
+    activeUserId,
+    managerUpdates,
+  } = useAtlas();
+  const dashboard = selectCommercialDashboard(
+    plan.confirmedPlan,
+    workflow,
+    cycleId,
+    scenarioId,
+    managerUpdates,
+  );
 
   if (!dashboard) {
     return (
@@ -53,6 +67,9 @@ export default function CommercialDashboardPage() {
 
   const currentWeek = dashboard.trend.find((point) => point.currentReportingWeek)?.period;
   const firstName = getUser(activeUserId)?.name.split(' ')[0] ?? 'there';
+  const productionMetric = dashboard.kpis.find((metric) => metric.id === 'production');
+  const productionValue = Number(productionMetric?.result.replace(/[^\d.]/g, '') ?? 0);
+  const productionVariance = productionMetric?.context.match(/[+-]?\d+(?:\.\d+)?%/)?.[0];
   const dashboardCards: Array<{
     id: string;
     label: string;
@@ -65,9 +82,14 @@ export default function CommercialDashboardPage() {
     {
       id: 'production',
       label: 'Production',
-      value: '123.1k',
-      context: '-7.1% vs plan',
-      tone: 'critical' as const,
+      value: productionValue ? `${(productionValue / 1000).toFixed(1)}k` : '—',
+      context: productionVariance ? `${productionVariance} vs plan` : 'Awaiting actual',
+      tone:
+        productionMetric?.status === 'on_track'
+          ? ('success' as const)
+          : productionMetric?.status === 'missing_inputs'
+            ? ('neutral' as const)
+            : ('critical' as const),
       destination: '/projects/prj_compressor',
     },
     {
